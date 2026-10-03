@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { width: 320px; margin: 0; padding: 14px; font: 13px/1.45 system-ui, sans-serif; color: #111827; }
+    h1 { font-size: 15px; margin: 0 0 10px; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; margin: 14px 0 6px; }
+    label { display: flex; gap: 8px; align-items: center; }
+    input { width: 60px; padding: 3px 6px; font: inherit; font-family: ui-monospace, monospace; }
+    table { border-collapse: collapse; width: 100%; }
+    td { padding: 2px 0; vertical-align: top; }
+    td:first-child { font-family: ui-monospace, monospace; white-space: nowrap; padding-right: 10px; color: #4f46e5; }
+    ul { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; }
+    li { padding: 6px 0; border-bottom: 1px solid #e5e7eb; word-break: break-word; }
+    li small { display: block; color: #6b7280; }
+    button { margin-top: 8px; font: inherit; }
+    .empty { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Friday</h1>
+  <label>Trigger prefix <input id="prefix" maxlength="4"></label>
+
+  <h2>Type in any text box, then Enter</h2>
+  <table>
+    <tr><td><span class="p"></span>keyboard layouts</td><td>Google search</td></tr>
+    <tr><td><span class="p"></span>yt lofi</td><td>YouTube</td></tr>
+    <tr><td><span class="p"></span>ask what is MV3</td><td>Claude (gpt for ChatGPT)</td></tr>
+    <tr><td><span class="p"></span>open github.com</td><td>Open a site</td></tr>
+    <tr><td><span class="p"></span>go gmail</td><td>Jump to an open tab</td></tr>
+    <tr><td><span class="p"></span>note buy milk</td><td>Save a note</td></tr>
+  </table>
+
+  <h2>Notes</h2>
+  <ul id="notes"></ul>
+  <button id="clear" hidden>Clear notes</button>
+
+  <script src="popup.js"></script>
+</body>
+</html>
