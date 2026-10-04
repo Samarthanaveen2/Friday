@@ -6,6 +6,8 @@ import { BalanceMeter, ItemColumn, NegThread, Projection, ReviewPanel, StandingR
 import {
   type NegDeal,
   type NegMessage,
+  type NegTalk,
+  talksOf,
   RATE_KEY,
   RATE_OPTIONS,
   completionPct,
@@ -29,6 +31,8 @@ interface Draft {
 }
 
 const DRAFT_KEY = 'neg-draft'
+/** A further negotiation started after today's deal already exists. */
+const MORE_KEY = 'neg-draft-more'
 
 function openingThread(wants: DealItem[], needs: DealItem[]): NegMessage[] {
   return [
@@ -37,9 +41,9 @@ function openingThread(wants: DealItem[], needs: DealItem[]): NegMessage[] {
   ]
 }
 
-function loadDraft(today: string): Draft {
+function loadDraft(today: string, key = DRAFT_KEY): Draft {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY)
+    const raw = localStorage.getItem(key)
     if (raw) {
       const d = JSON.parse(raw) as Draft
       if (d.date === today) {
@@ -54,10 +58,10 @@ function loadDraft(today: string): Draft {
   return { date: today, thread: [], stage: 'talk', wants: [], needs: [] }
 }
 
-function saveDraft(d: Draft | null) {
+function saveDraft(d: Draft | null, key = DRAFT_KEY) {
   try {
-    if (d) localStorage.setItem(DRAFT_KEY, JSON.stringify(d))
-    else localStorage.removeItem(DRAFT_KEY)
+    if (d) localStorage.setItem(key, JSON.stringify(d))
+    else localStorage.removeItem(key)
   } catch {
     /* storage unavailable */
   }
@@ -72,6 +76,8 @@ export function Negotiation({
   owedFrom,
   unreviewed,
   keepRate,
+  embedded = false,
+  onDone,
 }: {
   today: string
   rate: number
@@ -79,14 +85,18 @@ export function Negotiation({
   owedFrom?: NegDeal
   unreviewed?: NegDeal
   keepRate: number | null
+  /** A further negotiation inside today's existing deal. */
+  embedded?: boolean
+  onDone?: () => void
 }) {
-  const [draft, setDraft] = useState<Draft>(() => loadDraft(today))
+  const key = embedded ? MORE_KEY : DRAFT_KEY
+  const [draft, setDraft] = useState<Draft>(() => loadDraft(today, key))
   const [acceptDebt, setAcceptDebt] = useState(false)
   const [sealing, setSealing] = useState(false)
   const rules = useStandingRules()
   const line = useMemo(() => NEGOTIATION_LINES[new Date().getDate() % NEGOTIATION_LINES.length], [])
 
-  useEffect(() => saveDraft(draft), [draft])
+  useEffect(() => saveDraft(draft, key), [draft, key])
 
   const balance = computeBalance(draft.wants, draft.needs, rate, owedIn)
   const hasAnything = draft.wants.length + draft.needs.length > 0
@@ -100,25 +110,38 @@ export function Negotiation({
   const seal = async () => {
     if (!canSeal) return
     setSealing(true)
-    const clean = (items: DealItem[]) => items.filter((i) => i.text.trim()).map((i) => ({ ...i, text: i.text.trim(), done: false }))
-    const deal: NegDeal = {
-      date: today,
-      wants: clean(draft.wants),
-      needs: clean(draft.needs),
-      thread: draft.thread,
-      // Snapshot of the standing rules, so History shows what was in force that day.
-      rules: rules ?? [],
-      status: 'open',
-      createdAt: Date.now(),
-      rate,
-      owedIn,
-      debtTaken: balance.debt,
-    }
+    const talk: NegTalk = { id: uid(), at: Date.now(), thread: draft.thread }
+    const clean = (items: DealItem[]) =>
+      items.filter((i) => i.text.trim()).map((i) => ({ ...i, text: i.text.trim(), done: false, talk: talk.id }))
     try {
-      const existing = await db.deals.where('date').equals(today).first()
-      if (existing) await db.deals.put({ ...deal, id: existing.id })
-      else await db.deals.add(deal)
-      saveDraft(null)
+      const existing = (await db.deals.where('date').equals(today).first()) as NegDeal | undefined
+      if (existing?.id != null) {
+        // Another negotiation today: its terms join the day's deal.
+        await db.deals.update(existing.id, {
+          wants: [...existing.wants, ...clean(draft.wants)],
+          needs: [...existing.needs, ...clean(draft.needs)],
+          talks: [...talksOf(existing), talk],
+          debtTaken: (existing.debtTaken ?? 0) + balance.debt,
+          rules: rules ?? existing.rules,
+        } as Partial<NegDeal>)
+      } else {
+        const deal: NegDeal = {
+          date: today,
+          wants: clean(draft.wants),
+          needs: clean(draft.needs),
+          talks: [talk],
+          // Snapshot of the standing rules, so History shows what was in force that day.
+          rules: rules ?? [],
+          status: 'open',
+          createdAt: Date.now(),
+          rate,
+          owedIn,
+          debtTaken: balance.debt,
+        }
+        await db.deals.add(deal)
+      }
+      saveDraft(null, key)
+      onDone?.()
     } finally {
       setSealing(false)
     }
@@ -126,7 +149,7 @@ export function Negotiation({
 
   return (
     <div className="stack">
-      {unreviewed && (
+      {!embedded && unreviewed && (
         <div className="panel neg-alert">
           <div className="panel-title">Still open from {prettyDay(unreviewed.date)}</div>
           <p className="small" style={{ marginBottom: 12 }}>
@@ -136,12 +159,14 @@ export function Negotiation({
         </div>
       )}
 
-      <div className="neg-intro">
-        <div className="neg-intro-date">{prettyDay(today)}</div>
-        <p className="muted">{line}</p>
-      </div>
+      {!embedded && (
+        <div className="neg-intro">
+          <div className="neg-intro-date">{prettyDay(today)}</div>
+          <p className="muted">{line}</p>
+        </div>
+      )}
 
-      {owedIn > 0 && !unreviewed && (
+      {!embedded && owedIn > 0 && !unreviewed && (
         <div className="neg-owed">
           <div className="neg-owed-num">{fmtMin(owedIn)}</div>
           <div>
@@ -156,7 +181,7 @@ export function Negotiation({
 
       {draft.stage === 'talk' ? (
         <div className="panel">
-          <div className="panel-title">The negotiation</div>
+          <div className="panel-title">{embedded ? 'New negotiation' : 'The negotiation'}</div>
           {draft.thread.length === 0 && (
             <p className="small muted neg-rules-note">
               Start with what Present You wants. Then answer as Future You. Go back and forth until you both agree.
@@ -164,7 +189,14 @@ export function Negotiation({
           )}
           <NegThread messages={draft.thread} onChange={(thread) => setDraft((d) => ({ ...d, thread }))} />
           <div className="neg-step-actions">
-            <span className="small muted">{draft.thread.length ? 'Agreed? Write down the terms.' : ''}</span>
+            <span className="row">
+              {embedded && (
+                <button className="btn btn-ghost btn-sm" onClick={() => { saveDraft(null, key); onDone?.() }}>
+                  Cancel
+                </button>
+              )}
+              <span className="small muted">{draft.thread.length ? 'Agreed? Write down the terms.' : ''}</span>
+            </span>
             <button className="btn btn-gold" disabled={draft.thread.length === 0} onClick={() => setDraft((d) => ({ ...d, stage: 'terms' }))}>
               We agree
             </button>
@@ -210,13 +242,15 @@ export function Negotiation({
         </>
       )}
 
-      <div className="grid-2">
-        <StandingRules rules={rules} />
-        <div className="panel">
-          <div className="panel-title">Future projection</div>
-          <Projection needs={draft.needs} wants={draft.wants} keepRate={keepRate} />
+      {!embedded && (
+        <div className="grid-2">
+          <StandingRules rules={rules} />
+          <div className="panel">
+            <div className="panel-title">Future projection</div>
+            <Projection needs={draft.needs} wants={draft.wants} keepRate={keepRate} />
+          </div>
         </div>
-      </div>
+      )}
 
       {draft.stage === 'terms' && (
       <div className="panel neg-seal-panel">
@@ -240,7 +274,7 @@ export function Negotiation({
                   : 'Balance the two sides, or borrow from tomorrow.'}
           </div>
           <button className="btn btn-gold neg-seal-btn" disabled={!canSeal} onClick={seal}>
-            Make the deal
+            {embedded ? "Add to today's deal" : 'Make the deal'}
           </button>
         </div>
       </div>
@@ -251,8 +285,16 @@ export function Negotiation({
 
 /* ======================= Sealed deal (today) ======================= */
 
-export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number | null }) {
+export function SealedDeal({ deal, keepRate, rate }: { deal: NegDeal; keepRate: number | null; rate: number }) {
   const [tearing, setTearing] = useState(false)
+  const [more, setMore] = useState(() => {
+    try {
+      return !!localStorage.getItem(MORE_KEY)
+    } catch {
+      return false
+    }
+  })
+  const talks = talksOf(deal)
   const rules = useStandingRules()
   const pct = completionPct(deal.needs)
   const needTotal = sumMinutes(deal.needs)
@@ -267,8 +309,9 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
   }
   const tearUp = async () => {
     if (deal.id == null) return
-    if (deal.thread?.length) {
-      saveDraft({ date: deal.date, thread: deal.thread, stage: 'terms', wants: deal.wants.map((w) => ({ ...w, done: false })), needs: deal.needs.map((n) => ({ ...n, done: false })) })
+    const thread = talks.flatMap((t) => t.thread)
+    if (thread.length) {
+      saveDraft({ date: deal.date, thread, stage: 'terms', wants: deal.wants.map((w) => ({ ...w, done: false, talk: undefined })), needs: deal.needs.map((n) => ({ ...n, done: false, talk: undefined })) })
     } else {
       // A deal from before negotiations were a conversation: its two sides become the opening messages.
       saveDraft({ date: deal.date, thread: openingThread(deal.wants, deal.needs), stage: 'talk', wants: [], needs: [] })
@@ -320,14 +363,32 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
         </div>
       </div>
 
-      {deal.thread && deal.thread.length > 0 && (
+      {talks.length > 0 && (
         <div className="panel">
-          <details className="neg-thread-past">
-            <summary>How you got here · {deal.thread.length} {deal.thread.length === 1 ? 'message' : 'messages'}</summary>
-            <NegThread messages={deal.thread} />
-          </details>
+          <div className="panel-title">{talks.length === 1 ? 'The negotiation' : `Today's negotiations · ${talks.length}`}</div>
+          <div className="stack-sm">
+            {talks.map((t, i) => (
+              <details key={t.id} className="neg-thread-past">
+                <summary>
+                  {talks.length > 1 ? `Negotiation ${i + 1} · ` : ''}
+                  {new Date(t.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · {t.thread.length}{' '}
+                  {t.thread.length === 1 ? 'message' : 'messages'}
+                </summary>
+                <NegThread messages={t.thread} />
+              </details>
+            ))}
+          </div>
         </div>
       )}
+
+      {!reviewed &&
+        (more ? (
+          <Negotiation embedded today={deal.date} rate={rate} owedIn={0} keepRate={keepRate} onDone={() => setMore(false)} />
+        ) : (
+          <button className="btn neg-more-btn" onClick={() => setMore(true)}>
+            + New negotiation
+          </button>
+        ))}
 
       <div className="panel neg-evening">
         <div className="panel-title">{reviewed ? 'Evening review · done' : 'Evening review'}</div>

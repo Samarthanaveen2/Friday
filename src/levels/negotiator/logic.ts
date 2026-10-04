@@ -12,8 +12,17 @@ export interface NegMessage {
   text: string
 }
 
+/** One negotiation. A day can hold several; each adds its terms to the day's deal. */
+export interface NegTalk {
+  id: string
+  at: number
+  thread: NegMessage[]
+}
+
 export interface NegDeal extends Deal {
-  /** The conversation that led to the terms. */
+  /** Every negotiation that went into today's deal, in order. */
+  talks?: NegTalk[]
+  /** Legacy: the single conversation from before a day could hold several. */
   thread?: NegMessage[]
   /** Exchange rate snapshot at sealing: 1 need-minute earns `rate` want-minutes. */
   rate?: number
@@ -191,4 +200,16 @@ export function projectionSentence(lines: ProjectionLine[], days: number, factor
   if (parts.length === 0) return ''
   if (parts.length === 1) return parts[0]
   return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1]
+}
+
+/** A deal's negotiations, including the single legacy thread. */
+export function talksOf(deal: NegDeal): NegTalk[] {
+  if (deal.talks?.length) return deal.talks
+  return deal.thread?.length ? [{ id: 'legacy', at: deal.createdAt, thread: deal.thread }] : []
+}
+
+/** Items agreed in a given negotiation. Untagged items belong to the first one. */
+export function itemsOfTalk(items: DealItem[], talks: NegTalk[], talkId: string): DealItem[] {
+  const first = talks[0]?.id
+  return items.filter((i) => (i.talk && talks.some((t) => t.id === i.talk) ? i.talk === talkId : talkId === first))
 }

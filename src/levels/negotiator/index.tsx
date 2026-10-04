@@ -53,7 +53,7 @@ export default function Negotiator() {
 function TodayView({ deals, rate, today }: { deals: NegDeal[]; rate: number; today: string }) {
   const todayDeal = deals.find((d) => d.date === today)
   const keepRate = keepStats(deals, today).rate
-  if (todayDeal) return <SealedDeal key={todayDeal.id} deal={todayDeal} keepRate={keepRate} />
+  if (todayDeal) return <SealedDeal key={todayDeal.id} deal={todayDeal} keepRate={keepRate} rate={rate} />
   const { owed, from, unreviewed } = inheritedOwed(deals, today)
   return <Negotiation today={today} rate={rate} owedIn={owed} owedFrom={from} unreviewed={unreviewed} keepRate={keepRate} />
 }

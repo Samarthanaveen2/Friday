@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { addDays, dayKey, fromDayKey, prettyDay } from '../../lib/date'
 import { NegThread, ReviewPanel, StatusChip } from './components'
-import { type NegDeal, type NegMessage, completionPct, fmtMin, inheritedOwed, keepStats, keptStreak } from './logic'
+import { type NegDeal, type NegMessage, completionPct, itemsOfTalk, talksOf, fmtMin, inheritedOwed, keepStats, keptStreak } from './logic'
 
 export default function History({ deals }: { deals: NegDeal[] }) {
   const today = dayKey()
@@ -72,13 +72,12 @@ export default function History({ deals }: { deals: NegDeal[] }) {
       <div className="neg-log">
         {sorted.map((d) => {
           const past = d.date < today
+          const talks = talksOf(d)
           // Deals from before negotiations were a conversation: show their two sides as the messages.
-          const thread: NegMessage[] = d.thread?.length
-            ? d.thread
-            : [
-                ...d.wants.map((w) => ({ id: w.id, from: 'present' as const, text: w.text })),
-                ...d.needs.map((n) => ({ id: n.id, from: 'future' as const, text: n.text })),
-              ]
+          const legacy: NegMessage[] = [
+            ...d.wants.map((w) => ({ id: w.id, from: 'present' as const, text: w.text })),
+            ...d.needs.map((n) => ({ id: n.id, from: 'future' as const, text: n.text })),
+          ]
           return (
             <section key={d.id} className="panel neg-log-day">
               <header className="neg-log-head">
@@ -92,30 +91,44 @@ export default function History({ deals }: { deals: NegDeal[] }) {
                 <StatusChip status={d.status} />
               </header>
 
-              {thread.length > 0 && <NegThread messages={thread} />}
+              {talks.length === 0 && legacy.length > 0 && <NegThread messages={legacy} />}
 
-              {d.thread?.length ? (
-                <div className="neg-log-terms small">
-                  {d.wants.length > 0 && (
-                    <div>
-                      <span className="neg-log-label neg-log-present">You got</span>{' '}
-                      {d.wants.map((w) => w.text + (w.minutes ? ` (${fmtMin(w.minutes)})` : '')).join(' · ')}
-                    </div>
-                  )}
-                  {d.needs.length > 0 && (
-                    <div>
-                      <span className="neg-log-label neg-log-future">You owed</span>{' '}
-                      {d.needs.map((n, i) => (
-                        <span key={n.id} className={n.done ? '' : 'muted'}>
-                          {i > 0 && ' · '}
-                          {n.done ? '✓ ' : d.status === 'open' ? '○ ' : '✗ '}
-                          {n.text}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : null}
+              {talks.map((t, i) => {
+                const got = itemsOfTalk(d.wants, talks, t.id)
+                const owed = itemsOfTalk(d.needs, talks, t.id)
+                return (
+                  <div key={t.id} className="neg-log-talk">
+                    {talks.length > 1 && (
+                      <div className="neg-log-sub">
+                        Negotiation {i + 1} · {new Date(t.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                    )}
+                    <NegThread messages={t.thread} />
+                    {got.length + owed.length > 0 && (
+                      <div className="neg-log-terms small">
+                        {got.length > 0 && (
+                          <div>
+                            <span className="neg-log-label neg-log-present">You got</span>{' '}
+                            {got.map((w) => w.text + (w.minutes ? ` (${fmtMin(w.minutes)})` : '')).join(' · ')}
+                          </div>
+                        )}
+                        {owed.length > 0 && (
+                          <div>
+                            <span className="neg-log-label neg-log-future">You owed</span>{' '}
+                            {owed.map((n, j) => (
+                              <span key={n.id} className={n.done ? '' : 'muted'}>
+                                {j > 0 && ' · '}
+                                {n.done ? '✓ ' : d.status === 'open' ? '○ ' : '✗ '}
+                                {n.text}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
 
               {d.review && <p className="neg-review-quote">“{d.review}”</p>}
               {(d.owedOut ?? 0) > 0 && <div className="small neg-red">Carried over: {fmtMin(d.owedOut!)}.</div>}

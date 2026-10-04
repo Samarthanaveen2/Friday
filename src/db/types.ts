@@ -6,6 +6,8 @@ export interface DealItem {
   text: string
   minutes?: number
   done?: boolean
+  /** Which of the day's negotiations agreed this item (Negotiator). */
+  talk?: string
 }
 
 export interface IfThenRule {

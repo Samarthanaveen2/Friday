@@ -313,3 +313,7 @@
 .neg-log-label { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; }
 .neg-log-present { color: var(--neg-present); }
 .neg-log-future { color: var(--neg-future); }
+.neg-more-btn { align-self: flex-start; }
+.neg-log-talk { display: flex; flex-direction: column; gap: 12px; }
+.neg-log-talk + .neg-log-talk { padding-top: 14px; border-top: 0.5px dashed var(--line); }
+.neg-log-sub { font-size: 12px; font-weight: 600; color: var(--muted); }
