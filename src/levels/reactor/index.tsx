@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import LevelHeader from '../../components/LevelHeader'
 import { dayKey } from '../../lib/date'
 import { LEVELS } from '../../lib/levels'
-import ArcReactor, { type ReactorRing } from './ArcReactor'
+import Rings, { type ActivityRing } from './Rings'
 import LevelCards from './LevelCards'
 import Letters from './Letters'
 import Projection from './Projection'
@@ -24,16 +23,16 @@ function greeting(h: number) {
   if (h < 12) return 'Good morning'
   if (h < 17) return 'Good afternoon'
   if (h < 22) return 'Good evening'
-  return 'Late night'
+  return 'Good night'
 }
 
-function powerState(p: number) {
-  if (p === 0) return 'Cold start. One action brings it online.'
-  if (p < 25) return 'Ignition. The core is warming up.'
-  if (p < 50) return 'Partial power. Keep feeding it.'
-  if (p < 75) return 'Running strong.'
-  if (p < 100) return 'Near full output.'
-  return 'Full power. Future You felt that.'
+function progressNote(p: number) {
+  if (p === 0) return 'A fresh start. One small step is enough to begin.'
+  if (p < 25) return 'You’ve made a start. Keep it going.'
+  if (p < 50) return 'Good momentum so far.'
+  if (p < 75) return 'More than halfway there.'
+  if (p < 100) return 'Nearly done for today.'
+  return 'Everything done for today. Nicely done.'
 }
 
 export default function Reactor() {
@@ -43,7 +42,7 @@ export default function Reactor() {
   const [lineOffset, setLineOffset] = useState(0)
 
   const level = (p: string) => LEVELS.find((l) => l.path === p)!
-  const rings: ReactorRing[] = data
+  const rings: ActivityRing[] = data
     ? [
         { label: level('/negotiator').name, color: level('/negotiator').accent, value: data.negotiator.score },
         { label: level('/truth').name, color: level('/truth').accent, value: data.truth.score },
@@ -54,63 +53,51 @@ export default function Reactor() {
   const power = data?.power ?? 0
 
   const line = FUTURE_LINES[(lineIndexForDay(today) + lineOffset) % FUTURE_LINES.length]
-  const time = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  const date = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  const date = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
-    <div className="rx-page">
-      <LevelHeader path="/" />
+    <div className="home-page" style={{ ['--accent' as string]: 'var(--blue)' }}>
+      <header className="home-header">
+        <div className="home-date">{date}</div>
+        <h1 className="home-title">{greeting(now.getHours())}</h1>
+        <p className="home-sub">{data ? progressNote(power) : 'Loading today…'}</p>
+      </header>
 
-      <section className="rx-hero panel glow" style={{ ['--hero-power' as string]: power / 100 }}>
-        <span className="rx-corner rx-corner-tl" aria-hidden />
-        <span className="rx-corner rx-corner-tr" aria-hidden />
-        <span className="rx-corner rx-corner-bl" aria-hidden />
-        <span className="rx-corner rx-corner-br" aria-hidden />
-
-        <div className="rx-hero-reactor">
-          <ArcReactor power={power} rings={rings} />
+      <section className="panel home-summary" aria-label="Today's progress">
+        <div className="home-rings-wrap">
+          <Rings rings={rings.length ? rings : LEVELS.slice(1, 5).map((l) => ({ label: l.name, color: l.accent, value: 0 }))} />
         </div>
-
-        <div className="rx-hero-info">
-          <div className="rx-greet-meta mono">
-            <span>{date}</span>
-            <span className="rx-clock">{time}</span>
+        <div className="home-summary-info">
+          <div className="home-label">Today’s progress</div>
+          <div className="home-total">
+            {data ? power : '–'}
+            <span className="home-total-unit">%</span>
           </div>
-          <h2 className="rx-greet">{greeting(now.getHours())}.</h2>
-          <p className="rx-greet-sub">Today is the only place Future You can be built.</p>
-
-          <div className="rx-power-read">
-            <div className="rx-power-label mono">Core output</div>
-            <div className="rx-power-num">
-              {data ? power : '--'}
-              <span className="rx-power-unit">%</span>
-            </div>
-            <div className="rx-power-state">{data ? powerState(power) : 'Spinning up…'}</div>
-          </div>
-
-          <ul className="rx-legend">
+          <ul className="home-legend">
             {rings.map((r) => (
-              <li key={r.label} style={{ ['--ring' as string]: r.color }} className={r.value >= 1 ? 'full' : r.value > 0 ? 'on' : ''}>
-                <span className="rx-legend-swatch" aria-hidden />
-                <span className="rx-legend-name">{r.label}</span>
-                <span className="rx-legend-val mono">{Math.round(r.value * 100)}%</span>
+              <li key={r.label} style={{ ['--ring' as string]: r.color }}>
+                <span className="home-legend-dot" aria-hidden />
+                <span className="home-legend-name">{r.label}</span>
+                <span className="home-legend-val">{Math.round(r.value * 100)}%</span>
               </li>
             ))}
           </ul>
         </div>
       </section>
 
-      <section className="rx-quote" aria-label="Note from Future You">
-        <span className="rx-quote-tag mono">Future You ·</span>
-        <p className="rx-quote-text">{line}</p>
-        <button className="btn btn-ghost btn-sm rx-quote-next" onClick={() => setLineOffset((o) => o + 1)} aria-label="Show another line">
-          ↻
-        </button>
+      <section className="panel home-quote" aria-label="A note from Future You">
+        <p className="home-quote-text">{line}</p>
+        <div className="home-quote-foot">
+          <span className="home-quote-by">Future You</span>
+          <button className="btn btn-ghost btn-sm" onClick={() => setLineOffset((o) => o + 1)}>
+            Another
+          </button>
+        </div>
       </section>
 
       {data && <LevelCards data={data} />}
 
-      <div className="rx-lower">
+      <div className="home-lower">
         {data && <Projection data={data.last30} />}
         <Letters />
       </div>

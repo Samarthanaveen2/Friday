@@ -43,14 +43,16 @@ function fmtDate(ms: number) {
   return new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+/** A calm, coarse countdown: days, then hours, then minutes. */
 function countdown(ms: number) {
-  const s = Math.max(0, Math.floor(ms / 1000))
-  const d = Math.floor(s / 86400)
-  const h = Math.floor((s % 86400) / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = s % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return { d, text: `${pad(h)}:${pad(m)}:${pad(sec)}` }
+  const min = Math.max(0, Math.ceil(ms / 60_000))
+  const d = Math.floor(min / 1440)
+  const h = Math.floor((min % 1440) / 60)
+  const m = min % 60
+  if (d >= 2) return `in ${d} days`
+  if (d === 1) return h > 0 ? `in 1 day, ${h} h` : 'in 1 day'
+  if (h > 0) return `in ${h} h ${m} min`
+  return m <= 1 ? 'in a minute' : `in ${m} min`
 }
 
 function useNow(interval = 1000) {
@@ -70,7 +72,7 @@ const REPLY_PROMPTS = [
 ]
 
 export default function Letters() {
-  const now = useNow(1000)
+  const now = useNow(30_000)
   const letters = useLiveQuery(() => db.letters.orderBy('unlockAt').toArray(), [])
 
   const [mode, setMode] = useState<'future' | 'present'>('future')
@@ -101,7 +103,7 @@ export default function Letters() {
     const id = await db.letters.add({ createdAt: t, unlockAt: t, body: reply.trim(), to: 'present', opened: true })
     setReply('')
     setExpanded(id as number)
-    setFlash('Future You has written back. Find it below.')
+    setFlash('Saved. You’ll find it under Opened.')
     window.setTimeout(() => setFlash(''), 4000)
   }
 
@@ -123,93 +125,98 @@ export default function Letters() {
   const ready = all.filter((l) => !l.opened && l.unlockAt <= now)
   const opened = all.filter((l) => l.opened).sort((a, b) => b.createdAt - a.createdAt)
 
+  const lockIcon = (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+      <rect x="5" y="11" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  )
+  const envIcon = (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+      <rect x="3.5" y="6" width="17" height="12.5" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M4.5 7.5l7.5 6 7.5-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  )
+
   return (
-    <section className="panel rx-letters">
-      <div className="panel-title">Letters across time</div>
-      <div className="row-between">
-        <h2 className="rx-section-title">Write to the person you are becoming</h2>
-        <div className="rx-tabs" role="tablist">
-          <button role="tab" aria-selected={mode === 'future'} className={'rx-tab' + (mode === 'future' ? ' active' : '')} onClick={() => setMode('future')}>
+    <section className="home-section home-letters">
+      <h2 className="home-section-title">Letters</h2>
+
+      <div className="panel home-compose">
+        <div className="home-segmented" role="tablist" aria-label="Letter type">
+          <button role="tab" aria-selected={mode === 'future'} className={mode === 'future' ? 'active' : ''} onClick={() => setMode('future')}>
             To Future You
           </button>
-          <button role="tab" aria-selected={mode === 'present'} className={'rx-tab' + (mode === 'present' ? ' active' : '')} onClick={() => setMode('present')}>
-            Future You writes back
+          <button role="tab" aria-selected={mode === 'present'} className={mode === 'present' ? 'active' : ''} onClick={() => setMode('present')}>
+            From Future You
           </button>
         </div>
+
+        {mode === 'future' ? (
+          <div className="stack-sm home-compose-body" key="future">
+            <label className="home-compose-hint" htmlFor="home-letter">
+              Write to the person you are becoming: what you’re giving up for them, what you hope they have, what worries you. It stays sealed
+              until the day you choose.
+            </label>
+            <textarea id="home-letter" className="textarea" placeholder="Dear Future Me," value={body} onChange={(e) => setBody(e.target.value)} />
+            <div className="row home-presets">
+              <span className="small muted">Opens in</span>
+              {PRESETS.map((p) => (
+                <button key={p.key} type="button" className={'chip home-chip-btn' + (preset === p.key ? ' active' : '')} onClick={() => setPreset(p.key)}>
+                  {p.label}
+                </button>
+              ))}
+              {preset === 'custom' && (
+                <input type="date" className="input home-date-input" min={minCustom} value={custom} onChange={(e) => setCustom(e.target.value)} aria-label="Opening date" />
+              )}
+            </div>
+            <div className="row-between home-compose-foot">
+              <span className="small muted">{unlockAt ? `Opens ${fmtDate(unlockAt)}` : 'Choose a future date'}</span>
+              <button className="btn btn-primary" disabled={!body.trim() || !unlockAt} onClick={seal}>
+                Seal letter
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="stack-sm home-compose-body" key="present">
+            <p className="home-compose-hint">
+              Imagine it’s <strong>{fmtDate(oneYear.getTime())}</strong>. You’re a year older and you kept going. Write to the you reading this
+              today.
+            </p>
+            <ul className="home-prompts">
+              {REPLY_PROMPTS.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+            <textarea className="textarea" placeholder="Hey. It’s me, a year from now…" value={reply} onChange={(e) => setReply(e.target.value)} />
+            <div className="row-between home-compose-foot">
+              <span className="small muted">Opens right away, for days when you need it.</span>
+              <button className="btn btn-primary" disabled={!reply.trim()} onClick={saveReply}>
+                Save letter
+              </button>
+            </div>
+          </div>
+        )}
+
+        {flash && (
+          <div className="home-flash" role="status">
+            {flash}
+          </div>
+        )}
       </div>
 
-      {mode === 'future' ? (
-        <div className="stack-sm rx-compose">
-          <label className="label" htmlFor="rx-letter">
-            Tell them what you are sacrificing for them, what you hope they have, what you are afraid of. They will read it on the day you choose,
-            and not a second earlier.
-          </label>
-          <textarea
-            id="rx-letter"
-            className="textarea rx-paper"
-            placeholder="Dear Future Me,"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-          />
-          <div className="row rx-presets">
-            <span className="small muted">Unlocks in</span>
-            {PRESETS.map((p) => (
-              <button key={p.key} type="button" className={'chip rx-chip-btn' + (preset === p.key ? ' active' : '')} onClick={() => setPreset(p.key)}>
-                {p.label}
-              </button>
-            ))}
-            {preset === 'custom' && (
-              <input type="date" className="input rx-date" min={minCustom} value={custom} onChange={(e) => setCustom(e.target.value)} aria-label="Unlock date" />
-            )}
-          </div>
-          <div className="row-between">
-            <span className="small muted mono">{unlockAt ? `Opens ${fmtDate(unlockAt)}` : 'Pick a future date'}</span>
-            <button className="btn btn-primary" disabled={!body.trim() || !unlockAt} onClick={seal}>
-              Seal letter
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="stack-sm rx-compose">
-          <p className="rx-reply-intro">
-            Close your eyes for ten seconds. It is <strong>{fmtDate(oneYear.getTime())}</strong>. You are one year older, and you kept going. Now write
-            to the you reading this today.
-          </p>
-          <ul className="rx-prompts">
-            {REPLY_PROMPTS.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
-          <textarea
-            className="textarea rx-paper rx-paper-future"
-            placeholder="Hey. It's me, a year from now..."
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-          />
-          <div className="row-between">
-            <span className="small muted">Opens immediately. Read it when present-you wavers.</span>
-            <button className="btn btn-primary" disabled={!reply.trim()} onClick={saveReply}>
-              Send it back in time
-            </button>
-          </div>
-        </div>
-      )}
-
-      {flash && (
-        <div className="rx-flash" role="status">
-          {flash}
-        </div>
-      )}
-
       {ready.length > 0 && (
-        <div className="rx-letter-group">
-          <div className="rx-group-title rx-group-ready">Ready to open</div>
-          <div className="rx-envelopes">
+        <div className="home-group">
+          <div className="home-group-title">Ready to open</div>
+          <div className="panel home-list">
             {ready.map((l) => (
-              <button key={l.id} className="rx-envelope rx-envelope-ready" onClick={() => open(l)}>
-                <span className="rx-env-seal" aria-hidden />
-                <span className="rx-env-meta">Written {fmtDate(l.createdAt)}</span>
-                <span className="rx-env-cta">Unlocked. Open it →</span>
+              <button key={l.id} className="home-row home-row-button" onClick={() => open(l)}>
+                <span className="home-row-icon ready">{envIcon}</span>
+                <span className="home-row-main">
+                  <span className="home-row-title">Letter from {fmtDate(l.createdAt)}</span>
+                  <span className="home-row-sub">Ready to read</span>
+                </span>
+                <span className="home-row-action">Open</span>
               </button>
             ))}
           </div>
@@ -217,60 +224,54 @@ export default function Letters() {
       )}
 
       {sealed.length > 0 && (
-        <div className="rx-letter-group">
-          <div className="rx-group-title">Sealed · {sealed.length}</div>
-          <div className="rx-envelopes">
-            {sealed.map((l) => {
-              const c = countdown(l.unlockAt - now)
-              return (
-                <div key={l.id} className="rx-envelope rx-envelope-sealed" aria-label={`Sealed letter, opens ${fmtDate(l.unlockAt)}`}>
-                  <span className="rx-env-lock" aria-hidden>
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
-                      <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="1.6" />
-                    </svg>
-                  </span>
-                  <span className="rx-env-count mono">
-                    {c.d > 0 && <b>{c.d}d </b>}
-                    {c.text}
-                  </span>
-                  <span className="rx-env-meta">Opens {fmtDate(l.unlockAt)}</span>
-                  <span className="rx-env-meta">Written {fmtDate(l.createdAt)}</span>
-                </div>
-              )
-            })}
+        <div className="home-group">
+          <div className="home-group-title">Sealed · {sealed.length}</div>
+          <div className="panel home-list">
+            {sealed.map((l) => (
+              <div key={l.id} className="home-row" aria-label={`Sealed letter, opens ${fmtDate(l.unlockAt)}`}>
+                <span className="home-row-icon">{lockIcon}</span>
+                <span className="home-row-main">
+                  <span className="home-row-title">Opens {fmtDate(l.unlockAt)}</span>
+                  <span className="home-row-sub">Written {fmtDate(l.createdAt)}</span>
+                </span>
+                <span className="home-row-value">{countdown(l.unlockAt - now)}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      <div className="rx-letter-group">
-        <div className="rx-group-title">Opened letters</div>
+      <div className="home-group">
+        <div className="home-group-title">Opened</div>
         {opened.length === 0 ? (
-          <div className="empty small">No opened letters yet. The first one you seal becomes a message waiting for you on the other side.</div>
+          <div className="panel home-list-empty small muted">No opened letters yet. The first one you seal will be waiting for you on the other side.</div>
         ) : (
-          <div className="stack-sm">
+          <div className="panel home-list">
             {opened.map((l) => {
               const isOpen = expanded === l.id
               return (
-                <article
-                  key={l.id}
-                  className={'rx-opened' + (l.to === 'present' ? ' rx-from-future' : '') + (revealId === l.id ? ' rx-reveal' : '') + (isOpen ? ' expanded' : '')}
-                >
-                  <button className="rx-opened-head" onClick={() => setExpanded(isOpen ? null : (l.id ?? null))} aria-expanded={isOpen}>
-                    <span className="rx-opened-dir">{l.to === 'present' ? 'From Future You' : 'To Future You'}</span>
-                    <span className="rx-opened-date mono">{fmtDate(l.createdAt)}</span>
-                    {!isOpen && <span className="rx-opened-preview">{l.body}</span>}
+                <article key={l.id} className={'home-letter' + (revealId === l.id ? ' reveal' : '') + (isOpen ? ' expanded' : '')}>
+                  <button className="home-row home-row-button" onClick={() => setExpanded(isOpen ? null : (l.id ?? null))} aria-expanded={isOpen}>
+                    <span className={'home-row-icon' + (l.to === 'present' ? ' future' : ' ready')}>{envIcon}</span>
+                    <span className="home-row-main">
+                      <span className="home-row-title">{l.to === 'present' ? 'From Future You' : 'To Future You'}</span>
+                      <span className="home-row-sub">{isOpen ? fmtDate(l.createdAt) : l.body}</span>
+                    </span>
+                    {!isOpen && <span className="home-row-value">{fmtDate(l.createdAt)}</span>}
+                    <svg viewBox="0 0 8 14" width="8" height="14" className="home-row-chevron" aria-hidden>
+                      <path d="M1.5 1.5L6.5 7l-5 5.5" />
+                    </svg>
                   </button>
                   {isOpen && (
-                    <div className="rx-opened-body">
-                      <p className="rx-letter-text">{l.body}</p>
+                    <div className="home-letter-body">
+                      <p className="home-letter-text">{l.body}</p>
                       <div className="row-between">
                         <span className="small muted">
                           {l.to === 'future'
                             ? `Sealed for ${Math.max(1, Math.round((l.unlockAt - l.createdAt) / DAY))} days`
-                            : 'Imagined from one year ahead'}
+                            : 'Written from one year ahead'}
                         </span>
-                        <button className="btn btn-ghost btn-sm" onClick={() => remove(l)}>
+                        <button className="btn btn-ghost btn-sm btn-danger" onClick={() => remove(l)}>
                           Delete
                         </button>
                       </div>
