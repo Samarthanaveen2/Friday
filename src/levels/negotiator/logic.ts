@@ -5,7 +5,16 @@ import { addDays, dayKey } from '../../lib/date'
  * Extra fields the Negotiator stores on a Deal record (Dexie keeps non-indexed fields).
  * All minute amounts for debt are in NEED-minutes: time Future You is owed.
  */
+/** One line of the back-and-forth before the deal. */
+export interface NegMessage {
+  id: string
+  from: 'present' | 'future'
+  text: string
+}
+
 export interface NegDeal extends Deal {
+  /** The conversation that led to the terms. */
+  thread?: NegMessage[]
   /** Exchange rate snapshot at sealing: 1 need-minute earns `rate` want-minutes. */
   rate?: number
   /** Need-minutes inherited from the previous deal (debt Future You was owed). */

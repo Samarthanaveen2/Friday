@@ -5,6 +5,7 @@ import { uid } from '../../lib/date'
 import {
   type Balance,
   type NegDeal,
+  type NegMessage,
   completionPct,
   computeOwedOut,
   fmtMin,
@@ -61,7 +62,7 @@ export function ItemColumn({
           </div>
           <div className="muted small">{subtitle}</div>
         </div>
-        <div className="neg-card-total">{fmtMin(total)}</div>
+        {total > 0 && <div className="neg-card-total">{fmtMin(total)}</div>}
       </header>
 
       <div className="neg-card-body">
@@ -124,6 +125,89 @@ export function ItemColumn({
 
       </div>
     </section>
+  )
+}
+
+/* ---------------- The negotiation thread ---------------- */
+
+const SPEAKER = { present: 'Present You', future: 'Future You' } as const
+
+/** The back-and-forth. Editable while negotiating, read-only once there are terms. */
+export function NegThread({ messages, onChange }: { messages: NegMessage[]; onChange?: (m: NegMessage[]) => void }) {
+  const last = messages[messages.length - 1]
+  const [from, setFrom] = useState<NegMessage['from']>(last ? (last.from === 'present' ? 'future' : 'present') : 'present')
+  const [text, setText] = useState('')
+
+  const send = () => {
+    const clean = text.trim()
+    if (!clean || !onChange) return
+    onChange([...messages, { id: uid(), from, text: clean }])
+    setText('')
+    setFrom(from === 'present' ? 'future' : 'present') // the other side answers next
+  }
+
+  return (
+    <div className="neg-thread">
+      {messages.length > 0 && (
+        <ul className="neg-thread-list">
+          {messages.map((m) => (
+            <li key={m.id} className={`neg-msg neg-msg-${m.from}`}>
+              <div className="neg-msg-who">{SPEAKER[m.from]}</div>
+              <div className="neg-msg-bubble">
+                <span>{m.text}</span>
+                {onChange && (
+                  <button className="neg-msg-x" type="button" aria-label="Remove message" onClick={() => onChange(messages.filter((x) => x.id !== m.id))}>
+                    ×
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {onChange && (
+        <form
+          className="neg-thread-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            send()
+          }}
+        >
+          <div className="neg-seg neg-seg-sm" role="radiogroup" aria-label="Who is speaking">
+            {(['present', 'future'] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={from === k}
+                className={`neg-seg-opt ${from === k ? 'active' : ''}`}
+                onClick={() => setFrom(k)}
+              >
+                {SPEAKER[k]}
+              </button>
+            ))}
+          </div>
+          <div className="neg-thread-row">
+            <textarea
+              className="textarea neg-thread-input"
+              rows={2}
+              placeholder={from === 'present' ? 'What do you want right now?' : 'What does Future You say back?'}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault()
+                  send()
+                }
+              }}
+            />
+            <button className="btn btn-sm" type="submit" disabled={!text.trim()}>
+              Say it
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   )
 }
 
@@ -390,7 +474,7 @@ export function ReviewPanel({ deal, compact }: { deal: NegDeal; compact?: boolea
     <div className="stack-sm neg-review">
       <div className="row-between">
         <div className="small">
-          Needs done: <span className="neg-num-inline">{pct}%</span>
+          Promises kept: <span className="neg-num-inline">{pct}%</span>
         </div>
         <div className="small muted">
           Suggested: <StatusChip status={suggested} />

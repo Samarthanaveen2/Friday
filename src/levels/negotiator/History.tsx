@@ -85,9 +85,9 @@ export default function History({ deals }: { deals: NegDeal[] }) {
                 </div>
                 <div className="neg-hist-mid small">
                   <span className="neg-num-inline">{fmtMin(sumMinutes(d.needs))}</span>
-                  <span className="muted"> needs · </span>
+                  <span className="muted"> owed · </span>
                   <span className="neg-num-inline">{fmtMin(sumMinutes(d.wants))}</span>
-                  <span className="muted"> wants · </span>
+                  <span className="muted"> got · </span>
                   <span className="neg-num-inline">{pct}%</span>
                   {d.debtTaken ? <span className="muted"> · borrowed</span> : null}
                 </div>
@@ -100,7 +100,7 @@ export default function History({ deals }: { deals: NegDeal[] }) {
                 <div className="neg-hist-body stack-sm">
                   <div className="neg-hist-cols">
                     <div>
-                      <div className="neg-card-title neg-card-present"><span className="neg-label-dot" aria-hidden />Present You</div>
+                      <div className="neg-card-title neg-card-present"><span className="neg-label-dot" aria-hidden />You got</div>
                       {d.wants.length ? (
                         <ul className="neg-mini">
                           {d.wants.map((w) => (
@@ -114,7 +114,7 @@ export default function History({ deals }: { deals: NegDeal[] }) {
                       )}
                     </div>
                     <div>
-                      <div className="neg-card-title neg-card-future"><span className="neg-label-dot" aria-hidden />Future You</div>
+                      <div className="neg-card-title neg-card-future"><span className="neg-label-dot" aria-hidden />You owed</div>
                       {d.needs.length ? (
                         <ul className="neg-mini">
                           {d.needs.map((n) => (

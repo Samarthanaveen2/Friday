@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import type { DealItem, IfThenRule } from '../../db/types'
 import { db, setSetting } from '../../db/db'
 import { prettyDay } from '../../lib/date'
-import { BalanceMeter, ItemColumn, Projection, ReviewPanel, StandingRules, StatusChip } from './components'
+import { BalanceMeter, ItemColumn, NegThread, Projection, ReviewPanel, StandingRules, StatusChip } from './components'
 import {
   type NegDeal,
+  type NegMessage,
   RATE_KEY,
   RATE_OPTIONS,
   completionPct,
@@ -18,9 +19,13 @@ import { useStandingRules } from './rules'
 
 interface Draft {
   date: string
-  wants: DealItem[]
-  needs: DealItem[]
-  rules: IfThenRule[]
+  /** The back-and-forth before agreeing. */
+  thread: NegMessage[]
+  /** 'talk' while negotiating, 'terms' once both sides agree and write down the deal. */
+  stage: 'talk' | 'terms'
+  wants: DealItem[] // what Present You gets
+  needs: DealItem[] // what Present You owes Future You
+  rules?: IfThenRule[] // legacy; rules are standing now
 }
 
 const DRAFT_KEY = 'neg-draft'
@@ -30,12 +35,12 @@ function loadDraft(today: string): Draft {
     const raw = localStorage.getItem(DRAFT_KEY)
     if (raw) {
       const d = JSON.parse(raw) as Draft
-      if (d.date === today) return d
+      if (d.date === today) return { ...d, thread: d.thread ?? [], stage: d.stage ?? (d.wants.length + d.needs.length ? 'terms' : 'talk') }
     }
   } catch {
     /* storage unavailable */
   }
-  return { date: today, wants: [], needs: [], rules: [] }
+  return { date: today, thread: [], stage: 'talk', wants: [], needs: [] }
 }
 
 function saveDraft(d: Draft | null) {
@@ -74,6 +79,7 @@ export function Negotiation({
 
   const balance = computeBalance(draft.wants, draft.needs, rate, owedIn)
   const hasAnything = draft.wants.length + draft.needs.length > 0
+  const timed = [...draft.wants, ...draft.needs].some((i) => i.minutes && i.minutes > 0) || owedIn > 0
   const canSeal = hasAnything && (balance.balanced || acceptDebt) && !sealing
 
   useEffect(() => {
@@ -88,6 +94,7 @@ export function Negotiation({
       date: today,
       wants: clean(draft.wants),
       needs: clean(draft.needs),
+      thread: draft.thread,
       // Snapshot of the standing rules, so History shows what was in force that day.
       rules: rules ?? [],
       status: 'open',
@@ -136,26 +143,61 @@ export function Negotiation({
         </div>
       )}
 
-      <div className="neg-table">
-          <ItemColumn
-            side="present"
-            title="Present You wants"
-            subtitle="Time for fun, or a choice that tempts you"
-            items={draft.wants}
-            onChange={(wants) => setDraft((d) => ({ ...d, wants }))}
-            placeholder="I want…"
-          />
-          <ItemColumn
-            side="future"
-            title="Future You needs"
-            subtitle="Time for what matters, or the better choice"
-            items={draft.needs}
-            onChange={(needs) => setDraft((d) => ({ ...d, needs }))}
-            placeholder="I need…"
-          />
-      </div>
+      {draft.stage === 'talk' ? (
+        <div className="panel">
+          <div className="panel-title">The negotiation</div>
+          {draft.thread.length === 0 && (
+            <p className="small muted neg-rules-note">
+              Start with what Present You wants. Then answer as Future You. Go back and forth until you both agree.
+            </p>
+          )}
+          <NegThread messages={draft.thread} onChange={(thread) => setDraft((d) => ({ ...d, thread }))} />
+          <div className="neg-step-actions">
+            <span className="small muted">{draft.thread.length ? 'Agreed? Write down the terms.' : ''}</span>
+            <button className="btn btn-gold" disabled={draft.thread.length === 0} onClick={() => setDraft((d) => ({ ...d, stage: 'terms' }))}>
+              We agree
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {draft.thread.length > 0 && (
+            <div className="panel">
+              <details className="neg-thread-past">
+                <summary>How you got here · {draft.thread.length} {draft.thread.length === 1 ? 'message' : 'messages'}</summary>
+                <NegThread messages={draft.thread} />
+              </details>
+              <div className="neg-step-actions">
+                <span />
+                <button className="btn btn-ghost btn-sm" onClick={() => setDraft((d) => ({ ...d, stage: 'talk' }))}>
+                  Keep negotiating
+                </button>
+              </div>
+            </div>
+          )}
 
-      <BalanceMeter balance={balance} decisions={[...draft.wants, ...draft.needs].filter((i) => !(i.minutes && i.minutes > 0)).length} rate={rate} rates={RATE_OPTIONS} onRate={(r) => setSetting(RATE_KEY, r)} />
+          <div className="neg-table">
+            <ItemColumn
+              side="present"
+              title="You get"
+              subtitle="What Present You walks away with"
+              items={draft.wants}
+              onChange={(wants) => setDraft((d) => ({ ...d, wants }))}
+              placeholder="e.g. 2 hours of reels"
+            />
+            <ItemColumn
+              side="future"
+              title="You owe"
+              subtitle="What you promise Future You in return"
+              items={draft.needs}
+              onChange={(needs) => setDraft((d) => ({ ...d, needs }))}
+              placeholder="e.g. lights off after that"
+            />
+          </div>
+
+          {timed && <BalanceMeter balance={balance} decisions={0} rate={rate} rates={RATE_OPTIONS} onRate={(r) => setSetting(RATE_KEY, r)} />}
+        </>
+      )}
 
       <div className="grid-2">
         <StandingRules rules={rules} />
@@ -165,6 +207,7 @@ export function Negotiation({
         </div>
       </div>
 
+      {draft.stage === 'terms' && (
       <div className="panel neg-seal-panel">
         {!balance.balanced && hasAnything && (
           <label className="neg-debt">
@@ -178,9 +221,9 @@ export function Negotiation({
         <div className="row-between">
           <div className="small muted">
             {!hasAnything
-              ? 'Add a few items to get started.'
+              ? 'Write down what you each get from the deal.'
               : balance.balanced
-                ? 'Both sides are happy. Ready when you are.'
+                ? 'Both sides agree. Ready when you are.'
                 : acceptDebt
                   ? 'Making the deal with borrowed time.'
                   : 'Balance the two sides, or borrow from tomorrow.'}
@@ -190,6 +233,7 @@ export function Negotiation({
           </button>
         </div>
       </div>
+      )}
     </div>
   )
 }
@@ -212,7 +256,7 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
   }
   const tearUp = async () => {
     if (deal.id == null) return
-    saveDraft({ date: deal.date, wants: deal.wants.map((w) => ({ ...w, done: false })), needs: deal.needs.map((n) => ({ ...n, done: false })), rules: [] })
+    saveDraft({ date: deal.date, thread: deal.thread ?? [], stage: 'terms', wants: deal.wants.map((w) => ({ ...w, done: false })), needs: deal.needs.map((n) => ({ ...n, done: false })) })
     await db.deals.delete(deal.id)
   }
 
@@ -232,12 +276,12 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
           </div>
           <StatusChip status={deal.status} />
         </div>
-        <div className="neg-progress" aria-label={`${pct}% of needs done`}>
+        <div className="neg-progress" aria-label={`${pct}% of promises kept`}>
           <div className="neg-progress-fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="row-between small">
           <span>
-            <span className="neg-num-inline">{pct}%</span> of needs done
+            <span className="neg-num-inline">{pct}%</span> of promises kept
           </span>
           {needTotal > 0 && (
             <span className="neg-num-inline muted">
@@ -248,8 +292,8 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
       </div>
 
       <div className="neg-table">
-        <SealedColumn side="present" title="Present You gets" hint="Paid for. Enjoy it, guilt-free." items={deal.wants} onToggle={(id) => toggle('wants', id)} />
-        <SealedColumn side="future" title="Future You gets" hint="Tick each one off as you finish it." items={deal.needs} onToggle={(id) => toggle('needs', id)} />
+        <SealedColumn side="present" title="You get" hint="Agreed. Enjoy it, guilt-free." items={deal.wants} onToggle={(id) => toggle('wants', id)} />
+        <SealedColumn side="future" title="You owe" hint="Tick each one off as you keep it." items={deal.needs} onToggle={(id) => toggle('needs', id)} />
       </div>
 
       <div className="grid-2">
@@ -259,6 +303,15 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
           <Projection needs={deal.needs} wants={deal.wants} keepRate={keepRate} />
         </div>
       </div>
+
+      {deal.thread && deal.thread.length > 0 && (
+        <div className="panel">
+          <details className="neg-thread-past">
+            <summary>How you got here · {deal.thread.length} {deal.thread.length === 1 ? 'message' : 'messages'}</summary>
+            <NegThread messages={deal.thread} />
+          </details>
+        </div>
+      )}
 
       <div className="panel neg-evening">
         <div className="panel-title">{reviewed ? 'Evening review · done' : 'Evening review'}</div>
@@ -312,11 +365,11 @@ function SealedColumn({
           </div>
           <div className="muted small">{hint}</div>
         </div>
-        <div className="neg-card-total">{fmtMin(sumMinutes(items))}</div>
+        {sumMinutes(items) > 0 && <div className="neg-card-total">{fmtMin(sumMinutes(items))}</div>}
       </header>
       <div className="neg-card-body">
         {items.length === 0 ? (
-          <div className="neg-hint small">{side === 'present' ? 'Nothing asked for today.' : 'No needs in this deal.'}</div>
+          <div className="neg-hint small">{side === 'present' ? 'Nothing taken today.' : 'Nothing owed in this deal.'}</div>
         ) : (
           <ul className="neg-list">
             {items.map((i) => (
