@@ -286,15 +286,13 @@
 
 /* ---- Negotiation thread ---- */
 .neg-thread { display: flex; flex-direction: column; gap: 14px; }
-.neg-thread-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.neg-msg { display: flex; flex-direction: column; max-width: 78%; }
-.neg-msg-present { align-self: flex-start; }
-.neg-msg-future { align-self: flex-end; align-items: flex-end; }
-.neg-msg-who { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 4px 3px; }
-.neg-msg-bubble { position: relative; padding: 9px 14px; border-radius: 18px; font-size: 15px; line-height: 1.4; white-space: pre-wrap; }
-.neg-msg-present .neg-msg-bubble { background: var(--neg-present); color: #fff; border-bottom-left-radius: 6px; }
-.neg-msg-future .neg-msg-bubble { background: var(--neg-future); color: #fff; border-bottom-right-radius: 6px; }
-.neg-msg-x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: none; background: var(--fill-strong); color: var(--text); font-size: 13px; line-height: 20px; padding: 0; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+.neg-thread-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+/* Everyone on the same side: a coloured name and a thin bar, like a chat log. */
+.neg-msg { --who: var(--neg-present); display: flex; flex-direction: column; gap: 2px; }
+.neg-msg-future { --who: var(--neg-future); }
+.neg-msg-who { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--who); }
+.neg-msg-bubble { position: relative; padding: 3px 28px 3px 12px; border-left: 2px solid var(--who); font-size: 15px; line-height: 1.45; white-space: pre-wrap; }
+.neg-msg-x { position: absolute; top: 0; right: 0; width: 20px; height: 20px; border-radius: 50%; border: none; background: var(--fill-strong); color: var(--text); font-size: 13px; line-height: 20px; padding: 0; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
 .neg-msg:hover .neg-msg-x, .neg-msg-x:focus-visible { opacity: 1; }
 @media (hover: none) { .neg-msg-x { opacity: 0.8; } }
 .neg-thread-form { display: flex; flex-direction: column; gap: 8px; }
@@ -304,3 +302,4 @@
 .neg-thread-past summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
 .neg-thread-past[open] summary { margin-bottom: 12px; }
 .neg-step-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.neg-msg-cont { margin-top: -12px; }

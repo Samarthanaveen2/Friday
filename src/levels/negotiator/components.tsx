@@ -150,9 +150,9 @@ export function NegThread({ messages, onChange }: { messages: NegMessage[]; onCh
     <div className="neg-thread">
       {messages.length > 0 && (
         <ul className="neg-thread-list">
-          {messages.map((m) => (
-            <li key={m.id} className={`neg-msg neg-msg-${m.from}`}>
-              <div className="neg-msg-who">{SPEAKER[m.from]}</div>
+          {messages.map((m, i) => (
+            <li key={m.id} className={`neg-msg neg-msg-${m.from}${messages[i - 1]?.from === m.from ? " neg-msg-cont" : ""}`}>
+              {messages[i - 1]?.from !== m.from && <div className="neg-msg-who">{SPEAKER[m.from]}</div>}
               <div className="neg-msg-bubble">
                 <span>{m.text}</span>
                 {onChange && (
