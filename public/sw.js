@@ -4,7 +4,7 @@
  * - Other same-origin GETs (icons, manifest): stale-while-revalidate.
  * Bump VERSION to invalidate every cache on the next activation.
  */
-const VERSION = 'v1'
+const VERSION = 'v2'
 const PREFIX = 'samartha-tower-'
 const SHELL_CACHE = `${PREFIX}shell-${VERSION}`
 const ASSET_CACHE = `${PREFIX}assets-${VERSION}`

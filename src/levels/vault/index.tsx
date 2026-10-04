@@ -47,14 +47,45 @@ function NoticeBox({ notice }: { notice: Notice }) {
   )
 }
 
+// iOS Settings-style building blocks: a section header, an inset grouped list and a footer note.
+function Section({ title, footer, children }: { title: string; footer?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="vault-section">
+      <h2 className="vault-section-title">{title}</h2>
+      <div className="vault-group">{children}</div>
+      {footer && <div className="vault-footer">{footer}</div>}
+    </section>
+  )
+}
+
+function Row({ label, value, sub, className = '' }: { label: ReactNode; value?: ReactNode; sub?: ReactNode; className?: string }) {
+  return (
+    <div className={`vault-row ${className}`}>
+      <div className="vault-row-main">
+        <div className="vault-row-label">{label}</div>
+        {sub && <div className="vault-row-sub">{sub}</div>}
+      </div>
+      {value !== undefined && <div className="vault-row-value">{value}</div>}
+    </div>
+  )
+}
+
+function Chevron() {
+  return (
+    <svg className="vault-chevron" width="8" height="13" viewBox="0 0 8 13" aria-hidden>
+      <path d="M1.5 1.5 6.5 6.5 1.5 11.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 export default function Vault() {
   const counts = useLiveQuery(countAll, [])
   const lastBackup = useLiveQuery(() => getSetting<number | null>(LAST_BACKUP_KEY, null), [])
 
   return (
     <div className="vault">
-      <LevelHeader path="/vault" right={<BackupStatusBadge lastBackup={lastBackup} />} />
-      <div className="vault-grid">
+      <LevelHeader path="/vault" />
+      <div className="vault-list">
         <BackupPanel lastBackup={lastBackup} counts={counts} />
         <RestorePanel counts={counts} />
         <StatsPanel counts={counts} />
@@ -65,25 +96,13 @@ export default function Vault() {
   )
 }
 
-// ---------------- status badge ----------------
+// ---------------- backup ----------------
 
 function backupAge(lastBackup: number | null | undefined) {
   if (lastBackup === undefined) return { label: '…', stale: false }
-  if (!lastBackup) return { label: 'Never backed up', stale: true }
-  return { label: `Last backup: ${timeAgo(lastBackup)}`, stale: Date.now() - lastBackup > 7 * DAY }
+  if (!lastBackup) return { label: 'Never', stale: true }
+  return { label: timeAgo(lastBackup), stale: Date.now() - lastBackup > 7 * DAY }
 }
-
-function BackupStatusBadge({ lastBackup }: { lastBackup: number | null | undefined }) {
-  const { label, stale } = backupAge(lastBackup)
-  return (
-    <div className={`vault-badge ${stale ? 'vault-badge-warn' : 'vault-badge-ok'}`}>
-      <span className="vault-dot" aria-hidden />
-      {label}
-    </div>
-  )
-}
-
-// ---------------- backup ----------------
 
 function BackupPanel({ lastBackup, counts }: { lastBackup: number | null | undefined; counts?: Counts }) {
   const [encrypt, setEncrypt] = useState(false)
@@ -117,8 +136,8 @@ function BackupPanel({ lastBackup, counts }: { lastBackup: number | null | undef
         tone: 'ok',
         text: (
           <>
-            Saved <span className="mono">{backupFileName()}</span> — {rows} rows
-            {encrypt ? ', encrypted with AES-256. Keep the password somewhere safe: it cannot be recovered.' : '.'}
+            Saved {backupFileName()} with {rows} rows
+            {encrypt ? ', encrypted with AES-256. Keep the password somewhere safe: it can’t be recovered.' : '.'}
           </>
         ),
       })
@@ -131,64 +150,79 @@ function BackupPanel({ lastBackup, counts }: { lastBackup: number | null | undef
     }
   }
 
-  return (
-    <section className="panel vault-panel vault-span-2">
-      <div className="panel-title">Backup</div>
-      <div className="vault-backup">
-        <div className="stack-sm">
-          <p>
-            Download every table of the Tower as a single JSON file. Your data lives only in this browser — a backup is
-            the only copy that survives a cleared cache or a lost device.
-          </p>
-          <div className={`vault-nudge ${stale ? 'vault-nudge-warn' : ''}`}>
-            <strong>{label}.</strong>{' '}
-            {lastBackup === null
-              ? 'Make your first backup now — it takes a second.'
-              : stale
-                ? 'It has been over a week. A fresh backup is a good idea.'
-                : 'You are covered.'}
-          </div>
-        </div>
+  const nudge =
+    lastBackup === null
+      ? 'You haven’t made a backup yet. It only takes a second.'
+      : stale
+        ? 'It’s been over a week since your last backup.'
+        : null
 
-        <div className="stack-sm">
-          <label className="vault-check">
-            <input type="checkbox" checked={encrypt} onChange={(e) => setEncrypt(e.target.checked)} />
-            <span>Encrypt with a password</span>
-          </label>
-          {encrypt && (
-            <div className="vault-pw stack-sm">
-              <input
-                className="input"
-                type="password"
-                placeholder="Password (min 8 characters)"
-                autoComplete="new-password"
-                value={pw}
-                onChange={(e) => setPw(e.target.value)}
-              />
-              <input
-                className="input"
-                type="password"
-                placeholder="Repeat password"
-                autoComplete="new-password"
-                value={pw2}
-                onChange={(e) => setPw2(e.target.value)}
-              />
-              <p className="small muted">
-                PBKDF2-SHA256 (250k rounds) → AES-GCM 256. There is no recovery if you forget it.
-              </p>
-            </div>
-          )}
-          <div className="row">
-            <button className="btn btn-primary" onClick={exportNow} disabled={busy || !!pwProblem}>
-              {busy ? (encrypt ? 'Encrypting…' : 'Exporting…') : 'Download backup'}
-            </button>
-            {counts && <span className="small muted mono">{total(counts)} rows</span>}
-            {pwProblem && (pw || pw2) && <span className="small vault-text-warn">{pwProblem}</span>}
-          </div>
+  return (
+    <Section
+      title="Backup"
+      footer={
+        <>
+          {nudge && <span className="vault-footer-warn">{nudge} </span>}
+          Your data lives only in this browser. A backup file is the only copy that survives a cleared cache or a lost
+          device.
+        </>
+      }
+    >
+      <Row
+        label="Last backup"
+        value={<span className={stale ? 'vault-text-warn' : ''}>{label}</span>}
+      />
+      <label className="vault-row vault-row-toggle">
+        <div className="vault-row-main">
+          <div className="vault-row-label">Encrypt with a password</div>
         </div>
-      </div>
+        <input
+          type="checkbox"
+          role="switch"
+          className="vault-switch"
+          checked={encrypt}
+          onChange={(e) => setEncrypt(e.target.checked)}
+        />
+      </label>
+      {encrypt && (
+        <>
+          <div className="vault-row vault-row-field">
+            <input
+              className="vault-field"
+              type="password"
+              placeholder="Password (at least 8 characters)"
+              aria-label="Password"
+              autoComplete="new-password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+            />
+          </div>
+          <div className="vault-row vault-row-field">
+            <input
+              className="vault-field"
+              type="password"
+              placeholder="Repeat password"
+              aria-label="Repeat password"
+              autoComplete="new-password"
+              value={pw2}
+              onChange={(e) => setPw2(e.target.value)}
+            />
+          </div>
+          <div className="vault-row vault-row-note">
+            {pwProblem && (pw || pw2) ? (
+              <span className="vault-text-warn">{pwProblem}</span>
+            ) : (
+              <span>PBKDF2-SHA256 (250k rounds) with AES-GCM 256. There’s no way to recover a forgotten password.</span>
+            )}
+          </div>
+        </>
+      )}
+      <button className="vault-row vault-action" onClick={exportNow} disabled={busy || !!pwProblem}>
+        <span className="vault-row-label">{busy ? (encrypt ? 'Encrypting…' : 'Exporting…') : 'Download backup'}</span>
+        {counts && <span className="vault-row-value">{total(counts)} rows</span>}
+      </button>
       <NoticeBox notice={notice} />
-    </section>
+    </Section>
   )
 }
 
@@ -259,7 +293,7 @@ function RestorePanel({ counts }: { counts?: Counts }) {
         await setSetting(LAST_BACKUP_KEY, exported)
       }
       const n = total(countsOf(state.backup.data))
-      setNotice({ tone: 'ok', text: `Restore complete — ${n} rows loaded. The Tower now matches the backup.` })
+      setNotice({ tone: 'ok', text: `Restore complete. ${n} rows loaded, and everything now matches the backup.` })
       reset()
     } catch (e) {
       setNotice({ tone: 'error', text: errMsg(e) })
@@ -268,9 +302,20 @@ function RestorePanel({ counts }: { counts?: Counts }) {
     }
   }
 
+  const footer =
+    state.step === 'preview' ? (
+      <>
+        <span className="vault-footer-warn">Restoring replaces all current data with this file.</span> It happens in a
+        single step, so if anything fails nothing changes. You may want to download a backup of your current data
+        first.
+        {state.backup.ignored.length > 0 && <> Ignoring unknown tables: {state.backup.ignored.join(', ')}.</>}
+      </>
+    ) : (
+      'Load a plain or encrypted backup file. You’ll see exactly what’s inside before anything changes.'
+    )
+
   return (
-    <section className="panel vault-panel vault-span-2">
-      <div className="panel-title">Restore</div>
+    <Section title="Restore" footer={footer}>
       <input
         ref={fileRef}
         type="file"
@@ -281,111 +326,96 @@ function RestorePanel({ counts }: { counts?: Counts }) {
         onChange={(e) => onFile(e.target.files?.[0])}
       />
       {state.step === 'idle' && (
-        <div className="row-between">
-          <p className="muted">
-            Load a backup file (plain or encrypted). You will see exactly what is inside before anything changes.
-          </p>
-          <button className="btn" onClick={() => fileRef.current?.click()}>
-            Choose backup file…
-          </button>
-        </div>
+        <button className="vault-row vault-action" onClick={() => fileRef.current?.click()}>
+          <span className="vault-row-label">Choose backup file…</span>
+          <Chevron />
+        </button>
       )}
 
       {state.step === 'locked' && (
         <form
-          className="stack-sm"
           onSubmit={(e) => {
             e.preventDefault()
             unlock()
           }}
         >
-          <p>
-            <span className="mono">{state.fileName}</span> is encrypted. Enter its password to read it.
-          </p>
-          <div className="row vault-unlock">
+          <Row label="File" value={<span className="vault-ellipsis">{state.fileName}</span>} sub="Encrypted" />
+          <div className="vault-row vault-row-field">
             <input
-              className="input"
+              className="vault-field"
               type="password"
               placeholder="Backup password"
+              aria-label="Backup password"
               autoComplete="current-password"
               autoFocus
               value={pw}
               onChange={(e) => setPw(e.target.value)}
             />
-            <button className="btn btn-primary" type="submit" disabled={busy || !pw}>
-              {busy ? 'Decrypting…' : 'Unlock'}
-            </button>
-            <button className="btn btn-ghost" type="button" onClick={reset} disabled={busy}>
-              Cancel
-            </button>
           </div>
+          <button className="vault-row vault-action" type="submit" disabled={busy || !pw}>
+            <span className="vault-row-label">{busy ? 'Decrypting…' : 'Unlock'}</span>
+          </button>
+          <button className="vault-row vault-action vault-action-muted" type="button" onClick={reset} disabled={busy}>
+            <span className="vault-row-label">Cancel</span>
+          </button>
         </form>
       )}
 
       {state.step === 'preview' && (
-        <div className="stack">
-          <div className="row-between">
-            <div>
-              <div className="mono small">{state.fileName}</div>
-              <div className="small muted">
+        <>
+          <Row
+            label={<span className="vault-ellipsis">{state.fileName}</span>}
+            sub={
+              <>
                 {state.backup.exportedAt
                   ? `Exported ${new Date(state.backup.exportedAt).toLocaleString()} (${timeAgo(Date.parse(state.backup.exportedAt))})`
                   : 'Export date unknown'}
                 {' · '}format v{state.backup.version}
                 {state.encrypted && ' · decrypted'}
+              </>
+            }
+          />
+          <div className="vault-row vault-row-head">
+            <span className="vault-row-label">Table</span>
+            <span className="vault-compare">
+              <span>Now</span>
+              <span>Backup</span>
+            </span>
+          </div>
+          {TABLES.map((t) => {
+            const now = counts?.[t] ?? 0
+            const next = state.backup.data[t].length
+            return (
+              <div className="vault-row" key={t}>
+                <span className="vault-row-label">{TABLE_LABELS[t]}</span>
+                <span className="vault-compare">
+                  <span className="vault-muted">{now}</span>
+                  <span className={next < now ? 'vault-text-warn' : ''}>{next}</span>
+                </span>
               </div>
-            </div>
+            )
+          })}
+          <div className="vault-row vault-row-total">
+            <span className="vault-row-label">Total</span>
+            <span className="vault-compare">
+              <span className="vault-muted">{counts ? total(counts) : 0}</span>
+              <span>{total(countsOf(state.backup.data))}</span>
+            </span>
           </div>
-          <table className="vault-table">
-            <thead>
-              <tr>
-                <th>Table</th>
-                <th className="num">Now</th>
-                <th className="num">In backup</th>
-              </tr>
-            </thead>
-            <tbody>
-              {TABLES.map((t) => {
-                const now = counts?.[t] ?? 0
-                const next = state.backup.data[t].length
-                return (
-                  <tr key={t}>
-                    <td>{TABLE_LABELS[t]}</td>
-                    <td className="num muted">{now}</td>
-                    <td className={`num ${next < now ? 'vault-text-warn' : ''}`}>{next}</td>
-                  </tr>
-                )
-              })}
-              <tr className="vault-total">
-                <td>Total</td>
-                <td className="num muted">{counts ? total(counts) : 0}</td>
-                <td className="num">{total(countsOf(state.backup.data))}</td>
-              </tr>
-            </tbody>
-          </table>
-          {state.backup.ignored.length > 0 && (
-            <p className="small muted">Ignoring unknown tables: {state.backup.ignored.join(', ')}.</p>
-          )}
-          <div className="vault-notice vault-notice-warn">
-            Restoring <strong>replaces all current data</strong> with the contents of this file. It happens in a single
-            transaction: if anything fails, nothing changes. Consider downloading a backup of the current state first.
-          </div>
-          <div className="row">
-            <button className="btn btn-gold" onClick={confirmRestore} disabled={busy}>
-              {busy ? 'Restoring…' : 'Replace everything with this backup'}
-            </button>
-            <button className="btn btn-ghost" onClick={reset} disabled={busy}>
-              Cancel
-            </button>
-          </div>
-        </div>
+          <button className="vault-row vault-action" onClick={confirmRestore} disabled={busy}>
+            <span className="vault-row-label">{busy ? 'Restoring…' : 'Replace everything with this backup'}</span>
+          </button>
+          <button className="vault-row vault-action vault-action-muted" onClick={reset} disabled={busy}>
+            <span className="vault-row-label">Cancel</span>
+          </button>
+        </>
       )}
       <NoticeBox notice={notice} />
-    </section>
+    </Section>
   )
 }
 
-// ---------------- stats ----------------
+// ---------------- storage ----------------
 
 type Persist = 'unknown' | 'persisted' | 'not-persisted' | 'denied' | 'unsupported'
 
@@ -425,66 +455,56 @@ function StatsPanel({ counts }: { counts?: Counts }) {
     }
   }
 
-  const max = counts ? Math.max(1, ...TABLES.map((t) => counts[t])) : 1
   const pct = estimate && estimate !== 'unsupported' && estimate.quota ? (estimate.usage / estimate.quota) * 100 : 0
 
   const persistText: Record<Persist, string> = {
-    unknown: 'Checking…',
-    persisted: 'Persistent — the browser will not evict Tower data under storage pressure.',
-    'not-persisted': 'Best-effort — the browser may clear data if the device runs low on space.',
-    denied: 'The browser declined for now. Installing the app or using it often usually earns persistence.',
-    unsupported: 'This browser does not support persistent storage requests.',
+    unknown: 'Checking storage…',
+    persisted: 'Storage is persistent, so the browser won’t clear Tower data when space runs low.',
+    'not-persisted': 'Storage is best-effort, so the browser may clear data if the device runs low on space.',
+    denied: 'The browser declined for now. Installing the app or using it often usually earns persistent storage.',
+    unsupported: 'This browser doesn’t support persistent storage requests.',
   }
 
   return (
-    <section className="panel vault-panel">
-      <div className="panel-title">Storage</div>
-      <div className="stack">
-        <div>
-          <div className="row-between vault-kv">
-            <span className="muted small">Used on this device</span>
-            <span className="mono">
-              {estimate === null
-                ? '…'
-                : estimate === 'unsupported'
-                  ? 'n/a'
-                  : `${formatBytes(estimate.usage)} / ${formatBytes(estimate.quota)}`}
-            </span>
-          </div>
-          <div className="vault-meter" aria-hidden>
-            <span style={{ width: `${Math.max(pct, pct > 0 ? 1 : 0)}%` }} />
-          </div>
-          <p className="small muted vault-mt">Approximate; includes the app's cached files.</p>
+    <Section
+      title="Storage"
+      footer={<>{persistText[persist]} Usage is approximate and includes the app’s cached files.</>}
+    >
+      <div className="vault-row vault-row-stack">
+        <div className="vault-row-line">
+          <span className="vault-row-label">Used on this device</span>
+          <span className="vault-row-value">
+            {estimate === null
+              ? '…'
+              : estimate === 'unsupported'
+                ? 'n/a'
+                : `${formatBytes(estimate.usage)} of ${formatBytes(estimate.quota)}`}
+          </span>
         </div>
-
-        <ul className="vault-counts">
-          {TABLES.map((t) => (
-            <li key={t}>
-              <span className="vault-count-label">{TABLE_LABELS[t]}</span>
-              <span className="vault-bar" aria-hidden>
-                <span style={{ width: `${counts ? (counts[t] / max) * 100 : 0}%` }} />
-              </span>
-              <span className="mono vault-count-num">{counts ? counts[t] : '…'}</span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="stack-sm">
-          <div className="row-between">
-            <span className={`vault-badge ${persist === 'persisted' ? 'vault-badge-ok' : 'vault-badge-muted'}`}>
-              <span className="vault-dot" aria-hidden />
-              {persist === 'persisted' ? 'Persistent storage' : 'Best-effort storage'}
-            </span>
-            {persist !== 'persisted' && persist !== 'unsupported' && (
-              <button className="btn btn-sm" onClick={requestPersist} disabled={asking}>
-                {asking ? 'Asking…' : 'Request persistence'}
-              </button>
-            )}
-          </div>
-          <p className="small muted">{persistText[persist]}</p>
+        <div className="vault-meter" aria-hidden>
+          <span style={{ width: `${Math.max(pct, pct > 0 ? 1 : 0)}%` }} />
         </div>
       </div>
-    </section>
+      {TABLES.map((t) => (
+        <Row key={t} label={TABLE_LABELS[t]} value={counts ? counts[t] : '…'} />
+      ))}
+      <Row
+        label="Persistent storage"
+        value={
+          persist === 'persisted' ? (
+            'On'
+          ) : persist === 'unsupported' ? (
+            'Not available'
+          ) : persist === 'unknown' ? (
+            '…'
+          ) : (
+            <button className="vault-inline-action" onClick={requestPersist} disabled={asking}>
+              {asking ? 'Asking…' : 'Turn on'}
+            </button>
+          )
+        }
+      />
+    </Section>
   )
 }
 
@@ -503,7 +523,7 @@ function DangerPanel({ counts }: { counts?: Counts }) {
     try {
       await wipeAll()
       setPhrase('')
-      setNotice({ tone: 'info', text: 'The Tower has been reset. Every table is empty.' })
+      setNotice({ tone: 'info', text: 'Everything has been erased. Every table is now empty.' })
     } catch (e) {
       setNotice({ tone: 'error', text: errMsg(e) })
     } finally {
@@ -512,77 +532,67 @@ function DangerPanel({ counts }: { counts?: Counts }) {
   }
 
   return (
-    <section className="panel vault-panel vault-danger">
-      <div className="panel-title">Danger zone</div>
-      <div className="stack-sm">
-        <p>
-          Permanently erase <strong>everything</strong> — {counts ? total(counts) : '…'} rows across deals, truths,
-          lab entries, habits, letters and settings. This cannot be undone.
-        </p>
-        <label className="label" htmlFor="vault-reset">
-          Type <span className="mono vault-text-danger">{RESET_PHRASE}</span> to confirm
-        </label>
+    <Section
+      title="Danger zone"
+      footer={
+        <>
+          Permanently erases all {counts ? total(counts) : '…'} rows: deals, truths, lab entries, habits, letters and
+          settings. This can’t be undone. Type <strong>{RESET_PHRASE}</strong> to confirm.
+        </>
+      }
+    >
+      <div className="vault-row vault-row-field">
         <input
           id="vault-reset"
-          className="input mono"
+          className="vault-field"
+          aria-label={`Type ${RESET_PHRASE} to confirm`}
           value={phrase}
           onChange={(e) => setPhrase(e.target.value)}
-          placeholder={RESET_PHRASE}
+          placeholder={`Type ${RESET_PHRASE}`}
           autoComplete="off"
+          autoCapitalize="characters"
           spellCheck={false}
         />
-        <div className="row">
-          <button className="btn btn-danger" onClick={wipe} disabled={!armed || busy}>
-            {busy ? 'Wiping…' : 'Wipe everything'}
-          </button>
-        </div>
       </div>
+      <button className="vault-row vault-action vault-action-danger" onClick={wipe} disabled={!armed || busy}>
+        <span className="vault-row-label">{busy ? 'Erasing…' : 'Erase all data'}</span>
+      </button>
       <NoticeBox notice={notice} />
-    </section>
+    </Section>
   )
 }
 
 // ---------------- about ----------------
 
 const LEVEL_BLURBS: Record<string, string> = {
-  '/': 'The core. Letters across time and a pulse on where today stands against the future.',
-  '/negotiator': 'Each morning, Present You and Future You strike a deal: wants, needs and if-then rules.',
-  '/truth': 'A private chamber for saying the thing — lies, avoided conversations, truths about yourself.',
-  '/lab': 'Draw random topics, collide them, follow rabbit holes and keep what you learn.',
-  '/forge': 'Keystone habits tied to identity, with weekly reviews that fix instead of shame.',
+  '/': 'Letters across time, and a quiet look at how today is going.',
+  '/negotiator': 'Each morning, agree a plan with Future You: wants, needs and if-then rules.',
+  '/truth': 'A private place to say the thing: small lies, avoided conversations, truths about yourself.',
+  '/lab': 'Draw random topics, combine them, follow rabbit holes and keep what you learn.',
+  '/forge': 'Keystone habits tied to who you want to be, with weekly reviews that help rather than judge.',
 }
 
 function AboutPanel() {
   return (
-    <section className="panel vault-panel vault-span-2">
-      <div className="panel-title">About the Tower</div>
-      <div className="vault-about">
-        <div className="stack-sm">
-          <p>
-            Samartha Tower is a personal operating system built as a climb. Each level trains one trait — planning,
-            honesty, openness, conscientiousness — around a single reactor core that connects who you are today with
-            who you are becoming.
-          </p>
-          <p className="muted">
-            <strong className="vault-text-cyan">Local and private by design.</strong> There are no accounts, no
-            servers, no analytics and no AI. Every word lives in this browser's IndexedDB and never leaves the device
-            unless you export it yourself. That also means you are the backup plan — use the Vault.
-          </p>
+    <Section
+      title="About"
+      footer="Private by design. There are no accounts, servers, analytics or AI. Everything stays in this browser and never leaves your device unless you export it, which also makes you the backup plan."
+    >
+      <Row label="Name" value="Samartha Tower" />
+      <Row label="Storage" value="On this device only" />
+      {LEVELS.filter((l) => l.path !== '/vault').map((l) => (
+        <div className="vault-row vault-row-level" key={l.path} style={{ ['--accent' as string]: l.accent }}>
+          <span className="vault-level-icon" aria-hidden>
+            {l.number}
+          </span>
+          <div className="vault-row-main">
+            <div className="vault-row-label">
+              {l.name} <span className="vault-muted">· {l.trait}</span>
+            </div>
+            <div className="vault-row-sub">{LEVEL_BLURBS[l.path] ?? l.tagline}</div>
+          </div>
         </div>
-        <ol className="vault-levels">
-          {LEVELS.filter((l) => l.path !== '/vault').map((l) => (
-            <li key={l.path} style={{ ['--accent' as string]: l.accent }}>
-              <span className="vault-level-num mono">{l.number}</span>
-              <div>
-                <div className="vault-level-name">
-                  {l.name} <span className="muted small">· {l.trait}</span>
-                </div>
-                <div className="small muted">{LEVEL_BLURBS[l.path] ?? l.tagline}</div>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
+      ))}
+    </Section>
   )
 }

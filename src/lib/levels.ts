@@ -14,5 +14,5 @@ export const LEVELS: LevelInfo[] = [
   { path: '/truth', number: '02', name: 'Truth Chamber', trait: 'Honesty', tagline: 'Say the thing', accent: 'var(--red)' },
   { path: '/lab', number: '03', name: 'The Lab', trait: 'Openness', tagline: 'Let the mind run wild', accent: 'var(--purple)' },
   { path: '/forge', number: '04', name: 'The Forge', trait: 'Conscientiousness', tagline: 'Become someone fixed, not broken', accent: 'var(--orange)' },
-  { path: '/vault', number: '∞', name: 'Vault', trait: 'System', tagline: 'Backups, lock and settings', accent: 'var(--faint)' },
+  { path: '/vault', number: '∞', name: 'Vault', trait: 'Settings', tagline: 'Backups and settings', accent: '#8e8e93' },
 ]
