@@ -5,8 +5,8 @@ export default function Nav() {
   return (
     <nav className="nav">
       <div className="nav-brand">
-        <div className="nav-brand-title">SAMARTHA</div>
-        <div className="nav-brand-sub">Tower · personal OS</div>
+        <div className="nav-brand-title">Samartha</div>
+        <div className="nav-brand-sub">Tower</div>
       </div>
       {LEVELS.map((l) => (
         <NavLink
