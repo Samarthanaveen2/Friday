@@ -56,77 +56,87 @@ export function ItemColumn({
   const total = sumMinutes(items)
 
   return (
-    <section className={`neg-side neg-side-${side}`}>
-      <div className="neg-side-head">
+    <section className={`panel neg-card neg-card-${side}`}>
+      <header className="neg-card-head">
         <div>
-          <div className="neg-side-title">{title}</div>
+          <div className="neg-card-title">
+            <span className="neg-label-dot" aria-hidden />
+            {title}
+          </div>
           <div className="muted small">{subtitle}</div>
         </div>
-        <div className="neg-side-total mono">{fmtMin(total)}</div>
-      </div>
+        <div className="neg-card-total">{fmtMin(total)}</div>
+      </header>
 
-      {items.length === 0 ? (
-        <div className="neg-side-empty small">Nothing on the table yet.</div>
-      ) : (
-        <ul className="neg-items">
+      <div className="neg-card-body">
+        <ul className="neg-list">
           {items.map((i) => (
-            <li key={i.id} className="neg-item">
+            <li key={i.id} className="neg-row">
               <input
-                className="input neg-item-text"
+                className="neg-row-text"
                 value={i.text}
                 aria-label="Item"
                 onChange={(e) => update(i.id, { text: e.target.value })}
               />
-              <input
-                className="input neg-item-min mono"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                placeholder="min"
-                aria-label="Minutes"
-                value={i.minutes ?? ''}
-                onChange={(e) => update(i.id, { minutes: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })}
-              />
-              <button className="btn btn-ghost btn-sm neg-x" aria-label={`Remove ${i.text}`} onClick={() => remove(i.id)}>
-                ×
+              <label className="neg-row-min">
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  placeholder="0"
+                  aria-label="Minutes"
+                  value={i.minutes ?? ''}
+                  onChange={(e) => update(i.id, { minutes: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })}
+                />
+                <span>min</span>
+              </label>
+              <button className="neg-x" type="button" aria-label={`Remove ${i.text}`} onClick={() => remove(i.id)}>
+                <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden>
+                  <circle cx="10" cy="10" r="9" fill="currentColor" />
+                  <path d="M6 10h8" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                </svg>
               </button>
             </li>
           ))}
+          <li className="neg-row neg-row-add">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                submit()
+              }}
+            >
+              <input className="neg-row-text" placeholder={placeholder} aria-label="New item" value={text} onChange={(e) => setText(e.target.value)} />
+              <label className="neg-row-min">
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  placeholder="0"
+                  aria-label="Minutes for new item"
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                />
+                <span>min</span>
+              </label>
+              <button className="btn btn-sm neg-add-btn" type="submit" disabled={!text.trim()}>
+                Add
+              </button>
+            </form>
+          </li>
         </ul>
-      )}
+        {items.length === 0 && <div className="neg-hint small">Nothing here yet. Type above or pick a suggestion.</div>}
 
-      <form
-        className="neg-add"
-        onSubmit={(e) => {
-          e.preventDefault()
-          submit()
-        }}
-      >
-        <input className="input neg-item-text" placeholder={placeholder} value={text} onChange={(e) => setText(e.target.value)} />
-        <input
-          className="input neg-item-min mono"
-          type="number"
-          min={0}
-          inputMode="numeric"
-          placeholder="min"
-          value={minutes}
-          onChange={(e) => setMinutes(e.target.value)}
-        />
-        <button className="btn btn-sm neg-add-btn" type="submit" disabled={!text.trim()}>
-          Add
-        </button>
-      </form>
-
-      {unused.length > 0 && (
-        <div className="neg-chips">
-          {unused.map((p) => (
-            <button key={p.text} className="chip neg-chip" type="button" onClick={() => add(p.text, p.minutes)}>
-              + {p.text}
-              {p.minutes ? <span className="mono neg-chip-min">{p.minutes}m</span> : null}
-            </button>
-          ))}
-        </div>
-      )}
+        {unused.length > 0 && (
+          <div className="neg-chips">
+            {unused.map((p) => (
+              <button key={p.text} className="chip neg-chip" type="button" onClick={() => add(p.text, p.minutes)}>
+                {p.text}
+                {p.minutes ? <span className="neg-chip-min">{p.minutes}m</span> : null}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   )
 }
@@ -145,36 +155,50 @@ export function BalanceMeter({
   onRate: (r: number) => void
 }) {
   const { wantMin, earned, surplus, debt, owedIn, needMin } = balance
-  const scale = Math.max(wantMin, earned, 1)
-  const wantPct = (wantMin / scale) * 50
-  const earnPct = (earned / scale) * 50
-  const tilt = Math.max(-1, Math.min(1, (earned - wantMin) / scale))
+  const empty = needMin === 0 && wantMin === 0 && owedIn === 0
+  const covered = wantMin === 0 ? (earned > 0 ? 1 : 0) : Math.min(1, earned / wantMin)
 
+  let headline: string
   let verdict: string
   let tone: 'ok' | 'warn' | 'bad'
-  if (needMin === 0 && wantMin === 0 && owedIn === 0) {
-    verdict = 'Put something on the table. Wants on the left, needs on the right.'
+  if (empty) {
+    headline = 'Nothing yet'
+    verdict = 'Add what you want on one side and what you need to do on the other.'
     tone = 'warn'
   } else if (debt === 0 && surplus === 0) {
-    verdict = 'Perfectly balanced. Every minute of fun is paid for.'
+    headline = 'Balanced'
+    verdict = 'Every minute of fun is paid for.'
     tone = 'ok'
   } else if (debt === 0) {
-    verdict = `Balanced, with ${fmtMin(surplus)} of want-time still unspent. Future You is ahead.`
+    headline = 'Balanced'
+    verdict = `You have ${fmtMin(surplus)} of free time still to spend.`
     tone = 'ok'
   } else {
-    verdict = `Present You is short by ${fmtMin(debt)} of need-work. Add needs, trim wants, or take on debt.`
+    headline = `${fmtMin(debt)} short`
+    verdict = 'Add a need, trim a want, or borrow the time from tomorrow.'
     tone = debt > 60 ? 'bad' : 'warn'
   }
 
   return (
-    <div className={`neg-meter neg-meter-${tone}`}>
-      <div className="row-between">
-        <div className="panel-title neg-meter-title">The Balance</div>
+    <section className={`panel neg-balance neg-balance-${tone}`}>
+      <div className="neg-balance-top">
+        <div>
+          <div className="panel-title neg-balance-label">Balance</div>
+          <div className="neg-balance-headline">{headline}</div>
+          <div className="small muted">{verdict}</div>
+        </div>
         <div className="neg-rate">
           <span className="muted small">1 min of need earns</span>
-          <div className="neg-rate-opts">
+          <div className="neg-seg neg-seg-sm" role="radiogroup" aria-label="Exchange rate">
             {rates.map((r) => (
-              <button key={r} className={`chip neg-rate-chip ${r === rate ? 'active' : ''}`} onClick={() => onRate(r)}>
+              <button
+                key={r}
+                type="button"
+                role="radio"
+                aria-checked={r === rate}
+                className={`neg-seg-opt ${r === rate ? 'active' : ''}`}
+                onClick={() => onRate(r)}
+              >
                 {r}m
               </button>
             ))}
@@ -182,39 +206,30 @@ export function BalanceMeter({
         </div>
       </div>
 
-      <div className="neg-scale" aria-hidden>
-        <div className="neg-scale-beam" style={{ transform: `rotate(${(-tilt * 6).toFixed(2)}deg)` }}>
-          <div className="neg-scale-half neg-scale-left">
-            <div className="neg-scale-fill neg-fill-want" style={{ width: `${wantPct * 2}%` }} />
-          </div>
-          <div className="neg-scale-pivot" />
-          <div className="neg-scale-half neg-scale-right">
-            <div className="neg-scale-fill neg-fill-earn" style={{ width: `${earnPct * 2}%` }} />
-          </div>
-        </div>
+      <div className="neg-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(covered * 100)} aria-label="Wants paid for">
+        <div className="neg-bar-fill" style={{ width: `${covered * 100}%` }} />
       </div>
 
-      <div className="neg-meter-nums">
+      <div className="neg-balance-nums">
         <div>
-          <div className="muted small">Wants spent</div>
-          <div className="mono neg-num-present">{fmtMin(wantMin)}</div>
+          <div className="small muted">Wants</div>
+          <div className="neg-num">{fmtMin(wantMin)}</div>
         </div>
-        <div className="neg-meter-mid">
-          <div className="muted small">{debt > 0 ? 'Debt' : 'Surplus'}</div>
-          <div className={`mono ${debt > 0 ? 'neg-num-debt' : 'neg-num-ok'}`}>{debt > 0 ? `−${fmtMin(debt)}` : `+${fmtMin(surplus)}`}</div>
+        <div>
+          <div className="small muted">Earned</div>
+          <div className="neg-num">{fmtMin(earned)}</div>
         </div>
-        <div className="neg-meter-right">
-          <div className="muted small">Wants earned</div>
-          <div className="mono neg-num-future">{fmtMin(earned)}</div>
+        <div>
+          <div className="small muted">{debt > 0 ? 'Short' : 'To spare'}</div>
+          <div className={`neg-num ${debt > 0 ? 'neg-red' : ''}`}>{debt > 0 ? `−${fmtMin(debt)}` : `+${fmtMin(surplus)}`}</div>
         </div>
       </div>
       {owedIn > 0 && (
         <div className="small muted">
-          {fmtMin(owedIn)} of today's need-work goes to paying back what Future You is already owed before it earns anything.
+          The first {fmtMin(owedIn)} of today's needs pays back time borrowed earlier, so it doesn't earn anything new.
         </div>
       )}
-      <div className={`neg-verdict small neg-verdict-${tone}`}>{verdict}</div>
-    </div>
+    </section>
   )
 }
 
@@ -232,18 +247,21 @@ export function RulesEditor({ rules, onChange }: { rules: IfThenRule[]; onChange
   return (
     <div className="stack-sm">
       {rules.length === 0 ? (
-        <div className="neg-side-empty small">
+        <div className="neg-hint small">
           No rules yet. An if-then plan decides in advance, so in the moment you don't have to.
         </div>
       ) : (
-        <ul className="neg-rules">
+        <ul className="neg-list">
           {rules.map((r) => (
-            <li key={r.id} className="neg-rule">
+            <li key={r.id} className="neg-row">
               <div className="neg-rule-text">
-                <span className="neg-kw">If</span> {r.when} <span className="neg-kw">then I will</span> {r.then}
+                <span className="neg-kw">If</span> {r.when}, <span className="neg-kw">then I will</span> {r.then}
               </div>
-              <button className="btn btn-ghost btn-sm neg-x" aria-label="Remove rule" onClick={() => onChange(rules.filter((x) => x.id !== r.id))}>
-                ×
+              <button className="neg-x" type="button" aria-label="Remove rule" onClick={() => onChange(rules.filter((x) => x.id !== r.id))}>
+                <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden>
+                  <circle cx="10" cy="10" r="9" fill="currentColor" />
+                  <path d="M6 10h8" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                </svg>
               </button>
             </li>
           ))}
@@ -263,7 +281,7 @@ export function RulesEditor({ rules, onChange }: { rules: IfThenRule[]; onChange
           <input className="input" placeholder="it's 9pm…" value={when} onChange={(e) => setWhen(e.target.value)} />
         </label>
         <label className="neg-rule-field">
-          <span className="neg-kw">then I will</span>
+          <span className="neg-kw">Then I will</span>
           <input className="input" placeholder="put the phone in the other room" value={then} onChange={(e) => setThen(e.target.value)} />
         </label>
         <button className="btn btn-sm" type="submit" disabled={!when.trim() || !then.trim()}>
@@ -274,7 +292,7 @@ export function RulesEditor({ rules, onChange }: { rules: IfThenRule[]; onChange
         <div className="neg-chips">
           {unused.slice(0, 5).map((p) => (
             <button key={p.when} type="button" className="chip neg-chip" onClick={() => add(p.when, p.then)}>
-              + If {p.when}…
+              If {p.when}…
             </button>
           ))}
         </div>
@@ -289,7 +307,7 @@ export function Projection({ needs, wants, keepRate }: { needs: DealItem[]; want
   const lines = projectNeeds(needs)
   const wantMin = sumMinutes(wants)
   if (lines.length === 0 && wantMin === 0) {
-    return <div className="neg-side-empty small">Add needs to see what this deal builds if you keep making it.</div>
+    return <div className="neg-hint small">Add needs to see what this deal builds if you keep making it.</div>
   }
   const month = projectionSentence(lines, 30)
   const year = projectionSentence(lines, 365)
@@ -299,17 +317,19 @@ export function Projection({ needs, wants, keepRate }: { needs: DealItem[]; want
     <div className="stack-sm neg-projection">
       {month && (
         <p>
-          <span className="neg-proj-label mono">30 days</span> This deal, repeated, = <strong className="neg-gold">{month}</strong>.
+          <span className="neg-proj-label">30 days</span>
+          Repeat this deal and you'll have <strong>{month}</strong>.
         </p>
       )}
       {year && (
         <p>
-          <span className="neg-proj-label mono">1 year</span> = <strong className="neg-gold">{year}</strong>. That is a different person.
+          <span className="neg-proj-label">1 year</span>
+          <strong>{year}</strong>. That adds up to a different person.
         </p>
       )}
       {realistic && (
         <p className="muted small">
-          Honestly: you've kept {Math.round(keepRate! * 100)}% of recent deals, so a realistic month is closer to {realistic}.
+          To be honest, you've kept {Math.round(keepRate! * 100)}% of recent deals, so a realistic month is closer to {realistic}.
         </p>
       )}
       {wantMin > 0 && (
@@ -331,7 +351,12 @@ export const STATUS_LABEL: Record<DealStatus, string> = {
 }
 
 export function StatusChip({ status }: { status: DealStatus }) {
-  return <span className={`chip neg-status neg-status-${status}`}>{STATUS_LABEL[status]}</span>
+  return (
+    <span className={`neg-status neg-status-${status}`}>
+      <i className="neg-sdot" aria-hidden />
+      {STATUS_LABEL[status]}
+    </span>
+  )
 }
 
 /* ---------------- Evening review ---------------- */
@@ -358,21 +383,23 @@ export function ReviewPanel({ deal, compact }: { deal: NegDeal; compact?: boolea
     <div className="stack-sm neg-review">
       <div className="row-between">
         <div className="small">
-          Needs completed: <span className="mono neg-gold">{pct}%</span>
+          Needs done: <span className="neg-num-inline">{pct}%</span>
         </div>
         <div className="small muted">
           Suggested: <StatusChip status={suggested} />
         </div>
       </div>
-      <div className="neg-status-pick" role="radiogroup" aria-label="Deal status">
+      <div className="neg-seg neg-status-pick" role="radiogroup" aria-label="Deal status">
         {(['kept', 'partial', 'broken'] as const).map((s) => (
           <button
             key={s}
+            type="button"
             role="radio"
             aria-checked={status === s}
-            className={`btn btn-sm neg-pick neg-pick-${s} ${status === s ? 'on' : ''}`}
+            className={`neg-seg-opt neg-pick neg-status-${s} ${status === s ? 'active' : ''}`}
             onClick={() => setStatus(s)}
           >
+            <i className="neg-sdot" aria-hidden />
             {STATUS_LABEL[s]}
           </button>
         ))}
@@ -387,8 +414,8 @@ export function ReviewPanel({ deal, compact }: { deal: NegDeal; compact?: boolea
       )}
       <div className="small muted">
         {owed > 0
-          ? `${fmtMin(owed)} of need-work will carry forward. Tomorrow, Future You collects it first.`
-          : 'Nothing carries forward. Clean slate tomorrow.'}
+          ? `${fmtMin(owed)} of need-work will carry forward. It comes first in tomorrow's deal.`
+          : 'Nothing carries over. Tomorrow starts fresh.'}
       </div>
       <div className="row">
         <button className="btn btn-gold" onClick={save}>

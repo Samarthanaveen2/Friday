@@ -22,23 +22,23 @@ export default function Negotiator() {
         right={
           streak > 0 ? (
             <div className="neg-header-streak">
-              <span className="mono neg-gold">{streak}</span>
-              <span className="small muted">day kept streak</span>
+              <span className="neg-header-streak-num">{streak}</span>
+              <span className="small muted">{streak === 1 ? 'day' : 'days'} kept in a row</span>
             </div>
           ) : undefined
         }
       />
-      <nav className="neg-tabs" aria-label="Negotiator sections">
-        <NavLink end to="/negotiator" className={({ isActive }) => `neg-tab ${isActive ? 'active' : ''}`}>
+      <nav className="neg-seg neg-tabs" aria-label="Negotiator sections">
+        <NavLink end to="/negotiator" className={({ isActive }) => `neg-seg-opt ${isActive ? 'active' : ''}`}>
           Today
         </NavLink>
-        <NavLink to="/negotiator/history" className={({ isActive }) => `neg-tab ${isActive ? 'active' : ''}`}>
+        <NavLink to="/negotiator/history" className={({ isActive }) => `neg-seg-opt ${isActive ? 'active' : ''}`}>
           History
         </NavLink>
       </nav>
 
       {loading ? (
-        <div className="empty">Laying out the table…</div>
+        <div className="empty">Loading…</div>
       ) : (
         <Routes>
           <Route index element={<TodayView deals={deals} rate={rate} today={today} />} />

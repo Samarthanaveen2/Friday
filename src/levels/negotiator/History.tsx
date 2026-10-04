@@ -20,7 +20,7 @@ export default function History({ deals }: { deals: NegDeal[] }) {
       <div className="empty">
         <p>No deals on record yet.</p>
         <p className="small" style={{ marginTop: 6 }}>
-          Your first negotiation starts the ledger. <Link to="/negotiator">Go to the table →</Link>
+          Your first deal will show up here. <Link to="/negotiator">Make one today</Link>
         </p>
       </div>
     )
@@ -31,7 +31,7 @@ export default function History({ deals }: { deals: NegDeal[] }) {
       <div className="neg-stats">
         <div className="panel neg-stat">
           <div className="panel-title">Kept streak</div>
-          <div className="big-number neg-gold">{streak}</div>
+          <div className="big-number neg-accent">{streak}</div>
           <div className="small muted">{streak === 1 ? 'day' : 'days'} in a row</div>
         </div>
         <div className="panel neg-stat">
@@ -42,9 +42,9 @@ export default function History({ deals }: { deals: NegDeal[] }) {
           </div>
         </div>
         <div className="panel neg-stat">
-          <div className="panel-title">Future You is owed</div>
+          <div className="panel-title">Borrowed time</div>
           <div className={`big-number ${owedNow > 0 ? 'neg-red' : 'neg-green'}`}>{owedNow > 0 ? fmtMin(owedNow) : '0'}</div>
-          <div className="small muted">{owedNow > 0 ? 'carried into the next deal' : 'Debt-free'}</div>
+          <div className="small muted">{owedNow > 0 ? 'carried into the next deal' : 'Nothing owed'}</div>
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export default function History({ deals }: { deals: NegDeal[] }) {
         </div>
       </div>
 
-      <ul className="neg-history">
+      <ul className="panel neg-history">
         {sorted.map((d) => {
           const isOpen = open === d.id
           const pct = d.completion ?? completionPct(d.needs)
@@ -81,28 +81,31 @@ export default function History({ deals }: { deals: NegDeal[] }) {
               <button className="neg-hist-row" onClick={() => setOpen(isOpen ? null : (d.id ?? null))} aria-expanded={isOpen}>
                 <div className="neg-hist-date">
                   <div>{prettyDay(d.date)}</div>
-                  <div className="small muted mono">{fromDayKey(d.date).getFullYear()}</div>
+                  <div className="small muted">{fromDayKey(d.date).getFullYear()}</div>
                 </div>
                 <div className="neg-hist-mid small">
-                  <span className="neg-num-future mono">{fmtMin(sumMinutes(d.needs))}</span>
+                  <span className="neg-num-inline">{fmtMin(sumMinutes(d.needs))}</span>
                   <span className="muted"> needs · </span>
-                  <span className="neg-num-present mono">{fmtMin(sumMinutes(d.wants))}</span>
+                  <span className="neg-num-inline">{fmtMin(sumMinutes(d.wants))}</span>
                   <span className="muted"> wants · </span>
-                  <span className="mono">{pct}%</span>
-                  {d.debtTaken ? <span className="neg-red"> · credit</span> : null}
+                  <span className="neg-num-inline">{pct}%</span>
+                  {d.debtTaken ? <span className="muted"> · borrowed</span> : null}
                 </div>
                 <StatusChip status={d.status} />
+                <svg className="neg-chevron" viewBox="0 0 10 16" width="8" height="13" aria-hidden>
+                  <path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
               {isOpen && (
                 <div className="neg-hist-body stack-sm">
                   <div className="neg-hist-cols">
                     <div>
-                      <div className="neg-side-title neg-num-present">Present You</div>
+                      <div className="neg-card-title neg-card-present"><span className="neg-label-dot" aria-hidden />Present You</div>
                       {d.wants.length ? (
                         <ul className="neg-mini">
                           {d.wants.map((w) => (
                             <li key={w.id}>
-                              {w.text} {w.minutes ? <span className="muted mono">{fmtMin(w.minutes)}</span> : null}
+                              <span>{w.text}</span> {w.minutes ? <span className="muted neg-num-inline">{fmtMin(w.minutes)}</span> : null}
                             </li>
                           ))}
                         </ul>
@@ -111,12 +114,13 @@ export default function History({ deals }: { deals: NegDeal[] }) {
                       )}
                     </div>
                     <div>
-                      <div className="neg-side-title neg-num-future">Future You</div>
+                      <div className="neg-card-title neg-card-future"><span className="neg-label-dot" aria-hidden />Future You</div>
                       {d.needs.length ? (
                         <ul className="neg-mini">
                           {d.needs.map((n) => (
                             <li key={n.id} className={n.done ? 'done' : 'undone'}>
-                              {n.done ? '✓' : '✗'} {n.text} {n.minutes ? <span className="muted mono">{fmtMin(n.minutes)}</span> : null}
+                              <i className={`neg-sdot ${n.done ? 'neg-sdot-kept' : 'neg-sdot-broken'}`} aria-hidden />
+                              <span>{n.text}</span> {n.minutes ? <span className="muted neg-num-inline">{fmtMin(n.minutes)}</span> : null}
                             </li>
                           ))}
                         </ul>
@@ -129,21 +133,22 @@ export default function History({ deals }: { deals: NegDeal[] }) {
                     <ul className="neg-mini">
                       {d.rules.map((r) => (
                         <li key={r.id} className={r.kept ? 'done' : 'undone'}>
-                          {r.kept ? '✓' : '✗'} If {r.when}, then {r.then}
+                          <i className={`neg-sdot ${r.kept ? 'neg-sdot-kept' : 'neg-sdot-broken'}`} aria-hidden />
+                          <span>If {r.when}, then {r.then}</span>
                         </li>
                       ))}
                     </ul>
                   )}
                   {d.review && <p className="neg-review-quote">“{d.review}”</p>}
-                  {(d.owedOut ?? 0) > 0 && <div className="small neg-red">Carried forward: {fmtMin(d.owedOut!)} owed to Future You.</div>}
+                  {(d.owedOut ?? 0) > 0 && <div className="small neg-red">Carried over: {fmtMin(d.owedOut!)} of need-work.</div>}
                   {d.status === 'open' && past && (
                     <div className="neg-alert-inline">
-                      <div className="small muted" style={{ marginBottom: 8 }}>This deal was never reviewed.</div>
+                      <div className="small muted" style={{ marginBottom: 8 }}>This deal was never closed.</div>
                       <ReviewPanel deal={d} />
                     </div>
                   )}
                   {d.status === 'open' && !past && (
-                    <Link className="small" to="/negotiator">Review it on the Today tab →</Link>
+                    <Link className="small" to="/negotiator">Review it on the Today tab</Link>
                   )}
                 </div>
               )}

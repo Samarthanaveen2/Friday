@@ -107,34 +107,33 @@ export function Negotiation({
     <div className="stack">
       {unreviewed && (
         <div className="panel neg-alert">
-          <div className="panel-title">Unfinished business · {prettyDay(unreviewed.date)}</div>
+          <div className="panel-title">Still open from {prettyDay(unreviewed.date)}</div>
           <p className="small" style={{ marginBottom: 12 }}>
-            That deal was never closed. Be honest about how it went before striking a new one.
+            That deal was never closed. Take a moment to say how it went before making a new one.
           </p>
           <ReviewPanel deal={unreviewed} compact />
         </div>
       )}
 
       <div className="neg-intro">
-        <div className="mono neg-intro-date">{prettyDay(today)} · Opening negotiations</div>
+        <div className="neg-intro-date">{prettyDay(today)}</div>
         <p className="muted">{line}</p>
       </div>
 
       {owedIn > 0 && !unreviewed && (
         <div className="neg-owed">
-          <div className="neg-owed-num mono">{fmtMin(owedIn)}</div>
+          <div className="neg-owed-num">{fmtMin(owedIn)}</div>
           <div>
-            <div className="neg-owed-title">Future You is owed</div>
+            <div className="neg-owed-title">Carried over to today</div>
             <div className="small muted">
               Carried from {owedFrom ? prettyDay(owedFrom.date) : 'your last deal'}
-              {owedFrom?.status && owedFrom.status !== 'open' ? ` (${owedFrom.status})` : ''}. It gets paid first, out of today's needs.
+              {owedFrom?.status && owedFrom.status !== 'open' ? ` (${owedFrom.status})` : ''}. It's paid back first, out of today's needs.
             </div>
           </div>
         </div>
       )}
 
-      <div className="panel neg-table-panel">
-        <div className="neg-table">
+      <div className="neg-table">
           <ItemColumn
             side="present"
             title="Present You wants"
@@ -144,9 +143,6 @@ export function Negotiation({
             presets={WANT_PRESETS}
             placeholder="I want…"
           />
-          <div className="neg-vs" aria-hidden>
-            <span>VS</span>
-          </div>
           <ItemColumn
             side="future"
             title="Future You needs"
@@ -156,10 +152,9 @@ export function Negotiation({
             presets={NEED_PRESETS}
             placeholder="I need…"
           />
-        </div>
-
-        <BalanceMeter balance={balance} rate={rate} rates={RATE_OPTIONS} onRate={(r) => setSetting(RATE_KEY, r)} />
       </div>
+
+      <BalanceMeter balance={balance} rate={rate} rates={RATE_OPTIONS} onRate={(r) => setSetting(RATE_KEY, r)} />
 
       <div className="grid-2">
         <div className="panel">
@@ -175,25 +170,25 @@ export function Negotiation({
       <div className="panel neg-seal-panel">
         {!balance.balanced && hasAnything && (
           <label className="neg-debt">
-            <input type="checkbox" checked={acceptDebt} onChange={(e) => setAcceptDebt(e.target.checked)} />
+            <input className="neg-check-input" type="checkbox" checked={acceptDebt} onChange={(e) => setAcceptDebt(e.target.checked)} />
+            <CheckCircle />
             <span>
-              Present You takes on <strong className="neg-red">{fmtMin(balance.debt)}</strong> of debt. Future You will collect it tomorrow,
-              before anything else.
+              Borrow <strong>{fmtMin(balance.debt)}</strong> from tomorrow. It will come first in tomorrow's deal.
             </span>
           </label>
         )}
         <div className="row-between">
           <div className="small muted">
             {!hasAnything
-              ? 'Nothing to sign yet.'
+              ? 'Add a few items to get started.'
               : balance.balanced
-                ? 'Both sides agree. Ready to sign.'
+                ? 'Both sides are happy. Ready when you are.'
                 : acceptDebt
-                  ? 'Signing on credit.'
-                  : 'Future You will not sign an unbalanced deal.'}
+                  ? 'Making the deal with borrowed time.'
+                  : 'Balance the two sides, or borrow from tomorrow.'}
           </div>
           <button className="btn btn-gold neg-seal-btn" disabled={!canSeal} onClick={seal}>
-            Seal the deal
+            Make the deal
           </button>
         </div>
       </div>
@@ -228,17 +223,15 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
 
   return (
     <div className="stack">
-      <div className="panel glow neg-sealed-head">
-        <div className="neg-seal-stamp mono" aria-hidden>
-          SEALED
-        </div>
+      <div className="panel neg-sealed-head">
         <div className="row-between">
           <div>
-            <div className="mono neg-intro-date">{prettyDay(deal.date)} · Deal in force</div>
+            <div className="neg-intro-date">{prettyDay(deal.date)}</div>
+            <div className="neg-sealed-title">Today's deal</div>
             <div className="neg-sealed-sub muted small">
-              Signed {new Date(deal.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              Made at {new Date(deal.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
               {deal.rate && deal.rate !== 1 ? ` · rate 1:${deal.rate}` : ''}
-              {deal.debtTaken ? ` · on credit (${fmtMin(deal.debtTaken)} debt)` : ''}
+              {deal.debtTaken ? ` · ${fmtMin(deal.debtTaken)} borrowed` : ''}
               {deal.owedIn ? ` · repaying ${fmtMin(deal.owedIn)}` : ''}
             </div>
           </div>
@@ -249,39 +242,35 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
         </div>
         <div className="row-between small">
           <span>
-            <span className="mono neg-gold">{pct}%</span> of Future You's needs delivered
+            <span className="neg-num-inline">{pct}%</span> of needs done
           </span>
           {needTotal > 0 && (
-            <span className="mono muted">
+            <span className="neg-num-inline muted">
               {fmtMin(needDone)} / {fmtMin(needTotal)}
             </span>
           )}
         </div>
       </div>
 
-      <div className="panel neg-table-panel">
-        <div className="neg-table">
-          <SealedColumn side="present" title="Present You gets" hint="Paid for. Enjoy it, guilt-free." items={deal.wants} onToggle={(id) => toggle('wants', id)} />
-          <div className="neg-vs" aria-hidden>
-            <span>⇄</span>
-          </div>
-          <SealedColumn side="future" title="Future You gets" hint="Tick each one off as you deliver it." items={deal.needs} onToggle={(id) => toggle('needs', id)} />
-        </div>
+      <div className="neg-table">
+        <SealedColumn side="present" title="Present You gets" hint="Paid for. Enjoy it, guilt-free." items={deal.wants} onToggle={(id) => toggle('wants', id)} />
+        <SealedColumn side="future" title="Future You gets" hint="Tick each one off as you finish it." items={deal.needs} onToggle={(id) => toggle('needs', id)} />
       </div>
 
       <div className="grid-2">
         <div className="panel">
-          <div className="panel-title">If-then rules · kept?</div>
+          <div className="panel-title">If-then rules</div>
           {deal.rules.length === 0 ? (
-            <div className="neg-side-empty small">No rules in this deal. Add some tomorrow; they make deals easier to keep.</div>
+            <div className="neg-hint small">No rules in this deal. Try adding one tomorrow; they make deals easier to keep.</div>
           ) : (
-            <ul className="neg-rules">
+            <ul className="neg-list">
               {deal.rules.map((r) => (
-                <li key={r.id} className={`neg-rule neg-check ${r.kept ? 'done' : ''}`}>
+                <li key={r.id} className={`neg-row neg-check ${r.kept ? 'done' : ''}`}>
                   <label className="neg-check-label">
-                    <input type="checkbox" checked={!!r.kept} onChange={() => toggleRule(r.id)} />
-                    <span className="neg-rule-text">
-                      <span className="neg-kw">If</span> {r.when} <span className="neg-kw">then I will</span> {r.then}
+                    <input className="neg-check-input" type="checkbox" checked={!!r.kept} onChange={() => toggleRule(r.id)} />
+                    <CheckCircle />
+                    <span className="neg-check-text">
+                      <span className="neg-kw">If</span> {r.when}, <span className="neg-kw">then I will</span> {r.then}
                     </span>
                   </label>
                 </li>
@@ -296,7 +285,7 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
       </div>
 
       <div className="panel neg-evening">
-        <div className="panel-title">{reviewed ? 'Evening review · closed' : 'Evening review'}</div>
+        <div className="panel-title">{reviewed ? 'Evening review · done' : 'Evening review'}</div>
         {reviewed && deal.review && <p className="neg-review-quote">“{deal.review}”</p>}
         <ReviewPanel key={deal.status + (deal.reviewedAt ?? '')} deal={deal} />
       </div>
@@ -305,9 +294,9 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
         <div className="row neg-tear">
           {tearing ? (
             <>
-              <span className="small muted">Tear up the deal and renegotiate? Your items go back on the table.</span>
+              <span className="small muted">Start over? Your items go back into the editor.</span>
               <button className="btn btn-danger btn-sm" onClick={tearUp}>
-                Tear it up
+                Start over
               </button>
               <button className="btn btn-ghost btn-sm" onClick={() => setTearing(false)}>
                 Keep it
@@ -315,7 +304,7 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
             </>
           ) : (
             <button className="btn btn-ghost btn-sm" onClick={() => setTearing(true)}>
-              Renegotiate…
+              Change this deal…
             </button>
           )}
         </div>
@@ -338,29 +327,45 @@ function SealedColumn({
   onToggle: (id: string) => void
 }) {
   return (
-    <section className={`neg-side neg-side-${side}`}>
-      <div className="neg-side-head">
+    <section className={`panel neg-card neg-card-${side}`}>
+      <header className="neg-card-head">
         <div>
-          <div className="neg-side-title">{title}</div>
+          <div className="neg-card-title">
+            <span className="neg-label-dot" aria-hidden />
+            {title}
+          </div>
           <div className="muted small">{hint}</div>
         </div>
-        <div className="neg-side-total mono">{fmtMin(sumMinutes(items))}</div>
+        <div className="neg-card-total">{fmtMin(sumMinutes(items))}</div>
+      </header>
+      <div className="neg-card-body">
+        {items.length === 0 ? (
+          <div className="neg-hint small">{side === 'present' ? 'Nothing asked for today.' : 'No needs in this deal.'}</div>
+        ) : (
+          <ul className="neg-list">
+            {items.map((i) => (
+              <li key={i.id} className={`neg-row neg-check ${i.done ? 'done' : ''}`}>
+                <label className="neg-check-label">
+                  <input className="neg-check-input" type="checkbox" checked={!!i.done} onChange={() => onToggle(i.id)} />
+                  <CheckCircle />
+                  <span className="neg-check-text">{i.text}</span>
+                  {i.minutes ? <span className="neg-row-mins">{fmtMin(i.minutes)}</span> : null}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      {items.length === 0 ? (
-        <div className="neg-side-empty small">{side === 'present' ? 'Nothing asked for. Noble.' : 'No needs on this deal.'}</div>
-      ) : (
-        <ul className="neg-items">
-          {items.map((i) => (
-            <li key={i.id} className={`neg-check ${i.done ? 'done' : ''}`}>
-              <label className="neg-check-label">
-                <input type="checkbox" checked={!!i.done} onChange={() => onToggle(i.id)} />
-                <span className="neg-check-text">{i.text}</span>
-                {i.minutes ? <span className="mono muted small">{fmtMin(i.minutes)}</span> : null}
-              </label>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
+  )
+}
+
+function CheckCircle() {
+  return (
+    <span className="neg-circle" aria-hidden>
+      <svg viewBox="0 0 24 24" width="14" height="14">
+        <path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
   )
 }
