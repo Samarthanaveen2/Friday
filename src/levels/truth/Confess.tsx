@@ -78,166 +78,140 @@ export default function Confess() {
   }
 
   return (
-    <div className="stack">
-      <section className="panel truth-panel truth-prompt-panel">
-        <div className="row-between">
-          <div className="panel-title" style={{ marginBottom: 0 }}>
-            Courage prompt
-          </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={nextPrompt} aria-label="Another prompt">
-            ↻ Another
+    <div className="stack truth-confess">
+      <section className="panel truth-write">
+        <div className="truth-prompt-row">
+          <p key={promptIdx} className="truth-prompt">
+            {prompt}
+          </p>
+          <button type="button" className="truth-text-btn" onClick={nextPrompt} aria-label="Show another prompt">
+            Shuffle
           </button>
         </div>
-        <p key={promptIdx} className="truth-prompt">
-          {prompt}
-        </p>
+        <label className="truth-visually-hidden" htmlFor="truth-text">
+          The truth
+        </label>
+        <textarea
+          id="truth-text"
+          className="truth-textarea"
+          placeholder="Write it plainly. No one else is reading."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
+          }}
+        />
+        <div className="truth-write-foot">
+          <span className="truth-hint truth-hide-sm">⌘ or Ctrl + Enter</span>
+          <span className="spacer" />
+          <button type="button" className="btn truth-btn-primary truth-say" onClick={submit} disabled={!text.trim() || saving}>
+            Say it
+          </button>
+        </div>
       </section>
 
       {ritual && (
-        <div key={ritual.n} className="truth-ritual" role="status">
-          <div className="truth-ritual-mark" aria-hidden>
-            <span className="truth-ritual-ring" />
-            <span className="truth-ritual-core" />
+        <div key={ritual.n} className="truth-said" role="status">
+          <span className="truth-said-check" aria-hidden>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12.5l4.5 4.5L19 7.5" pathLength={1} />
+            </svg>
+          </span>
+          <div className="truth-said-text">
+            <div className="truth-said-title">Saved</div>
+            <div className="truth-said-ack">{ritual.ack}</div>
           </div>
-          <div>
-            <div className="truth-ritual-said mono">Said it.</div>
-            <div className="truth-ritual-ack">{ritual.ack}</div>
-          </div>
-          <button type="button" className="btn btn-ghost btn-sm truth-ritual-close" onClick={() => setRitual(null)} aria-label="Dismiss">
-            ✕
+          <button type="button" className="truth-text-btn truth-said-close" onClick={() => setRitual(null)} aria-label="Dismiss">
+            Done
           </button>
         </div>
       )}
 
-      <section className="panel truth-panel">
-        <div className="stack">
-          <div>
-            <label className="label" htmlFor="truth-text">
-              The truth
-            </label>
-            <textarea
-              id="truth-text"
-              className="textarea truth-textarea"
-              placeholder="Write it plainly. No one else is reading."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
-              }}
-            />
-          </div>
-
-          <div>
-            <span className="label">What kind?</span>
-            <div className="truth-seg" role="radiogroup">
-              {KINDS.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="radio"
-                  aria-checked={kind === k}
-                  className={`truth-seg-btn ${kind === k ? 'active' : ''}`}
-                  onClick={() => setKind(k)}
-                >
-                  <span className="truth-seg-name">{KIND_LABEL[k]}</span>
-                  <span className="truth-seg-hint">{KIND_HINT[k]}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="truth-fields">
-            <div>
-              <label className="label" htmlFor="truth-who">
-                Who <span className="truth-optional">optional</span>
-              </label>
-              <input
-                id="truth-who"
-                className="input"
-                list="truth-who-list"
-                placeholder="A person — or “me”"
-                value={who}
-                onChange={(e) => setWho(e.target.value)}
-                autoComplete="off"
-              />
-              <datalist id="truth-who-list">
-                {whoOptions.map((w) => (
-                  <option key={w} value={w} />
-                ))}
-              </datalist>
-            </div>
-            <div>
-              <label className="label" htmlFor="truth-topic">
-                Topic <span className="truth-optional">optional</span>
-              </label>
-              <input
-                id="truth-topic"
-                className="input"
-                list="truth-topic-list"
-                placeholder="Work, money, health…"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                autoComplete="off"
-              />
-              <datalist id="truth-topic-list">
-                {topicOptions.map((w) => (
-                  <option key={w} value={w} />
-                ))}
-              </datalist>
-            </div>
-          </div>
-
-          {!more ? (
-            <button type="button" className="btn btn-ghost btn-sm truth-more" onClick={() => setMore(true)}>
-              + Tags & status
+      <div>
+        <div className="truth-section-title">What kind?</div>
+        <div className="truth-seg" role="radiogroup" aria-label="What kind">
+          {KINDS.map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={kind === k} className={`truth-seg-btn ${kind === k ? 'active' : ''}`} onClick={() => setKind(k)}>
+              {KIND_LABEL[k]}
             </button>
-          ) : (
-            <>
-              <div>
-                <label className="label" htmlFor="truth-tags">
-                  Tags <span className="truth-optional">comma separated</span>
-                </label>
-                <input id="truth-tags" className="input" placeholder="fear, approval, procrastination" value={tags} onChange={(e) => setTags(e.target.value)} />
-                {tagOptions.length > 0 && (
-                  <div className="row truth-tag-suggest">
-                    {tagOptions.map((t) => (
-                      <button key={t} type="button" className={`chip truth-chip-btn ${currentTags.includes(t) ? 'truth-chip-on' : ''}`} onClick={() => toggleTag(t)}>
-                        #{t}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <span className="label">Status</span>
-                <div className="row">
-                  {STATUSES.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`chip truth-chip-btn truth-status-${s} ${status === s ? 'truth-chip-on' : ''}`}
-                      onClick={() => setStatus(s)}
-                      title={STATUS_HINT[s]}
-                    >
-                      {STATUS_LABEL[s]}
-                    </button>
-                  ))}
-                </div>
-                <div className="muted small" style={{ marginTop: 6 }}>
-                  {STATUS_HINT[status]}
-                </div>
-              </div>
-            </>
-          )}
-
-          <div className="row-between">
-            <span className="muted small truth-hide-sm">Ctrl/⌘ + Enter to say it</span>
-            <button type="button" className="btn truth-btn-red truth-say" onClick={submit} disabled={!text.trim() || saving}>
-              Say it
-            </button>
-          </div>
+          ))}
         </div>
-      </section>
+        <div className="truth-footnote">{KIND_HINT[kind]}</div>
+      </div>
+
+      <div>
+        <div className="truth-section-title">Details</div>
+        <div className="truth-group">
+          <label className="truth-row truth-field" htmlFor="truth-who">
+            <span className="truth-row-label">Who</span>
+            <input
+              id="truth-who"
+              className="truth-row-input"
+              list="truth-who-list"
+              placeholder="A person, or “me”"
+              value={who}
+              onChange={(e) => setWho(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <datalist id="truth-who-list">
+            {whoOptions.map((w) => (
+              <option key={w} value={w} />
+            ))}
+          </datalist>
+          <label className="truth-row truth-field" htmlFor="truth-topic">
+            <span className="truth-row-label">Topic</span>
+            <input
+              id="truth-topic"
+              className="truth-row-input"
+              list="truth-topic-list"
+              placeholder="Work, money, health…"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <datalist id="truth-topic-list">
+            {topicOptions.map((w) => (
+              <option key={w} value={w} />
+            ))}
+          </datalist>
+          <label className="truth-row truth-field" htmlFor="truth-tags">
+            <span className="truth-row-label">Tags</span>
+            <input id="truth-tags" className="truth-row-input" placeholder="fear, approval…" value={tags} onChange={(e) => setTags(e.target.value)} autoComplete="off" />
+          </label>
+          {more && (
+            <div className="truth-row truth-field truth-status-row">
+              <span className="truth-row-label">Status</span>
+              <div className="truth-seg truth-seg-sm" role="radiogroup" aria-label="Status">
+                {STATUSES.map((s) => (
+                  <button key={s} type="button" role="radio" aria-checked={status === s} className={`truth-seg-btn ${status === s ? 'active' : ''}`} onClick={() => setStatus(s)} title={STATUS_HINT[s]}>
+                    {STATUS_LABEL[s]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        {tagOptions.length > 0 && (
+          <div className="truth-tag-suggest">
+            {tagOptions.map((t) => (
+              <button key={t} type="button" className={`chip truth-chip-btn ${currentTags.includes(t) ? 'active' : ''}`} onClick={() => toggleTag(t)}>
+                #{t}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="truth-footnote">
+          {more ? (
+            STATUS_HINT[status]
+          ) : (
+            <button type="button" className="truth-text-btn" onClick={() => setMore(true)}>
+              Set a status
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

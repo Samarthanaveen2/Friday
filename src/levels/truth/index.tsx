@@ -9,6 +9,7 @@ import Patterns from './Patterns'
 import Keypad from './Keypad'
 import PinFlow, { type PinFlowMode } from './PinFlow'
 import { HIDDEN_RELOCK_MS, PIN_KEY, PIN_OFFERED_KEY, getStoredPin, lockTruth, unlockTruth } from './lock'
+import { CheckIcon, LockIcon } from './icons'
 import './truth.css'
 
 type Phase = 'loading' | 'offer' | 'setup' | 'locked' | 'open'
@@ -101,11 +102,11 @@ export default function Truth() {
         phase === 'open' ? (
           <div className="row truth-header-actions">
             {hasPin && (
-              <button type="button" className="btn btn-sm truth-btn-outline" onClick={lockNow} title="Lock the chamber">
-                🔒 Lock
+              <button type="button" className="btn btn-sm" onClick={lockNow} title="Lock this page">
+                <LockIcon /> Lock
               </button>
             )}
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPinMode(pinMode ? null : hasPin ? 'change' : 'set')}>
+            <button type="button" className="btn btn-ghost btn-sm truth-ghost" onClick={() => setPinMode(pinMode ? null : hasPin ? 'change' : 'set')}>
               {pinMode ? 'Close' : 'PIN settings'}
             </button>
           </div>
@@ -118,7 +119,7 @@ export default function Truth() {
     return (
       <div className="truth">
         {header}
-        <div className="empty">Entering the chamber…</div>
+        <div className="empty">Loading…</div>
       </div>
     )
 
@@ -130,17 +131,17 @@ export default function Truth() {
           {phase === 'offer' ? (
             <div className="stack truth-offer">
               <div className="truth-gate-glyph" aria-hidden>
-                ◈
+                <LockIcon size={26} />
               </div>
               <h2>A private room</h2>
               <p className="muted">
-                This is where you write down what you lied about, avoided, or told yourself — so you can find the courage to say it. Want a PIN on the door?
+                This is where you write down what you lied about, avoided, or told yourself, so you can find the courage to say it. Would you like a PIN to keep it private?
               </p>
-              <div className="row" style={{ justifyContent: 'center' }}>
-                <button type="button" className="btn truth-btn-red" onClick={() => setPhase('setup')}>
+              <div className="stack-sm truth-offer-actions">
+                <button type="button" className="btn truth-btn-primary" onClick={() => setPhase('setup')}>
                   Set a PIN
                 </button>
-                <button type="button" className="btn btn-ghost" onClick={skipOffer}>
+                <button type="button" className="btn btn-ghost truth-ghost" onClick={skipOffer}>
                   Skip for now
                 </button>
               </div>
@@ -169,7 +170,7 @@ export default function Truth() {
       <div className="truth">
         {header}
         <section className="panel truth-panel truth-gate">
-          <Keypad title="The chamber is locked" subtitle="Enter your PIN" error={error} errorTick={tick} busy={busy} submitLabel="Unlock" onSubmit={tryUnlock} />
+          <Keypad title="Enter PIN" subtitle="Truth is locked" error={error} errorTick={tick} busy={busy} submitLabel="Unlock" onSubmit={tryUnlock} />
           <p className="small muted truth-note">{HONEST_NOTE}</p>
         </section>
       </div>
@@ -180,23 +181,21 @@ export default function Truth() {
       {header}
 
       {notice && (
-        <div className="truth-notice small" role="status">
-          {notice}
+        <div className="truth-notice" role="status">
+          <CheckIcon /> {notice}
         </div>
       )}
 
       {pinMode && (
         <section className="panel truth-panel truth-pin-settings">
-          <div className="row-between">
-            <div className="panel-title" style={{ marginBottom: 0 }}>
-              PIN settings
-            </div>
+          <div className="truth-pin-head">
+            <div className="truth-section-title">PIN settings</div>
             {hasPin && (
-              <div className="row truth-chips">
-                <button type="button" className={`chip truth-chip-btn ${pinMode === 'change' ? 'truth-chip-on' : ''}`} onClick={() => setPinMode('change')}>
+              <div className="truth-seg truth-seg-sm" role="tablist">
+                <button type="button" role="tab" aria-selected={pinMode === 'change'} className={`truth-seg-btn ${pinMode === 'change' ? 'active' : ''}`} onClick={() => setPinMode('change')}>
                   Change
                 </button>
-                <button type="button" className={`chip truth-chip-btn ${pinMode === 'remove' ? 'truth-chip-on' : ''}`} onClick={() => setPinMode('remove')}>
+                <button type="button" role="tab" aria-selected={pinMode === 'remove'} className={`truth-seg-btn ${pinMode === 'remove' ? 'active' : ''}`} onClick={() => setPinMode('remove')}>
                   Remove
                 </button>
               </div>
@@ -217,14 +216,14 @@ export default function Truth() {
         </section>
       )}
 
-      <nav className="truth-tabs" aria-label="Truth Chamber sections">
-        <NavLink end to="/truth" className={({ isActive }) => `truth-tab ${isActive ? 'active' : ''}`}>
+      <nav className="truth-seg truth-tabs" aria-label="Truth sections">
+        <NavLink end to="/truth" className={({ isActive }) => `truth-seg-btn ${isActive ? 'active' : ''}`}>
           Confess
         </NavLink>
-        <NavLink to="/truth/ledger" className={({ isActive }) => `truth-tab ${isActive ? 'active' : ''}`}>
+        <NavLink to="/truth/ledger" className={({ isActive }) => `truth-seg-btn ${isActive ? 'active' : ''}`}>
           Ledger
         </NavLink>
-        <NavLink to="/truth/patterns" className={({ isActive }) => `truth-tab ${isActive ? 'active' : ''}`}>
+        <NavLink to="/truth/patterns" className={({ isActive }) => `truth-seg-btn ${isActive ? 'active' : ''}`}>
           Patterns
         </NavLink>
       </nav>

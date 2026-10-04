@@ -57,26 +57,37 @@ function streaks(entries: TruthEntry[]) {
 function TopList({ title, items, param, empty }: { title: string; items: Count[]; param: string; empty: string }) {
   const max = items[0]?.n ?? 1
   return (
-    <section className="panel truth-panel">
-      <div className="panel-title">{title}</div>
+    <section>
+      <div className="truth-section-title">{title}</div>
       {items.length === 0 ? (
-        <p className="muted small">{empty}</p>
+        <div className="truth-group truth-group-empty">{empty}</div>
       ) : (
-        <ul className="truth-bars">
+        <ul className="truth-group">
           {items.slice(0, 6).map((c) => (
             <li key={c.label}>
-              <Link className="truth-bar-row" to={`/truth/ledger?${param}=${encodeURIComponent(param === 'tag' ? c.label.toLowerCase() : c.label)}`}>
-                <span className="truth-bar-label">{param === 'tag' ? `#${c.label}` : c.label}</span>
-                <span className="truth-bar-track">
-                  <span className="truth-bar-fill" style={{ width: `${(c.n / max) * 100}%` }} />
+              <Link className="truth-row truth-bar-row" to={`/truth/ledger?${param}=${encodeURIComponent(param === 'tag' ? c.label.toLowerCase() : c.label)}`}>
+                <span className="truth-bar-main">
+                  <span className="truth-bar-label">{param === 'tag' ? `#${c.label}` : c.label}</span>
+                  <span className="truth-bar-track">
+                    <span className="truth-bar-fill" style={{ width: `${(c.n / max) * 100}%` }} />
+                  </span>
                 </span>
-                <span className="mono small truth-bar-n">{c.n}</span>
+                <span className="truth-bar-n">{c.n}</span>
+                <Chevron />
               </Link>
             </li>
           ))}
         </ul>
       )}
     </section>
+  )
+}
+
+function Chevron() {
+  return (
+    <svg className="truth-chevron" width="7" height="12" viewBox="0 0 7 12" aria-hidden>
+      <path d="M1 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
 
@@ -107,17 +118,14 @@ export default function Patterns() {
     }
   }, [all])
 
-  if (!all) return <div className="empty">Reading the patterns…</div>
+  if (!all) return <div className="empty">Loading…</div>
 
   if (stats.total === 0)
     return (
       <div className="empty truth-empty">
-        <div className="truth-empty-glyph" aria-hidden>
-          ◇
-        </div>
-        <p>Patterns appear after a few entries.</p>
+        <p className="truth-empty-title">No patterns yet</p>
         <p className="small" style={{ marginTop: 4 }}>
-          Nothing to see yet — <Link to="/truth">start with one true sentence</Link>.
+          They appear after a few entries. <Link to="/truth">Start with one true sentence</Link>.
         </p>
       </div>
     )
@@ -126,99 +134,92 @@ export default function Patterns() {
   const kindMax = Math.max(1, ...Object.values(stats.byKind))
 
   return (
-    <div className="stack">
+    <div className="stack truth-patterns">
       <div className="truth-stats">
-        <div className="panel truth-panel truth-stat">
-          <div className="panel-title">Truth streak</div>
-          <div className="big-number truth-red">{streak.current}</div>
-          <div className="small muted">
-            {streak.current === 1 ? 'day' : 'days'} in a row
-            {!streak.writtenToday && streak.current > 0 ? ' · today still open' : ''}
+        <div className="panel truth-stat">
+          <div className="truth-stat-label">Streak</div>
+          <div className="truth-stat-value">
+            <span className="big-number">{streak.current}</span>
+            <span className="truth-stat-unit">{streak.current === 1 ? 'day' : 'days'}</span>
           </div>
           <div className="truth-strip" aria-label="Last 14 days">
             {streak.strip.map((d) => (
               <span key={d.key} className={`truth-strip-day ${d.on ? 'on' : ''}`} title={d.key} />
             ))}
           </div>
-          <div className="small muted">Best: {streak.best} · {streak.totalDays} honest {streak.totalDays === 1 ? 'day' : 'days'} total</div>
+          <div className="truth-stat-foot">
+            Best {streak.best} · {streak.totalDays} honest {streak.totalDays === 1 ? 'day' : 'days'}
+            {!streak.writtenToday && streak.current > 0 ? ' · today still open' : ''}
+          </div>
         </div>
 
-        <div className="panel truth-panel truth-stat">
-          <div className="panel-title">Addressed</div>
+        <div className="panel truth-stat">
+          <div className="truth-stat-label">Addressed</div>
           <div className="truth-ring-wrap">
             <svg viewBox="0 0 36 36" className="truth-ring" aria-hidden>
-              <circle cx="18" cy="18" r="15.9" className="truth-ring-bg" />
-              {stats.rate > 0 && <circle cx="18" cy="18" r="15.9" className="truth-ring-fg" pathLength={100} strokeDasharray={`${stats.rate} ${100 - stats.rate}`} />}
+              <circle cx="18" cy="18" r="15.5" className="truth-ring-bg" />
+              {stats.rate > 0 && <circle cx="18" cy="18" r="15.5" className="truth-ring-fg" pathLength={100} strokeDasharray={`${stats.rate} ${100 - stats.rate}`} />}
             </svg>
             <div>
               <div className="big-number">{stats.rate}%</div>
-              <div className="small muted">
+              <div className="truth-stat-foot">
                 {stats.addressed} of {stats.total} said out loud or fixed
               </div>
             </div>
           </div>
-          <div className="small muted">Confessing is step one. Addressing is optional, and it counts when you do.</div>
+          <div className="truth-stat-foot">Writing it down is step one. Addressing it is optional, and it counts when you do.</div>
         </div>
 
-        <div className="panel truth-panel truth-stat">
-          <div className="panel-title">By kind</div>
-          <ul className="truth-bars">
+        <div className="panel truth-stat">
+          <div className="truth-stat-label">By kind</div>
+          <ul className="truth-kind-bars">
             {(Object.keys(stats.byKind) as TruthKind[]).map((k) => (
               <li key={k}>
-                <Link className="truth-bar-row" to={`/truth/ledger?kind=${k}`}>
-                  <span className="truth-bar-label">{KIND_LABEL[k]}</span>
+                <Link className="truth-kind-bar" to={`/truth/ledger?kind=${k}`}>
+                  <span className="truth-kind-bar-top">
+                    <span>{KIND_LABEL[k]}</span>
+                    <span className="truth-bar-n">{stats.byKind[k]}</span>
+                  </span>
                   <span className="truth-bar-track">
                     <span className={`truth-bar-fill truth-fill-${k}`} style={{ width: `${(stats.byKind[k] / kindMax) * 100}%` }} />
                   </span>
-                  <span className="mono small truth-bar-n">{stats.byKind[k]}</span>
                 </Link>
               </li>
             ))}
           </ul>
-          {stats.pattern > 0 && (
-            <div className="small muted" style={{ marginTop: 8 }}>
-              {stats.pattern} marked as a recurring pattern
-            </div>
-          )}
+          {stats.pattern > 0 && <div className="truth-stat-foot">{stats.pattern} marked as a recurring pattern</div>}
         </div>
       </div>
 
-      <section className="panel truth-panel truth-courage">
-        <div className="row-between">
-          <div className="panel-title" style={{ marginBottom: 0 }}>
-            Courage opportunities
-          </div>
+      <section>
+        <div className="truth-section-title truth-list-head">
+          <span>Worth revisiting</span>
           {stats.waiting.length > 3 && (
-            <Link className="small" to="/truth/ledger?old=1">
+            <Link className="truth-text-btn" to="/truth/ledger?old=1">
               See all {stats.waiting.length}
             </Link>
           )}
         </div>
         {stats.waiting.length === 0 ? (
-          <p className="muted small" style={{ marginTop: 8 }}>
-            Nothing has been waiting more than a week. Nice and current.
-          </p>
+          <div className="truth-group truth-group-empty">Nothing has been waiting more than a week. Nice and current.</div>
         ) : (
           <>
-            <p className="muted small" style={{ marginTop: 6, marginBottom: 12 }}>
-              These have been sitting for over a week. No pressure — just a gentle nudge. Pick one only if you’re ready.
-            </p>
-            <ul className="truth-list">
+            <ul className="truth-group truth-list">
               {stats.waiting.slice(0, 3).map((t) => (
-                <li key={t.id} className="truth-entry truth-entry-waiting">
+                <li key={t.id} className="truth-entry">
                   <div className="truth-entry-head">
                     <span className={`truth-kind truth-kind-${t.kind}`}>{KIND_LABEL[t.kind]}</span>
-                    {t.who && <span className="small">{t.who}</span>}
+                    {t.who && <span className="truth-link">{t.who}</span>}
                     <span className="spacer" />
-                    <span className="mono small muted">{timeAgo(t.createdAt)}</span>
+                    <span className="truth-time">{timeAgo(t.createdAt)}</span>
                   </div>
                   <p className="truth-entry-text">{t.text}</p>
-                  <div className="row">
-                    <button type="button" className="btn btn-sm truth-btn-red" onClick={() => changeStatus(t, 'addressed')}>
+                  <div className="truth-entry-foot">
+                    <button type="button" className="btn btn-sm" onClick={() => changeStatus(t, 'addressed')}>
                       I addressed it
                     </button>
                     {t.status !== 'pattern' && (
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => changeStatus(t, 'pattern')}>
+                      <button type="button" className="btn btn-ghost btn-sm truth-ghost-muted" onClick={() => changeStatus(t, 'pattern')}>
                         It’s a pattern
                       </button>
                     )}
@@ -226,11 +227,12 @@ export default function Patterns() {
                 </li>
               ))}
             </ul>
+            <div className="truth-footnote">These have been sitting for over a week. No pressure. Pick one only if you’re ready.</div>
           </>
         )}
       </section>
 
-      <div className="grid">
+      <div className="truth-tops">
         <TopList title="People who come up" items={stats.people} param="who" empty="No names yet. Add a “who” to see who comes up." />
         <TopList title="Recurring topics" items={stats.topics} param="topic" empty="No topics yet." />
         <TopList title="Repeating tags" items={stats.tags} param="tag" empty="No tags yet." />

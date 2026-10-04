@@ -13,7 +13,7 @@ interface Props {
   cancelLabel?: string
 }
 
-/** Set, change or remove the chamber PIN. Change/remove require the old PIN. */
+/** Set, change or remove the Truth PIN. Change/remove require the old PIN. */
 export default function PinFlow({ mode, onDone, onCancel, cancelLabel }: Props) {
   const [step, setStep] = useState<Step>(mode === 'set' ? 'new' : 'old')
   const [first, setFirst] = useState('')
@@ -34,7 +34,7 @@ export default function PinFlow({ mode, onDone, onCancel, cancelLabel }: Props) 
         setError(null)
         if (mode === 'remove') {
           await removePin()
-          onDone('PIN removed. The chamber is open on this device.')
+          onDone('PIN removed. This page now opens without one on this device.')
         } else {
           setStep('new')
           setTick((t) => t + 1)
@@ -51,7 +51,7 @@ export default function PinFlow({ mode, onDone, onCancel, cancelLabel }: Props) 
           return fail('Those didn’t match. Let’s try again.')
         }
         await setPin(pin)
-        onDone(mode === 'change' ? 'PIN changed.' : 'PIN set. The chamber will lock each time you return.')
+        onDone(mode === 'change' ? 'PIN changed.' : 'PIN set. You’ll be asked for it each time you come back.')
       }
     } finally {
       setBusy(false)
@@ -59,7 +59,7 @@ export default function PinFlow({ mode, onDone, onCancel, cancelLabel }: Props) 
   }
 
   const title =
-    step === 'old' ? 'Enter current PIN' : step === 'new' ? (mode === 'change' ? 'Choose a new PIN' : 'Choose a PIN') : 'Once more to confirm'
+    step === 'old' ? 'Enter current PIN' : step === 'new' ? (mode === 'change' ? 'Choose a new PIN' : 'Choose a PIN') : 'Enter it once more'
   const subtitle = step === 'old' ? (mode === 'remove' ? 'To remove the lock' : 'To change the lock') : step === 'new' ? '4 to 6 digits' : undefined
 
   return (

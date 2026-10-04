@@ -14,6 +14,7 @@ interface Props {
 }
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+const LETTERS: Record<string, string> = { '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO', '7': 'PQRS', '8': 'TUV', '9': 'WXYZ' }
 
 export default function Keypad({ title, subtitle, error, errorTick = 0, submitLabel = 'Enter', onSubmit, onCancel, cancelLabel = 'Cancel', busy }: Props) {
   const [pin, setPin] = useState('')
@@ -24,7 +25,7 @@ export default function Keypad({ title, subtitle, error, errorTick = 0, submitLa
     setPin('')
     if (!error) return
     setShaking(true)
-    const t = setTimeout(() => setShaking(false), 450)
+    const t = setTimeout(() => setShaking(false), 400)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [errorTick])
@@ -50,44 +51,45 @@ export default function Keypad({ title, subtitle, error, errorTick = 0, submitLa
     return () => window.removeEventListener('keydown', onKey)
   })
 
+  const dots = Math.max(4, pin.length)
+  const canSubmit = pin.length >= 4 && !busy
+
   return (
-    <div className={`truth-keypad ${shaking ? 'truth-shake' : ''}`}>
+    <div className="truth-keypad">
       <div className="truth-keypad-title">{title}</div>
-      {subtitle && <div className="truth-keypad-sub muted small">{subtitle}</div>}
-      <div className="truth-dots" aria-label={`${pin.length} digits entered`}>
-        {Array.from({ length: 6 }, (_, i) => (
-          <span key={i} className={`truth-dot ${i < pin.length ? 'filled' : ''} ${i >= 4 ? 'optional' : ''}`} />
+      <div className="truth-keypad-sub">{subtitle || '\u00a0'}</div>
+      <div className={`truth-dots ${shaking ? 'truth-shake' : ''}`} aria-label={`${pin.length} digits entered`}>
+        {Array.from({ length: dots }, (_, i) => (
+          <span key={i} className={`truth-dot ${i < pin.length ? 'filled' : ''}`} />
         ))}
       </div>
-      <div className="truth-keypad-error small" role="alert">
-        {error || ' '}
+      <div className="truth-keypad-error" role="alert">
+        {error || '\u00a0'}
       </div>
       <div className="truth-keys">
         {KEYS.map((k) => (
           <button key={k} type="button" className="truth-key" onClick={() => press(k)}>
-            {k}
+            <span className="truth-key-digit">{k}</span>
+            <span className="truth-key-letters">{LETTERS[k] || '\u00a0'}</span>
           </button>
         ))}
-        <button type="button" className="truth-key truth-key-fn" onClick={back} aria-label="Delete digit" disabled={!pin}>
-          ⌫
-        </button>
-        <button type="button" className="truth-key" onClick={() => press('0')}>
-          0
-        </button>
-        <button type="button" className="truth-key truth-key-go" onClick={submit} disabled={pin.length < 4 || busy} aria-label={submitLabel}>
-          ↵
-        </button>
-      </div>
-      <div className="row" style={{ justifyContent: 'center' }}>
-        <button type="button" className="btn btn-sm truth-btn-red" onClick={submit} disabled={pin.length < 4 || busy}>
-          {submitLabel}
-        </button>
-        {onCancel && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
+        {onCancel ? (
+          <button type="button" className="truth-key-text" onClick={onCancel}>
             {cancelLabel}
           </button>
+        ) : (
+          <span />
         )}
+        <button type="button" className="truth-key" onClick={() => press('0')}>
+          <span className="truth-key-digit">0</span>
+        </button>
+        <button type="button" className="truth-key-text" onClick={back} aria-label="Delete digit" disabled={!pin}>
+          Delete
+        </button>
       </div>
+      <button type="button" className="btn truth-btn-primary truth-keypad-submit" onClick={submit} disabled={!canSubmit}>
+        {submitLabel}
+      </button>
     </div>
   )
 }
