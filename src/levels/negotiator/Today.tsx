@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { DealItem, IfThenRule } from '../../db/types'
 import { db, setSetting } from '../../db/db'
-import { prettyDay } from '../../lib/date'
+import { prettyDay, uid } from '../../lib/date'
 import { BalanceMeter, ItemColumn, NegThread, Projection, ReviewPanel, StandingRules, StatusChip } from './components'
 import {
   type NegDeal,
@@ -30,12 +30,23 @@ interface Draft {
 
 const DRAFT_KEY = 'neg-draft'
 
+function openingThread(wants: DealItem[], needs: DealItem[]): NegMessage[] {
+  return [
+    ...wants.map((w) => ({ id: uid(), from: 'present' as const, text: w.text })),
+    ...needs.map((n) => ({ id: uid(), from: 'future' as const, text: n.text })),
+  ]
+}
+
 function loadDraft(today: string): Draft {
   try {
     const raw = localStorage.getItem(DRAFT_KEY)
     if (raw) {
       const d = JSON.parse(raw) as Draft
-      if (d.date === today) return { ...d, thread: d.thread ?? [], stage: d.stage ?? (d.wants.length + d.needs.length ? 'terms' : 'talk') }
+      if (d.date === today) {
+        if (d.thread?.length) return d
+        // Older drafts had no conversation: turn their two sides into the opening messages.
+        return { date: d.date, stage: 'talk', wants: [], needs: [], thread: openingThread(d.wants, d.needs) }
+      }
     }
   } catch {
     /* storage unavailable */
@@ -256,7 +267,12 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
   }
   const tearUp = async () => {
     if (deal.id == null) return
-    saveDraft({ date: deal.date, thread: deal.thread ?? [], stage: 'terms', wants: deal.wants.map((w) => ({ ...w, done: false })), needs: deal.needs.map((n) => ({ ...n, done: false })) })
+    if (deal.thread?.length) {
+      saveDraft({ date: deal.date, thread: deal.thread, stage: 'terms', wants: deal.wants.map((w) => ({ ...w, done: false })), needs: deal.needs.map((n) => ({ ...n, done: false })) })
+    } else {
+      // A deal from before negotiations were a conversation: its two sides become the opening messages.
+      saveDraft({ date: deal.date, thread: openingThread(deal.wants, deal.needs), stage: 'talk', wants: [], needs: [] })
+    }
     await db.deals.delete(deal.id)
   }
 
