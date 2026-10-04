@@ -59,12 +59,12 @@ export default function Forge() {
 
   const summary =
     active.length > 0 ? (
-      <div className="forge-summary" title="Identity votes cast today">
-        <span className="forge-summary-n mono">
+      <div className="forge-summary" title="Habits done today">
+        <span className="forge-summary-n">
           {doneToday}
-          <span className="muted">/{active.length}</span>
+          <span className="forge-summary-of">/{active.length}</span>
         </span>
-        <span className="forge-summary-l">votes today</span>
+        <span className="forge-summary-l">done today</span>
       </div>
     ) : undefined
 
@@ -72,13 +72,18 @@ export default function Forge() {
     <div className="forge">
       <LevelHeader path="/forge" right={summary} />
 
-      <nav className="forge-tabs" role="tablist" aria-label="Forge sections">
+      <nav className="forge-seg" role="tablist" aria-label="Forge sections">
+        <span
+          className="forge-seg-pill"
+          aria-hidden
+          style={{ transform: `translateX(${TABS.findIndex((t) => t.key === tab) * 100}%)` }}
+        />
         {TABS.map((t) => (
           <button
             key={t.key}
             role="tab"
             aria-selected={tab === t.key}
-            className={`forge-tab ${tab === t.key ? 'active' : ''}`}
+            className={`forge-seg-btn ${tab === t.key ? 'active' : ''}`}
             onClick={() => setTab(t.key)}
           >
             {t.label}
@@ -87,7 +92,7 @@ export default function Forge() {
       </nav>
 
       {loading ? (
-        <div className="empty">Heating the forge…</div>
+        <div className="empty">Loading…</div>
       ) : tab === 'today' ? (
         <TodayTab habits={habits} idx={idx} logs={logs} experiment={experiment} onAddHabit={() => setTab('habits')} />
       ) : tab === 'heat' ? (

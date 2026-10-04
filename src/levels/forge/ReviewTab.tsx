@@ -74,39 +74,41 @@ function ReviewForm({ week, existing }: { week: string; existing?: ForgeReview }
   }
 
   return (
-    <div className="stack">
-      {(Object.keys(PROMPTS) as Field[]).map((f) => {
-        const p = PROMPTS[f]
-        const prompt = p.prompts[turn[f] % p.prompts.length]
-        return (
-          <div key={f}>
-            <div className="row-between forge-field-head">
-              <label className="label forge-field-label" htmlFor={`forge-rv-${f}`}>{p.title}</label>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm forge-shuffle"
-                onClick={() => setTurn({ ...turn, [f]: turn[f] + 1 })}
-                title="Another prompt"
-              >
-                Another prompt
-              </button>
+    <div className="stack-sm">
+      <div className="forge-group">
+        {(Object.keys(PROMPTS) as Field[]).map((f) => {
+          const p = PROMPTS[f]
+          const prompt = p.prompts[turn[f] % p.prompts.length]
+          return (
+            <div key={f} className="forge-field-stack">
+              <div className="forge-field-head">
+                <label className="forge-field-label" htmlFor={`forge-rv-${f}`}>{p.title}</label>
+                <button
+                  type="button"
+                  className="forge-link"
+                  onClick={() => setTurn({ ...turn, [f]: turn[f] + 1 })}
+                  title="Show a different prompt"
+                >
+                  Another prompt
+                </button>
+              </div>
+              <textarea
+                id={`forge-rv-${f}`}
+                className="forge-textarea"
+                placeholder={prompt}
+                value={draft[f]}
+                rows={f === 'fix' ? 2 : 3}
+                onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
+              />
             </div>
-            <textarea
-              id={`forge-rv-${f}`}
-              className={`textarea forge-input ${f === 'fix' ? 'forge-fix-input' : ''}`}
-              placeholder={prompt}
-              value={draft[f]}
-              rows={f === 'fix' ? 2 : 3}
-              onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
-            />
-          </div>
-        )
-      })}
-      <div className="row">
-        <button className="btn forge-btn-primary" disabled={!hasAny || !dirty} onClick={save}>
+          )
+        })}
+      </div>
+      <div className="row forge-actions">
+        <button className="btn btn-gold" disabled={!hasAny || !dirty} onClick={save}>
           {existing ? 'Update breakdown' : 'Save breakdown'}
         </button>
-        {saved && <span className="forge-saved small">Saved. The fix becomes next week's experiment.</span>}
+        {saved && <span className="forge-saved small">Saved. Your fix becomes next week's experiment.</span>}
         {!saved && existing && !dirty && <span className="muted small">Saved for this week. Edit any time.</span>}
       </div>
     </div>
@@ -144,9 +146,9 @@ export default function ReviewTab({ reviews, habits, idx }: { reviews: ForgeRevi
     <div className="grid-2 forge-review">
       <div className="stack">
         {previous ? (
-          <section className="panel forge-panel forge-experiment-panel">
-            <div className="panel-title forge-accent">
-              {fromLastWeek ? 'This week’s experiment' : `Experiment carried from ${weekLabel(previous.weekStart)}`}
+          <section className="panel forge-experiment-panel">
+            <div className="forge-experiment-tag">
+              {fromLastWeek ? 'This week’s experiment' : `Experiment from ${weekLabel(previous.weekStart)}`}
             </div>
             <p className="forge-experiment-big">{previous.fix}</p>
             <div className="forge-result">
@@ -165,44 +167,50 @@ export default function ReviewTab({ reviews, habits, idx }: { reviews: ForgeRevi
             </div>
           </section>
         ) : (
-          <section className="panel forge-panel">
-            <div className="panel-title">This week's experiment</div>
-            <p className="muted">
-              Nothing yet. The fix you write below becomes next week's experiment and will sit right here, waiting for you.
+          <section className="panel">
+            <div className="panel-title forge-tight">This week's experiment</div>
+            <p className="muted small">
+              Nothing yet. The fix you write below becomes next week's experiment and shows up here.
             </p>
           </section>
         )}
 
-        <section className="panel forge-panel">
-          <div className="row-between">
-            <div className="panel-title forge-tight">Weekly breakdown</div>
-            <span className="muted small mono">{weekLabel(week)}</span>
+        <section>
+          <div className="forge-section-head">
+            <span>Weekly breakdown</span>
+            <span className="mono">{weekLabel(week)}</span>
           </div>
-          <p className="muted small forge-hint forge-intro">
-            Breaking down is information, not a verdict. Systems break; you redesign them. Be the engineer, not the judge.
+          <p className="forge-footnote forge-intro">
+            A rough week is information, not a verdict. Systems break and you redesign them.
             {possible > 0 && (
               <>
                 {' '}
-                So far this week: <span className="mono forge-accent">{cast}/{possible}</span> votes.
+                So far this week: <span className="mono">{cast} of {possible}</span> check-ins.
               </>
             )}
           </p>
           <ReviewForm key={week} week={week} existing={current} />
+
         </section>
       </div>
 
-      <section className="panel forge-panel">
-        <div className="panel-title">Past breakdowns</div>
+      <section>
+        <div className="forge-section-head">
+          <span>Past breakdowns</span>
+        </div>
         {past.length === 0 ? (
-          <div className="empty">Your past weeks will stack up here, each one a blueprint revision.</div>
+          <div className="empty forge-empty-sm">Past weeks will appear here.</div>
         ) : (
-          <ul className="forge-past">
+          <ul className="forge-group">
             {past.map((r) => (
               <li key={r.id}>
                 <details className="forge-past-item">
                   <summary>
-                    <span className="mono small">{weekLabel(r.weekStart)}</span>
-                    <span className="forge-past-fix">{r.fix || <span className="muted">No fix written</span>}</span>
+                    <span className="forge-past-text">
+                      <span className="forge-past-week mono">{weekLabel(r.weekStart)}</span>
+                      <span className="forge-past-fix">{r.fix || <span className="muted">No fix written</span>}</span>
+                    </span>
+                    <span className="forge-chevron" aria-hidden />
                   </summary>
                   <dl className="forge-past-body">
                     {r.broke && (<><dt>What broke</dt><dd>{r.broke}</dd></>)}

@@ -37,11 +37,11 @@ function HabitForm({
     onDone()
   }
 
+  const uid = editing?.id ?? 'new'
   return (
-    <div className="stack">
+    <div className="stack-sm">
       {!editing && (
-        <div>
-          <span className="label">Start from a preset</span>
+        <div className="forge-preset-wrap">
           <div className="forge-presets">
             {PRESETS.map((p) => (
               <button
@@ -57,55 +57,58 @@ function HabitForm({
         </div>
       )}
 
-      <div>
-        <label className="label" htmlFor="forge-name">Habit (the action)</label>
-        <input
-          id="forge-name"
-          className="input forge-input"
-          placeholder="Read 10 pages"
-          value={d.name}
-          maxLength={60}
-          onChange={(e) => setD({ ...d, name: e.target.value })}
-        />
+      <div className="forge-group">
+        <div className="forge-field">
+          <label htmlFor={`forge-name-${uid}`}>Habit</label>
+          <input
+            id={`forge-name-${uid}`}
+            className="forge-field-input"
+            placeholder="Read 10 pages"
+            value={d.name}
+            maxLength={60}
+            onChange={(e) => setD({ ...d, name: e.target.value })}
+          />
+        </div>
+        <div className="forge-field">
+          <label htmlFor={`forge-identity-${uid}`}>Identity</label>
+          <input
+            id={`forge-identity-${uid}`}
+            className="forge-field-input"
+            placeholder="I am a reader"
+            value={d.identity}
+            maxLength={90}
+            onChange={(e) => setD({ ...d, identity: e.target.value })}
+          />
+        </div>
+        <div className="forge-field">
+          <label htmlFor={`forge-tiny-${uid}`}>Minimum</label>
+          <input
+            id={`forge-tiny-${uid}`}
+            className="forge-field-input"
+            placeholder={defaultTiny(d.name || 'it')}
+            value={d.tiny}
+            maxLength={60}
+            onChange={(e) => setD({ ...d, tiny: e.target.value })}
+          />
+        </div>
       </div>
-      <div>
-        <label className="label" htmlFor="forge-identity">Identity (who each vote makes you)</label>
-        <input
-          id="forge-identity"
-          className="input forge-input"
-          placeholder="I am a reader"
-          value={d.identity}
-          maxLength={90}
-          onChange={(e) => setD({ ...d, identity: e.target.value })}
-        />
-        <p className="muted small forge-hint">Every time you do it, you cast a vote for this person. You don't need a majority of perfect days, just more votes than yesterday.</p>
-      </div>
-      <div>
-        <label className="label" htmlFor="forge-tiny">Minimum version (for hard days)</label>
-        <input
-          id="forge-tiny"
-          className="input forge-input"
-          placeholder={defaultTiny(d.name || 'it')}
-          value={d.tiny}
-          maxLength={60}
-          onChange={(e) => setD({ ...d, tiny: e.target.value })}
-        />
-        <p className="muted small forge-hint">Two minutes or less. So small it feels silly. This is what keeps the chain warm.</p>
-      </div>
+      <p className="forge-footnote">
+        The identity is who each check-in makes you. The minimum is a two-minute version for hard days, small enough to feel silly.
+      </p>
 
       {overCap && (
         <div className="forge-warn">
-          <strong>You already have {activeCount} keystone habits.</strong> A few habits you actually keep beat many you drop.
+          <strong>You already have {activeCount} habits.</strong> A few habits you actually keep beat many you drop.
           Consider archiving one first, or add this anyway if you're sure.
         </div>
       )}
 
-      <div className="row">
-        <button className="btn forge-btn-primary" disabled={!canSave} onClick={save}>
-          {editing ? 'Save changes' : overCap ? 'Add anyway' : 'Forge this habit'}
+      <div className="row forge-actions">
+        <button className="btn btn-gold" disabled={!canSave} onClick={save}>
+          {editing ? 'Save changes' : overCap ? 'Add anyway' : 'Add habit'}
         </button>
         {(editing || d.name) && (
-          <button className="btn btn-ghost" onClick={() => { setD(blank); onDone() }}>
+          <button className="btn btn-ghost forge-ghost" onClick={() => { setD(blank); onDone() }}>
             Cancel
           </button>
         )}
@@ -129,7 +132,7 @@ export default function HabitsTab({ habits, idx }: { habits: ForgeHabit[]; idx: 
   }
   async function remove(h: ForgeHabit) {
     const votes = idx.get(h.id!)?.size ?? 0
-    if (!window.confirm(`Permanently delete "${h.name}" and its ${votes} votes? Archiving keeps the history.`)) return
+    if (!window.confirm(`Permanently delete "${h.name}" and its ${votes} check-ins? Archiving keeps the history.`)) return
     await db.transaction('rw', db.habits, db.habitLogs, async () => {
       await db.habitLogs.where('habitId').equals(h.id!).delete()
       await db.habits.delete(h.id!)
@@ -138,23 +141,25 @@ export default function HabitsTab({ habits, idx }: { habits: ForgeHabit[]; idx: 
 
   return (
     <div className="grid-2 forge-habits">
-      <section className="panel forge-panel">
-        <div className="panel-title">New keystone habit</div>
+      <section>
+        <div className="forge-section-head">
+          <span>New habit</span>
+        </div>
         <HabitForm key={formKey} initial={blank} activeCount={active.length} onDone={() => setFormKey((k) => k + 1)} />
       </section>
 
       <div className="stack">
-        <section className="panel forge-panel">
-          <div className="row-between">
-            <div className="panel-title">Active</div>
+        <section>
+          <div className="forge-section-head">
+            <span>Active</span>
             <span className={`forge-cap ${active.length > SOFT_CAP ? 'over' : ''}`}>
-              {active.length} / {SOFT_CAP}
+              {active.length} of {SOFT_CAP}
             </span>
           </div>
           {active.length === 0 ? (
-            <div className="empty">The anvil is empty. Pick one habit to start. One is plenty.</div>
+            <div className="empty forge-empty-sm">No habits yet. One is plenty to start.</div>
           ) : (
-            <ul className="forge-list">
+            <ul className="forge-group">
               {active.map((h) =>
                 editingId === h.id ? (
                   <li key={h.id} className="forge-list-item editing">
@@ -169,12 +174,12 @@ export default function HabitsTab({ habits, idx }: { habits: ForgeHabit[]; idx: 
                   <li key={h.id} className="forge-list-item">
                     <div className="forge-list-main">
                       <div className="forge-habit-name">{h.name}</div>
-                      <div className="forge-identity small">{h.identity}</div>
-                      {h.tiny && <div className="muted small">Minimum: {h.tiny}</div>}
+                      <div className="forge-identity">{h.identity}</div>
+                      {h.tiny && <div className="forge-faint small">Minimum: {h.tiny}</div>}
                     </div>
-                    <div className="row forge-list-actions">
-                      <button className="btn btn-sm" onClick={() => setEditingId(h.id!)}>Edit</button>
-                      <button className="btn btn-sm btn-ghost" onClick={() => archive(h)}>Archive</button>
+                    <div className="forge-list-actions">
+                      <button className="btn btn-sm forge-btn-tint" onClick={() => setEditingId(h.id!)}>Edit</button>
+                      <button className="btn btn-sm btn-ghost forge-ghost" onClick={() => archive(h)}>Archive</button>
                     </div>
                   </li>
                 ),
@@ -182,25 +187,28 @@ export default function HabitsTab({ habits, idx }: { habits: ForgeHabit[]; idx: 
             </ul>
           )}
           {active.length > SOFT_CAP && (
-            <p className="muted small forge-hint">Above the soft cap. That's allowed. If check-ins start feeling heavy, archive the least important one. Its votes are kept.</p>
+            <p className="forge-footnote">Above the suggested limit. That's allowed. If check-ins start to feel heavy, archive the least important one. Its history is kept.</p>
           )}
         </section>
 
         {archived.length > 0 && (
-          <section className="panel forge-panel">
-            <div className="panel-title">Archived · history kept</div>
-            <ul className="forge-list">
+          <section>
+            <div className="forge-section-head">
+              <span>Archived</span>
+              <span>History kept</span>
+            </div>
+            <ul className="forge-group">
               {archived.map((h) => (
                 <li key={h.id} className="forge-list-item muted-item">
                   <div className="forge-list-main">
                     <div className="forge-habit-name">{h.name}</div>
                     <div className="muted small">
-                      {h.identity} · {idx.get(h.id!)?.size ?? 0} votes
+                      {h.identity} · {idx.get(h.id!)?.size ?? 0} check-ins
                     </div>
                   </div>
-                  <div className="row forge-list-actions">
-                    <button className="btn btn-sm" onClick={() => restore(h)}>Restore</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => remove(h)}>Delete</button>
+                  <div className="forge-list-actions">
+                    <button className="btn btn-sm forge-btn-tint" onClick={() => restore(h)}>Restore</button>
+                    <button className="btn btn-sm btn-ghost btn-danger" onClick={() => remove(h)}>Delete</button>
                   </div>
                 </li>
               ))}

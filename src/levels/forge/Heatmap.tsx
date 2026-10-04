@@ -29,15 +29,15 @@ export default function Heatmap({ habits, idx }: { habits: ForgeHabit[]; idx: Do
   })
 
   if (active.length === 0 && habits.length === 0) {
-    return <div className="empty">Your heatmap will glow here once you start casting votes.</div>
+    return <div className="empty">Your heatmap fills in as you check off habits.</div>
   }
 
   return (
     <section className="panel forge-panel">
-      <div className="row-between">
-        <div className="panel-title">Last {HEATMAP_WEEKS} weeks</div>
+      <div className="row-between forge-heat-head">
+        <div className="panel-title forge-tight">Last {HEATMAP_WEEKS} weeks</div>
         <div className="muted small mono">
-          {votes} votes · {activeDays} active days
+          {votes} check-ins · {activeDays} active days
         </div>
       </div>
 
@@ -82,7 +82,7 @@ export default function Heatmap({ habits, idx }: { habits: ForgeHabit[]; idx: Do
       </div>
 
       <div className="row-between forge-heat-legend small muted">
-        <span>Empty squares are just rest. Look at the glow, not the gaps.</span>
+        <span>Empty squares are rest days. Notice the filled ones.</span>
         <span className="row forge-legend-scale">
           Less
           {[0, 1, 2, 3, 4].map((l) => (

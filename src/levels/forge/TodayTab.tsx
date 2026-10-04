@@ -6,96 +6,91 @@ function plural(n: number, one: string, many = one + 's') {
   return `${n} ${n === 1 ? one : many}`
 }
 
-function StatusLine({ s, tinyToday }: { s: HabitStats; tinyToday: boolean }) {
+function statusText(s: HabitStats, tinyToday: boolean): string | null {
   switch (s.state) {
     case 'done':
-      return (
-        <p className="forge-status done">
-          {tinyToday ? 'Tiny version done. Showing up is what counts.' : 'Vote cast. One more brick laid.'}
-        </p>
-      )
+      return tinyToday ? 'Tiny version done. Showing up is what counts.' : 'Done for today.'
     case 'new':
-      return <p className="forge-status">Fresh on the anvil. Your first vote can be today.</p>
+      return 'New habit. Today can be day one.'
     case 'missed-one':
-      return <p className="forge-status">Yesterday was a rest day. That's fine. Today is the one that counts.</p>
-    case 'open':
-      return <p className="forge-status">Today's vote is open.</p>
+      return "Yesterday was a rest day. That's fine, today is the one that counts."
     default:
       return null
   }
 }
 
-function HabitCard({ h, done, logsToday, today }: { h: ForgeHabit; done: Set<string> | undefined; logsToday: Map<number, ForgeLog>; today: string }) {
+function Check({ on }: { on: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden className={`forge-check-icon ${on ? 'on' : ''}`}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function HabitRow({ h, done, logsToday, today }: { h: ForgeHabit; done: Set<string> | undefined; logsToday: Map<number, ForgeLog>; today: string }) {
   const s = habitStats(h, done, today)
   const yesterday = addDays(today, -1)
   const tinyToday = !!logsToday.get(h.id!)?.tiny
   const tiny = tinyFor(h)
+  const status = statusText(s, tinyToday)
+  const windowLabel = `Last ${!s.sinceStart ? '30 days' : plural(s.windowDays, 'day')}`
 
   return (
-    <article className={`panel forge-panel forge-card ${s.doneToday ? 'is-done' : ''} ${s.state === 'recover' ? 'is-recover' : ''}`}>
-      <div className="forge-card-top">
+    <li className={`forge-habit ${s.doneToday ? 'is-done' : ''}`}>
+      <div className="forge-habit-top">
         <button
-          className={`forge-vote ${s.doneToday ? 'on' : ''}`}
+          className={`forge-check ${s.doneToday ? 'on' : ''}`}
           onClick={() => toggleVote(h.id!, today)}
           aria-pressed={s.doneToday}
-          aria-label={s.doneToday ? `Undo today's vote for ${h.name}` : `Cast today's vote for ${h.name}`}
+          aria-label={s.doneToday ? `Mark ${h.name} as not done today` : `Mark ${h.name} as done today`}
         >
-          <span className="forge-vote-mark">{s.doneToday ? '✓' : '+'}</span>
-          <span className="forge-vote-text">{s.doneToday ? 'Voted' : 'Vote'}</span>
+          <Check on={s.doneToday} />
         </button>
-        <div className="forge-card-head">
+        <div className="forge-habit-main">
           <h3 className="forge-habit-name">{h.name}</h3>
           <div className="forge-identity">{h.identity}</div>
         </div>
-      </div>
-
-      {s.state === 'recover' ? (
-        <div className="forge-recover">
-          <p>
-            It's been a few quiet days. That happens to everyone who builds anything. No catching up needed, just one small vote to warm the iron again.
-          </p>
-          <button className="btn forge-btn-primary" onClick={() => setVote(h.id!, today, true, true)}>
-            Do the tiny version: {tiny}
-          </button>
+        <div className="forge-habit-pct" title={`${s.windowDone} of ${s.windowDays} days`}>
+          <span className="forge-pct">{s.windowDays ? `${s.consistency}%` : '—'}</span>
+          <span className="forge-pct-l">{windowLabel}</span>
         </div>
-      ) : (
-        <StatusLine s={s} tinyToday={tinyToday} />
-      )}
-
-      <div className="forge-votes">
-        <span className="forge-votes-n mono">{s.votes}</span>
-        <span className="forge-votes-label">
-          {s.votes === 1 ? 'vote' : 'votes'} for: <em>{h.identity}</em>
-        </span>
       </div>
 
-      <div className="forge-meter" title={`${s.windowDone} of ${s.windowDays} days`}>
-        <div className="row-between small">
-          <span className="muted">Consistency · {!s.sinceStart ? 'last 30 days' : `since start (${plural(s.windowDays, 'day')})`}</span>
-          <span className="mono forge-pct">{s.windowDays ? `${s.consistency}%` : '—'}</span>
+      <div className="forge-habit-body">
+        {s.state === 'recover' ? (
+          <div className="forge-recover">
+            <p>It's been a few quiet days. That happens to everyone. No need to catch up, just do the smallest version today.</p>
+            <button className="btn btn-gold btn-sm forge-wrap" onClick={() => setVote(h.id!, today, true, true)}>
+              Do the tiny version: {tiny}
+            </button>
+          </div>
+        ) : (
+          status && <p className={`forge-status ${s.doneToday ? 'done' : ''}`}>{status}</p>
+        )}
+
+        <div className="forge-habit-meta">
+          <span className="forge-meta-text">
+            {plural(s.votes, 'check-in')}
+            {s.run > 0 ? ` · ${plural(s.run, 'day')} in a row` : ''}
+            {s.best > 1 ? ` · best ${s.best}` : ''}
+          </span>
+          <span className="forge-meta-actions">
+            {!s.doneToday && s.state !== 'recover' && (
+              <button className="forge-link" onClick={() => setVote(h.id!, today, true, true)} title={`Tiny version: ${tiny}`}>
+                Tiny version
+              </button>
+            )}
+            <button
+              className={`forge-pill ${s.doneYesterday ? 'on' : ''}`}
+              onClick={() => toggleVote(h.id!, yesterday)}
+              title="Forgot to check in yesterday? Log it here."
+            >
+              {s.doneYesterday ? '✓ Yesterday' : '+ Yesterday'}
+            </button>
+          </span>
         </div>
-        <div className="forge-bar"><div className="forge-bar-fill" style={{ width: `${s.consistency}%` }} /></div>
       </div>
-
-      <div className="row-between forge-card-foot small">
-        <span className="muted">
-          {s.run > 0 ? `Current run ${plural(s.run, 'day')}` : 'Next run starts with your next vote'}
-          {s.best > 1 ? ` · best ${s.best}` : ''}
-        </span>
-        <button
-          className={`chip forge-chip ${s.doneYesterday ? 'active' : ''}`}
-          onClick={() => toggleVote(h.id!, yesterday)}
-          title="Forgot to check in yesterday? Log it here."
-        >
-          {s.doneYesterday ? '✓ Yesterday logged' : '+ Log yesterday'}
-        </button>
-      </div>
-      {!s.doneToday && s.state !== 'recover' && (
-        <button className="btn btn-ghost btn-sm forge-tiny-link" onClick={() => setVote(h.id!, today, true, true)}>
-          Low-energy day? Do the tiny version: {tiny}
-        </button>
-      )}
-    </article>
+    </li>
   )
 }
 
@@ -125,50 +120,50 @@ export default function TodayTab({
     return (
       <div className="empty forge-empty">
         <div className="forge-empty-icon" aria-hidden>
-          <span />
+          <Check on />
         </div>
-        <h3>Nothing on the anvil yet</h3>
+        <h3>No habits yet</h3>
         <p className="muted">
           Pick one small habit and attach an identity to it. Each time you do it, you cast a vote for who you're becoming.
         </p>
-        <button className="btn forge-btn-primary" onClick={onAddHabit}>Forge your first habit</button>
+        <button className="btn btn-gold" onClick={onAddHabit}>Add your first habit</button>
       </div>
     )
   }
 
   const allDone = doneCount === active.length
+  const pct = Math.round((doneCount / active.length) * 100)
   return (
     <div className="stack">
-      <div className="forge-today-bar">
-        <div>
-          <div className="panel-title forge-tight">{prettyDay(today)}</div>
-          <div className="forge-today-msg">
-            {allDone
-              ? 'Every vote cast today. The iron holds its shape.'
-              : doneCount === 0
-                ? 'The forge is lit. One vote is enough to start.'
-                : `${doneCount} of ${active.length} votes cast. Steady.`}
-          </div>
+      <section className="panel forge-today">
+        <div className="row-between forge-today-head">
+          <div className="forge-today-date">{prettyDay(today)}</div>
+          <div className="forge-today-count">{pct}%</div>
         </div>
-        <div className="forge-pips" aria-label={`${doneCount} of ${active.length} done`}>
-          {active.map((h) => (
-            <span key={h.id} className={`forge-pip ${logsToday.has(h.id!) ? 'on' : ''}`} />
-          ))}
+        <div className="forge-today-msg">
+          {allDone
+            ? 'Everything done today. Nice work.'
+            : doneCount === 0
+              ? 'One check is enough to get going.'
+              : `${doneCount} of ${active.length} done. Keep it steady.`}
         </div>
-      </div>
+        <div className="forge-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+          <div className="forge-bar-fill" style={{ width: `${pct}%` }} />
+        </div>
+      </section>
 
       {experiment && (
         <div className="forge-experiment">
-          <span className="forge-experiment-tag mono">This week's experiment</span>
+          <span className="forge-experiment-tag">This week's experiment</span>
           <span>{experiment}</span>
         </div>
       )}
 
-      <div className="forge-cards">
+      <ul className="forge-group forge-habits-list">
         {active.map((h) => (
-          <HabitCard key={h.id} h={h} done={idx.get(h.id!)} logsToday={logsToday} today={today} />
+          <HabitRow key={h.id} h={h} done={idx.get(h.id!)} logsToday={logsToday} today={today} />
         ))}
-      </div>
+      </ul>
     </div>
   )
 }
