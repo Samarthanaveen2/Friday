@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { DealItem, IfThenRule } from '../../db/types'
 import { db, setSetting } from '../../db/db'
 import { prettyDay } from '../../lib/date'
-import { BalanceMeter, ItemColumn, Projection, ReviewPanel, RulesEditor, StatusChip } from './components'
+import { BalanceMeter, ItemColumn, Projection, ReviewPanel, StandingRules, StatusChip } from './components'
 import {
   type NegDeal,
   RATE_KEY,
@@ -14,6 +14,7 @@ import {
   sumMinutes,
 } from './logic'
 import { NEGOTIATION_LINES } from './presets'
+import { useStandingRules } from './rules'
 
 interface Draft {
   date: string
@@ -66,6 +67,7 @@ export function Negotiation({
   const [draft, setDraft] = useState<Draft>(() => loadDraft(today))
   const [acceptDebt, setAcceptDebt] = useState(false)
   const [sealing, setSealing] = useState(false)
+  const rules = useStandingRules()
   const line = useMemo(() => NEGOTIATION_LINES[new Date().getDate() % NEGOTIATION_LINES.length], [])
 
   useEffect(() => saveDraft(draft), [draft])
@@ -86,7 +88,8 @@ export function Negotiation({
       date: today,
       wants: clean(draft.wants),
       needs: clean(draft.needs),
-      rules: draft.rules,
+      // Snapshot of the standing rules, so History shows what was in force that day.
+      rules: rules ?? [],
       status: 'open',
       createdAt: Date.now(),
       rate,
@@ -155,10 +158,7 @@ export function Negotiation({
       <BalanceMeter balance={balance} decisions={[...draft.wants, ...draft.needs].filter((i) => !(i.minutes && i.minutes > 0)).length} rate={rate} rates={RATE_OPTIONS} onRate={(r) => setSetting(RATE_KEY, r)} />
 
       <div className="grid-2">
-        <div className="panel">
-          <div className="panel-title">If-then rules</div>
-          <RulesEditor rules={draft.rules} onChange={(rules) => setDraft((d) => ({ ...d, rules }))} />
-        </div>
+        <StandingRules rules={rules} />
         <div className="panel">
           <div className="panel-title">Future projection</div>
           <Projection needs={draft.needs} wants={draft.wants} keepRate={keepRate} />
@@ -198,6 +198,7 @@ export function Negotiation({
 
 export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number | null }) {
   const [tearing, setTearing] = useState(false)
+  const rules = useStandingRules()
   const pct = completionPct(deal.needs)
   const needTotal = sumMinutes(deal.needs)
   const needDone = doneMinutes(deal.needs)
@@ -209,13 +210,9 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
     if (key === 'wants') db.deals.update(deal.id, { wants: items })
     else db.deals.update(deal.id, { needs: items })
   }
-  const toggleRule = (id: string) => {
-    if (deal.id == null) return
-    db.deals.update(deal.id, { rules: deal.rules.map((r) => (r.id === id ? { ...r, kept: !r.kept } : r)) })
-  }
   const tearUp = async () => {
     if (deal.id == null) return
-    saveDraft({ date: deal.date, wants: deal.wants.map((w) => ({ ...w, done: false })), needs: deal.needs.map((n) => ({ ...n, done: false })), rules: deal.rules.map((r) => ({ ...r, kept: undefined })) })
+    saveDraft({ date: deal.date, wants: deal.wants.map((w) => ({ ...w, done: false })), needs: deal.needs.map((n) => ({ ...n, done: false })), rules: [] })
     await db.deals.delete(deal.id)
   }
 
@@ -256,26 +253,7 @@ export function SealedDeal({ deal, keepRate }: { deal: NegDeal; keepRate: number
       </div>
 
       <div className="grid-2">
-        <div className="panel">
-          <div className="panel-title">If-then rules</div>
-          {deal.rules.length === 0 ? (
-            <div className="neg-hint small">No rules in this deal. Try adding one tomorrow; they make deals easier to keep.</div>
-          ) : (
-            <ul className="neg-list">
-              {deal.rules.map((r) => (
-                <li key={r.id} className={`neg-row neg-check ${r.kept ? 'done' : ''}`}>
-                  <label className="neg-check-label">
-                    <input className="neg-check-input" type="checkbox" checked={!!r.kept} onChange={() => toggleRule(r.id)} />
-                    <CheckCircle />
-                    <span className="neg-check-text">
-                      <span className="neg-kw">If</span> {r.when}, <span className="neg-kw">then I will</span> {r.then}
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <StandingRules rules={rules} />
         <div className="panel">
           <div className="panel-title">What this deal builds</div>
           <Projection needs={deal.needs} wants={deal.wants} keepRate={keepRate} />

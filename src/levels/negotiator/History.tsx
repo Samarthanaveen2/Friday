@@ -132,8 +132,8 @@ export default function History({ deals }: { deals: NegDeal[] }) {
                   {d.rules.length > 0 && (
                     <ul className="neg-mini">
                       {d.rules.map((r) => (
-                        <li key={r.id} className={r.kept ? 'done' : 'undone'}>
-                          <i className={`neg-sdot ${r.kept ? 'neg-sdot-kept' : 'neg-sdot-broken'}`} aria-hidden />
+                        <li key={r.id} className={r.kept === false ? 'undone' : 'done'}>
+                          {r.kept !== undefined && <i className={`neg-sdot ${r.kept ? 'neg-sdot-kept' : 'neg-sdot-broken'}`} aria-hidden />}
                           <span>If {r.when}, then {r.then}</span>
                         </li>
                       ))}

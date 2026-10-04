@@ -13,6 +13,7 @@ import {
   sumMinutes,
   suggestStatus,
 } from './logic'
+import { saveRules } from './rules'
 
 /* ---------------- Item column (one side of the table) ---------------- */
 
@@ -238,6 +239,19 @@ export function BalanceMeter({
 
 /* ---------------- If-then rules ---------------- */
 
+/** Standing rules panel: the same list on every day, editable any time. */
+export function StandingRules({ rules }: { rules: IfThenRule[] | undefined }) {
+  return (
+    <div className="panel">
+      <div className="panel-title">If-then rules</div>
+      <p className="small muted neg-rules-note">
+        Your rules for the future. They stay in force every day until you remove them, so a mistake you learn from once stays learned.
+      </p>
+      {rules && <RulesEditor rules={rules} onChange={saveRules} />}
+    </div>
+  )
+}
+
 export function RulesEditor({ rules, onChange }: { rules: IfThenRule[]; onChange: (r: IfThenRule[]) => void }) {
   const [when, setWhen] = useState('')
   const [then, setThen] = useState('')
@@ -250,7 +264,7 @@ export function RulesEditor({ rules, onChange }: { rules: IfThenRule[]; onChange
     <div className="stack-sm">
       {rules.length === 0 ? (
         <div className="neg-hint small">
-          No rules yet. An if-then plan decides in advance, so in the moment you don't have to.
+          No rules yet. Each time you catch yourself repeating a mistake, write the rule that would have stopped it.
         </div>
       ) : (
         <ul className="neg-list">
