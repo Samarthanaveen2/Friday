@@ -1,4 +1,5 @@
 // The Lab's hand-written topic library. No network, no AI — just curiosity, curated.
+import { MORE_TOPICS } from './topics-more'
 
 export const CATEGORIES = [
   'Art',
@@ -519,7 +520,7 @@ const RAW: Record<Category, Raw[]> = {
 }
 
 export const TOPICS: Topic[] = CATEGORIES.flatMap((category) =>
-  RAW[category].map(([name, hook]) => ({ name, category, hook })),
+  [...RAW[category], ...(MORE_TOPICS[category] ?? [])].map(([name, hook]) => ({ name, category, hook })),
 )
 
 const BY_NAME = new Map(TOPICS.map((t) => [t.name, t]))
