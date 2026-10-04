@@ -52,7 +52,7 @@ export default function Reactor() {
     : []
   const power = data?.power ?? 0
 
-  const line = FUTURE_LINES[(lineIndexForDay(today) + lineOffset) % FUTURE_LINES.length]
+  const quote = FUTURE_LINES[(lineIndexForDay(today) + lineOffset) % FUTURE_LINES.length]
   const date = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
@@ -85,10 +85,10 @@ export default function Reactor() {
         </div>
       </section>
 
-      <section className="panel home-quote" aria-label="A note from Future You">
-        <p className="home-quote-text">{line}</p>
+      <section className="panel home-quote" aria-label="Quote of the day">
+        <p className="home-quote-text">{quote.text}</p>
         <div className="home-quote-foot">
-          <span className="home-quote-by">Future You</span>
+          <span className="home-quote-by">{quote.by}</span>
           <button className="btn btn-ghost btn-sm" onClick={() => setLineOffset((o) => o + 1)}>
             Another
           </button>
