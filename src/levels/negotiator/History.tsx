@@ -1,12 +1,10 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { addDays, dayKey, fromDayKey, prettyDay } from '../../lib/date'
-import { ReviewPanel, StatusChip } from './components'
-import { type NegDeal, completionPct, fmtMin, inheritedOwed, keepStats, keptStreak, sumMinutes } from './logic'
+import { NegThread, ReviewPanel, StatusChip } from './components'
+import { type NegDeal, type NegMessage, completionPct, fmtMin, inheritedOwed, keepStats, keptStreak } from './logic'
 
 export default function History({ deals }: { deals: NegDeal[] }) {
   const today = dayKey()
-  const [open, setOpen] = useState<number | null>(null)
   const sorted = [...deals].sort((a, b) => b.date.localeCompare(a.date))
   const streak = keptStreak(deals, today)
   const stats = keepStats(deals, today)
@@ -71,91 +69,69 @@ export default function History({ deals }: { deals: NegDeal[] }) {
         </div>
       </div>
 
-      <ul className="panel neg-history">
+      <div className="neg-log">
         {sorted.map((d) => {
-          const isOpen = open === d.id
-          const pct = d.completion ?? completionPct(d.needs)
           const past = d.date < today
+          // Deals from before negotiations were a conversation: show their two sides as the messages.
+          const thread: NegMessage[] = d.thread?.length
+            ? d.thread
+            : [
+                ...d.wants.map((w) => ({ id: w.id, from: 'present' as const, text: w.text })),
+                ...d.needs.map((n) => ({ id: n.id, from: 'future' as const, text: n.text })),
+              ]
           return (
-            <li key={d.id} className={`neg-hist neg-hist-${d.status}`}>
-              <button className="neg-hist-row" onClick={() => setOpen(isOpen ? null : (d.id ?? null))} aria-expanded={isOpen}>
-                <div className="neg-hist-date">
-                  <div>{prettyDay(d.date)}</div>
-                  <div className="small muted">{fromDayKey(d.date).getFullYear()}</div>
-                </div>
-                <div className="neg-hist-mid small">
-                  <span className="neg-num-inline">{fmtMin(sumMinutes(d.needs))}</span>
-                  <span className="muted"> owed · </span>
-                  <span className="neg-num-inline">{fmtMin(sumMinutes(d.wants))}</span>
-                  <span className="muted"> got · </span>
-                  <span className="neg-num-inline">{pct}%</span>
-                  {d.debtTaken ? <span className="muted"> · borrowed</span> : null}
+            <section key={d.id} className="panel neg-log-day">
+              <header className="neg-log-head">
+                <div>
+                  <div className="neg-log-date">{prettyDay(d.date)}</div>
+                  <div className="small muted">
+                    {fromDayKey(d.date).getFullYear()} · {d.completion ?? completionPct(d.needs)}% kept
+                    {d.debtTaken ? ' · borrowed time' : ''}
+                  </div>
                 </div>
                 <StatusChip status={d.status} />
-                <svg className="neg-chevron" viewBox="0 0 10 16" width="8" height="13" aria-hidden>
-                  <path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-              {isOpen && (
-                <div className="neg-hist-body stack-sm">
-                  <div className="neg-hist-cols">
+              </header>
+
+              {thread.length > 0 && <NegThread messages={thread} />}
+
+              {d.thread?.length ? (
+                <div className="neg-log-terms small">
+                  {d.wants.length > 0 && (
                     <div>
-                      <div className="neg-card-title neg-card-present"><span className="neg-label-dot" aria-hidden />You got</div>
-                      {d.wants.length ? (
-                        <ul className="neg-mini">
-                          {d.wants.map((w) => (
-                            <li key={w.id}>
-                              <span>{w.text}</span> {w.minutes ? <span className="muted neg-num-inline">{fmtMin(w.minutes)}</span> : null}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="small muted">Nothing.</div>
-                      )}
+                      <span className="neg-log-label neg-log-present">You got</span>{' '}
+                      {d.wants.map((w) => w.text + (w.minutes ? ` (${fmtMin(w.minutes)})` : '')).join(' · ')}
                     </div>
+                  )}
+                  {d.needs.length > 0 && (
                     <div>
-                      <div className="neg-card-title neg-card-future"><span className="neg-label-dot" aria-hidden />You owed</div>
-                      {d.needs.length ? (
-                        <ul className="neg-mini">
-                          {d.needs.map((n) => (
-                            <li key={n.id} className={n.done ? 'done' : 'undone'}>
-                              <i className={`neg-sdot ${n.done ? 'neg-sdot-kept' : 'neg-sdot-broken'}`} aria-hidden />
-                              <span>{n.text}</span> {n.minutes ? <span className="muted neg-num-inline">{fmtMin(n.minutes)}</span> : null}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="small muted">Nothing.</div>
-                      )}
-                    </div>
-                  </div>
-                  {d.rules.length > 0 && (
-                    <ul className="neg-mini">
-                      {d.rules.map((r) => (
-                        <li key={r.id} className={r.kept === false ? 'undone' : 'done'}>
-                          {r.kept !== undefined && <i className={`neg-sdot ${r.kept ? 'neg-sdot-kept' : 'neg-sdot-broken'}`} aria-hidden />}
-                          <span>If {r.when}, then {r.then}</span>
-                        </li>
+                      <span className="neg-log-label neg-log-future">You owed</span>{' '}
+                      {d.needs.map((n, i) => (
+                        <span key={n.id} className={n.done ? '' : 'muted'}>
+                          {i > 0 && ' · '}
+                          {n.done ? '✓ ' : d.status === 'open' ? '○ ' : '✗ '}
+                          {n.text}
+                        </span>
                       ))}
-                    </ul>
-                  )}
-                  {d.review && <p className="neg-review-quote">“{d.review}”</p>}
-                  {(d.owedOut ?? 0) > 0 && <div className="small neg-red">Carried over: {fmtMin(d.owedOut!)} of need-work.</div>}
-                  {d.status === 'open' && past && (
-                    <div className="neg-alert-inline">
-                      <div className="small muted" style={{ marginBottom: 8 }}>This deal was never closed.</div>
-                      <ReviewPanel deal={d} />
                     </div>
-                  )}
-                  {d.status === 'open' && !past && (
-                    <Link className="small" to="/negotiator">Review it on the Today tab</Link>
                   )}
                 </div>
+              ) : null}
+
+              {d.review && <p className="neg-review-quote">“{d.review}”</p>}
+              {(d.owedOut ?? 0) > 0 && <div className="small neg-red">Carried over: {fmtMin(d.owedOut!)}.</div>}
+              {d.status === 'open' && past && (
+                <div className="neg-alert-inline">
+                  <div className="small muted" style={{ marginBottom: 8 }}>This deal was never closed.</div>
+                  <ReviewPanel deal={d} />
+                </div>
               )}
-            </li>
+              {d.status === 'open' && !past && (
+                <Link className="small" to="/negotiator">Review it on the Today tab</Link>
+              )}
+            </section>
           )
         })}
-      </ul>
+      </div>
     </div>
   )
 }

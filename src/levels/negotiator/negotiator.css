@@ -303,3 +303,13 @@
 .neg-thread-past[open] summary { margin-bottom: 12px; }
 .neg-step-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
 .neg-msg-cont { margin-top: -12px; }
+
+/* ---- History as a chat log, one block per day ---- */
+.neg-log { display: flex; flex-direction: column; gap: 16px; }
+.neg-log-day { display: flex; flex-direction: column; gap: 14px; }
+.neg-log-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 0.5px solid var(--line); }
+.neg-log-date { font-size: 17px; font-weight: 600; }
+.neg-log-terms { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 0.5px solid var(--line); line-height: 1.45; }
+.neg-log-label { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; }
+.neg-log-present { color: var(--neg-present); }
+.neg-log-future { color: var(--neg-future); }
