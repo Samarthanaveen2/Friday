@@ -137,7 +137,7 @@ export function Negotiation({
           <ItemColumn
             side="present"
             title="Present You wants"
-            subtitle="Fun, rest, scrolling, gaming"
+            subtitle="Time for fun, or a choice that tempts you"
             items={draft.wants}
             onChange={(wants) => setDraft((d) => ({ ...d, wants }))}
             placeholder="I want…"
@@ -145,14 +145,14 @@ export function Negotiation({
           <ItemColumn
             side="future"
             title="Future You needs"
-            subtitle="Work, health, skills"
+            subtitle="Time for what matters, or the better choice"
             items={draft.needs}
             onChange={(needs) => setDraft((d) => ({ ...d, needs }))}
             placeholder="I need…"
           />
       </div>
 
-      <BalanceMeter balance={balance} rate={rate} rates={RATE_OPTIONS} onRate={(r) => setSetting(RATE_KEY, r)} />
+      <BalanceMeter balance={balance} decisions={[...draft.wants, ...draft.needs].filter((i) => !(i.minutes && i.minutes > 0)).length} rate={rate} rates={RATE_OPTIONS} onRate={(r) => setSetting(RATE_KEY, r)} />
 
       <div className="grid-2">
         <div className="panel">

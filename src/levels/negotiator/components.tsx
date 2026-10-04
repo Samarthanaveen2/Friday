@@ -78,7 +78,7 @@ export function ItemColumn({
                   type="number"
                   min={0}
                   inputMode="numeric"
-                  placeholder="0"
+                  placeholder="–"
                   aria-label="Minutes"
                   value={i.minutes ?? ''}
                   onChange={(e) => update(i.id, { minutes: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })}
@@ -106,7 +106,7 @@ export function ItemColumn({
                   type="number"
                   min={0}
                   inputMode="numeric"
-                  placeholder="0"
+                  placeholder="–"
                   aria-label="Minutes for new item"
                   value={minutes}
                   onChange={(e) => setMinutes(e.target.value)}
@@ -130,17 +130,22 @@ export function ItemColumn({
 
 export function BalanceMeter({
   balance,
+  decisions,
   rate,
   rates,
   onRate,
 }: {
   balance: Balance
+  /** Items on either side with no minutes: choices, not time to trade. */
+  decisions: number
   rate: number
   rates: number[]
   onRate: (r: number) => void
 }) {
   const { wantMin, earned, surplus, debt, owedIn, needMin } = balance
-  const empty = needMin === 0 && wantMin === 0 && owedIn === 0
+  const noTime = needMin === 0 && wantMin === 0 && owedIn === 0
+  const empty = noTime && decisions === 0
+  const choices = decisions === 1 ? '1 decision' : `${decisions} decisions`
   const covered = wantMin === 0 ? (earned > 0 ? 1 : 0) : Math.min(1, earned / wantMin)
 
   let headline: string
@@ -148,8 +153,12 @@ export function BalanceMeter({
   let tone: 'ok' | 'warn' | 'bad'
   if (empty) {
     headline = 'Nothing yet'
-    verdict = 'Add what you want on one side and what you need to do on the other.'
+    verdict = 'Add what you want on one side and what you need on the other. Give it minutes, or leave it as a decision.'
     tone = 'warn'
+  } else if (noTime) {
+    headline = 'A decision, not a trade'
+    verdict = `${choices} on the table, with no time to weigh. Sealing means you take Future You's side.`
+    tone = 'ok'
   } else if (debt === 0 && surplus === 0) {
     headline = 'Balanced'
     verdict = 'Every minute of fun is paid for.'
@@ -191,24 +200,33 @@ export function BalanceMeter({
         </div>
       </div>
 
-      <div className="neg-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(covered * 100)} aria-label="Wants paid for">
-        <div className="neg-bar-fill" style={{ width: `${covered * 100}%` }} />
-      </div>
+      {!noTime && (
+        <>
+          <div className="neg-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(covered * 100)} aria-label="Wants paid for">
+            <div className="neg-bar-fill" style={{ width: `${covered * 100}%` }} />
+          </div>
 
-      <div className="neg-balance-nums">
-        <div>
-          <div className="small muted">Wants</div>
-          <div className="neg-num">{fmtMin(wantMin)}</div>
+          <div className="neg-balance-nums">
+            <div>
+              <div className="small muted">Wants</div>
+              <div className="neg-num">{fmtMin(wantMin)}</div>
+            </div>
+            <div>
+              <div className="small muted">Earned</div>
+              <div className="neg-num">{fmtMin(earned)}</div>
+            </div>
+            <div>
+              <div className="small muted">{debt > 0 ? 'Short' : 'To spare'}</div>
+              <div className={`neg-num ${debt > 0 ? 'neg-red' : ''}`}>{debt > 0 ? `−${fmtMin(debt)}` : `+${fmtMin(surplus)}`}</div>
+            </div>
+          </div>
+        </>
+      )}
+      {!noTime && decisions > 0 && (
+        <div className="small muted">
+          Plus {choices} with no time attached. Those aren't traded for minutes; sealing means you take Future You's side.
         </div>
-        <div>
-          <div className="small muted">Earned</div>
-          <div className="neg-num">{fmtMin(earned)}</div>
-        </div>
-        <div>
-          <div className="small muted">{debt > 0 ? 'Short' : 'To spare'}</div>
-          <div className={`neg-num ${debt > 0 ? 'neg-red' : ''}`}>{debt > 0 ? `−${fmtMin(debt)}` : `+${fmtMin(surplus)}`}</div>
-        </div>
-      </div>
+      )}
       {owedIn > 0 && (
         <div className="small muted">
           The first {fmtMin(owedIn)} of today's needs pays back time borrowed earlier, so it doesn't earn anything new.
