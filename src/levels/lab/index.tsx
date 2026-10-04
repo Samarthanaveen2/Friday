@@ -9,37 +9,34 @@ import { TOPICS } from './topics'
 import './lab.css'
 
 const TABS = [
-  { to: '/lab', label: 'Generator', glyph: '✺', end: true },
-  { to: '/lab/log', label: 'Log', glyph: '❡', end: false },
-  { to: '/lab/map', label: 'Mind Map', glyph: '✧', end: false },
+  { to: '/lab', label: 'Generator', end: true },
+  { to: '/lab/log', label: 'Log', end: false },
+  { to: '/lab/map', label: 'Mind Map', end: false },
 ]
 
 export default function Lab() {
   const count = useLiveQuery(() => db.lab.count(), [])
   return (
     <div className="lab">
-      <div className="lab-bg" aria-hidden>
-        <span />
-        <span />
-        <span />
-      </div>
       <LevelHeader
         path="/lab"
         right={
-          <div className="lab-header-meta mono">
+          <div className="lab-header-meta">
             <div>
-              <b>{TOPICS.length}</b> topics
+              <b>{TOPICS.length}</b>
+              <span>Topics</span>
             </div>
             <div>
-              <b>{count ?? 0}</b> explored
+              <b>{count ?? 0}</b>
+              <span>Explored</span>
             </div>
           </div>
         }
       />
-      <nav className="lab-tabs">
+      <nav className="lab-seg lab-tabs" aria-label="Lab sections">
         {TABS.map((t) => (
-          <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => `lab-tab${isActive ? ' active' : ''}`}>
-            <span aria-hidden>{t.glyph}</span> {t.label}
+          <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => `lab-seg-btn${isActive ? ' active' : ''}`}>
+            {t.label}
           </NavLink>
         ))}
       </nav>

@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/db'
 import { dayKey } from '../../lib/date'
-import { CATEGORIES, CATEGORY_COLORS, CATEGORY_GLYPHS, TOPICS, topicOfTheDay, type Category, type Topic } from './topics'
+import { CATEGORIES, CATEGORY_COLORS, TOPICS, topicOfTheDay, type Category, type Topic } from './topics'
 import { pickPrompt } from './prompts'
 import { SearchLinks, type LabEntryX } from './shared'
 
 type Mode = 1 | 2 | 3
 const MODES: { n: Mode; label: string; sub: string }[] = [
-  { n: 1, label: 'Single', sub: 'one rabbit hole' },
-  { n: 2, label: 'Collision', sub: 'two worlds' },
-  { n: 3, label: 'Triple', sub: 'pure chaos' },
+  { n: 1, label: 'Single', sub: 'One rabbit hole' },
+  { n: 2, label: 'Collision', sub: 'Two worlds' },
+  { n: 3, label: 'Triple', sub: 'Pure chaos' },
 ]
 
 function load<T>(key: string, fallback: T): T {
@@ -30,6 +30,17 @@ function save(key: string, value: unknown) {
 }
 
 const rand = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
+
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+function LockIcon({ locked }: { locked: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="5" y="11" width="14" height="10" rx="2.5" fill={locked ? 'currentColor' : 'none'} />
+      {locked ? <path d="M8 11V7.5a4 4 0 0 1 8 0V11" /> : <path d="M8 11V7.5a4 4 0 0 1 7.6-1.7" />}
+    </svg>
+  )
+}
 
 export default function Generator() {
   const [mode, setModeState] = useState<Mode>(() => load<Mode>('lab.mode', 2))
@@ -110,10 +121,11 @@ export default function Generator() {
     setFlash('')
     setRolling((r) => r.map((v, i) => (toSpin.includes(i) ? true : v)))
 
+    const calm = reducedMotion()
     toSpin.forEach((slot, order) => {
-      const stopAt = 650 + order * 420
+      const stopAt = calm ? 0 : 420 + order * 220
       let elapsed = 0
-      let delay = 40
+      let delay = calm ? 0 : 70
       const tick = () => {
         elapsed += delay
         if (elapsed >= stopAt) {
@@ -126,7 +138,7 @@ export default function Generator() {
           return
         }
         setDisplay((d) => d.map((v, i) => (i === slot ? rand(pool.length ? pool : TOPICS).name : v)))
-        delay = Math.min(delay * 1.13, 160)
+        delay = Math.min(delay * 1.2, 160)
         timers.current.push(window.setTimeout(tick, delay))
       }
       timers.current.push(window.setTimeout(tick, delay))
@@ -177,51 +189,48 @@ export default function Generator() {
     setNotes('')
     setLinks('')
     setStarred(false)
-    setFlash('Saved to the log ✦ the mind map just grew.')
+    setFlash('Saved to your log. The mind map just grew.')
   }
 
   return (
     <div className="stack">
       {/* Topic of the day */}
       <section className="panel lab-totd">
-        <div className="lab-totd-orb" aria-hidden>
-          {CATEGORY_GLYPHS[totd.category]}
+        <div className="lab-totd-eyebrow">
+          <span>Topic of the day</span>
+          <span className="lab-totd-dot" aria-hidden>·</span>
+          <span style={{ color: CATEGORY_COLORS[totd.category] }}>{totd.category}</span>
         </div>
-        <div className="lab-totd-body">
-          <div className="panel-title lab-violet">Topic of the day</div>
-          <h3 className="lab-totd-name">{totd.name}</h3>
-          <p className="muted small">
-            <span style={{ color: CATEGORY_COLORS[totd.category] }}>{totd.category}</span> · {totd.hook}
-          </p>
-          <div className="row" style={{ marginTop: 10 }}>
-            <SearchLinks query={totd.name} compact />
-            <button className="btn btn-sm lab-btn-violet" onClick={pullTotd}>
-              Lock into slot 1
-            </button>
-          </div>
+        <h2 className="lab-totd-name">{totd.name}</h2>
+        <p className="lab-totd-hook">{totd.hook}</p>
+        <div className="lab-totd-actions">
+          <SearchLinks query={totd.name} />
+          <button className="btn btn-sm lab-btn-tint" onClick={pullTotd}>
+            Use in slot 1
+          </button>
         </div>
       </section>
 
       {/* Controls */}
       <section className="panel stack">
-        <div className="lab-modes" role="tablist" aria-label="Mode">
+        <div className="lab-seg lab-modes" role="tablist" aria-label="Mode">
           {MODES.map((m) => (
             <button
               key={m.n}
               role="tab"
               aria-selected={mode === m.n}
-              className={`lab-mode${mode === m.n ? ' active' : ''}`}
+              className={`lab-seg-btn${mode === m.n ? ' active' : ''}`}
               onClick={() => setMode(m.n)}
+              title={m.sub}
             >
-              <span className="lab-mode-dots">{'●'.repeat(m.n)}</span>
-              <span className="lab-mode-label">{m.label}</span>
-              <span className="lab-mode-sub">{m.sub}</span>
+              {m.label}
             </button>
           ))}
         </div>
+        <p className="lab-mode-sub">{MODES.find((m) => m.n === mode)?.sub}</p>
         <div>
           <div className="row-between" style={{ marginBottom: 8 }}>
-            <span className="label" style={{ margin: 0 }}>
+            <span className="lab-label">
               Draw from {filter.length ? `${filter.length} categor${filter.length === 1 ? 'y' : 'ies'} · ${pool.length} topics` : `everything · ${TOPICS.length} topics`}
             </span>
             {filter.length > 0 && (
@@ -230,7 +239,7 @@ export default function Generator() {
               </button>
             )}
           </div>
-          <div className="lab-chips">
+          <div className="lab-chips" role="group" aria-label="Categories">
             {CATEGORIES.map((c) => (
               <button
                 key={c}
@@ -238,7 +247,7 @@ export default function Generator() {
                 style={{ ['--c' as string]: CATEGORY_COLORS[c] }}
                 onClick={() => toggleCat(c)}
               >
-                <span aria-hidden>{CATEGORY_GLYPHS[c]}</span> {c}
+                <i className="lab-chip-dot" aria-hidden /> {c}
               </button>
             ))}
           </div>
@@ -251,32 +260,30 @@ export default function Generator() {
           const t = slots[i]
           const isRolling = rolling[i]
           const empty = !t && !isRolling
-          const color = t && !isRolling ? CATEGORY_COLORS[t.category] : 'var(--violet)'
+          const color = t && !isRolling ? CATEGORY_COLORS[t.category] : 'var(--muted)'
           const seen = t ? exploredCount.get(t.name) : 0
           return (
             <div key={i} className="lab-slot-wrap">
-              {i > 0 && <div className="lab-collide" aria-hidden>×</div>}
               <article
                 className={`lab-slot${isRolling ? ' rolling' : ''}${locked[i] ? ' locked' : ''}`}
                 style={{ ['--c' as string]: color }}
               >
                 <div className="row-between lab-slot-top">
-                  <span className="lab-slot-cat mono">
-                    {isRolling ? 'scrambling…' : t ? `${CATEGORY_GLYPHS[t.category]} ${t.category}` : `slot ${i + 1}`}
-                  </span>
+                  <span className="lab-slot-cat">{isRolling ? 'Choosing…' : t ? t.category : `Slot ${i + 1}`}</span>
                   <button
                     className={`lab-lock${locked[i] ? ' on' : ''}`}
                     onClick={() => setLocked((l) => l.map((v, j) => (j === i ? !v : v)))}
                     disabled={!t || isRolling}
                     title={locked[i] ? 'Unlock' : 'Lock this topic and re-spin the others'}
+                    aria-label={locked[i] ? 'Unlock topic' : 'Lock topic'}
                     aria-pressed={locked[i]}
                   >
-                    {locked[i] ? '🔒' : '🔓'}
+                    <LockIcon locked={locked[i]} />
                   </button>
                 </div>
                 <div className="lab-reel">
                   {empty ? (
-                    <span className="lab-slot-name lab-q">???</span>
+                    <span className="lab-slot-name lab-q">Tap Spin to draw a topic</span>
                   ) : (
                     <span key={isRolling ? display[i] : `land-${landed[i]}`} className={`lab-slot-name${isRolling ? ' blur' : ' land'}`}>
                       {isRolling ? display[i] : t!.name}
@@ -286,8 +293,12 @@ export default function Generator() {
                 {t && !isRolling && (
                   <div className="lab-slot-detail" key={`d-${landed[i]}`}>
                     <p className="lab-hook">{t.hook}</p>
-                    {!!seen && <span className="lab-seen mono">explored ×{seen}</span>}
-                    <SearchLinks query={t.name} />
+                    {!!seen && (
+                      <span className="lab-seen">
+                        Explored {seen === 1 ? 'once' : `${seen} times`}
+                      </span>
+                    )}
+                    <SearchLinks query={t.name} compact />
                   </div>
                 )}
               </article>
@@ -297,13 +308,10 @@ export default function Generator() {
       </section>
 
       <div className="lab-spin-row">
-        <button className={`lab-spin${anyRolling ? ' spinning' : ''}`} onClick={spin} disabled={anyRolling}>
-          <span className="lab-spin-glyph" aria-hidden>
-            ✺
-          </span>
+        <button className="lab-spin" onClick={spin} disabled={anyRolling}>
           {anyRolling ? 'Spinning…' : drawn ? 'Spin again' : 'Spin'}
         </button>
-        <span className="muted small lab-hint">press space · lock a topic to keep it</span>
+        <span className="lab-hint">Press Space to spin. Lock a topic to keep it.</span>
       </div>
 
       {flash && <div className="lab-flash">{flash}</div>}
@@ -312,11 +320,9 @@ export default function Generator() {
       {mode > 1 && drawn && !anyRolling && prompt && (
         <section className="panel lab-prompt">
           <div className="row-between">
-            <div className="panel-title lab-violet" style={{ margin: 0 }}>
-              Collision prompt
-            </div>
-            <button className="btn btn-ghost btn-sm" onClick={() => setPrompt(pickPrompt(drawn.map((t) => t.name)))}>
-              ↻ Another
+            <div className="lab-label lab-accent">Something to think about</div>
+            <button className="btn btn-ghost btn-sm lab-btn-text" onClick={() => setPrompt(pickPrompt(drawn.map((t) => t.name)))}>
+              Another
             </button>
           </div>
           <p className="lab-prompt-text">{prompt}</p>
@@ -327,9 +333,7 @@ export default function Generator() {
       {/* Save */}
       {drawn && !anyRolling && (
         <section className="panel stack lab-save">
-          <div className="panel-title" style={{ margin: 0 }}>
-            Log this {mode === 1 ? 'rabbit hole' : 'collision'}
-          </div>
+          <h3 className="lab-save-title">Log this {mode === 1 ? 'rabbit hole' : 'collision'}</h3>
           {mode > 1 && (
             <div>
               <label className="label" htmlFor="lab-conn">
@@ -358,7 +362,7 @@ export default function Generator() {
           </div>
           <div>
             <label className="label" htmlFor="lab-links">
-              Links (one per line)
+              Links, one per line
             </label>
             <textarea
               id="lab-links"
@@ -369,10 +373,10 @@ export default function Generator() {
             />
           </div>
           <div className="row-between">
-            <button className={`lab-star${starred ? ' on' : ''}`} onClick={() => setStarred((s) => !s)} aria-pressed={starred}>
-              {starred ? '★' : '☆'} {starred ? 'Starred' : 'Star it'}
+            <button className={`btn lab-star${starred ? ' on' : ''}`} onClick={() => setStarred((s) => !s)} aria-pressed={starred}>
+              {starred ? '★ Starred' : '☆ Star'}
             </button>
-            <button className="btn lab-btn-violet-solid" onClick={saveEntry}>
+            <button className="btn btn-gold" onClick={saveEntry}>
               Save to log
             </button>
           </div>

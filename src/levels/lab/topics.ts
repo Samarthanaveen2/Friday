@@ -27,21 +27,22 @@ export interface Topic {
 }
 
 export const CATEGORY_COLORS: Record<Category, string> = {
-  Art: '#ff7eb6',
-  Music: '#ffc857',
-  Philosophy: '#b48cff',
-  Psychology: '#ff9a3c',
-  Science: '#4fd8ff',
-  History: '#d9a066',
-  'Culture & Anthropology': '#f2709c',
-  Literature: '#9ad1ff',
-  Mathematics: '#7cf0d0',
-  'Economics & Game Theory': '#5be3a1',
-  'Architecture & Design': '#c2c8d6',
-  'Religion & Myth': '#e6b3ff',
-  Technology: '#62a8ff',
-  'Nature & Biology': '#9be15d',
-  Language: '#ff5a6e',
+  // Mid-tone, Apple system-style hues that read on both white and black.
+  Art: '#ff2d55',
+  Music: '#ff9500',
+  Philosophy: '#af52de',
+  Psychology: '#5ac8fa',
+  Science: '#007aff',
+  History: '#a2845e',
+  'Culture & Anthropology': '#ff6f61',
+  Literature: '#5e5ce6',
+  Mathematics: '#00c7be',
+  'Economics & Game Theory': '#34c759',
+  'Architecture & Design': '#8e8e93',
+  'Religion & Myth': '#d4a500',
+  Technology: '#30b0c7',
+  'Nature & Biology': '#7fb800',
+  Language: '#c44db1',
 }
 
 export const CATEGORY_GLYPHS: Record<Category, string> = {

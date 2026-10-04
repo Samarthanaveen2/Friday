@@ -142,7 +142,8 @@ export default function MindMap() {
         q.vx -= fx
         q.vy -= fy
       }
-      // Gravity, damping, bounds
+      // Gravity, damping, bounds (extra side room so labels aren't clipped)
+      const padX = Math.min(64, Math.max(24, w * 0.14))
       for (const { n, b } of list) {
         if (drag.current?.name === n.name) {
           b.vx = b.vy = 0
@@ -152,7 +153,7 @@ export default function MindMap() {
         b.vy += (h / 2 - b.y) * 0.008 * a
         b.vx *= 0.82
         b.vy *= 0.82
-        b.x = Math.min(w - 24, Math.max(24, b.x + b.vx))
+        b.x = Math.min(w - padX, Math.max(padX, b.x + b.vx))
         b.y = Math.min(h - 24, Math.max(24, b.y + b.vy))
       }
       alpha.current *= 0.99
@@ -230,7 +231,7 @@ export default function MindMap() {
       <div className="lab-stats">
         <div className="panel lab-stat">
           <div className="panel-title">Topics explored</div>
-          <div className="big-number lab-violet">{graph.nodes.length}</div>
+          <div className="big-number">{graph.nodes.length}</div>
         </div>
         <div className="panel lab-stat">
           <div className="panel-title">Categories touched</div>
@@ -244,7 +245,7 @@ export default function MindMap() {
           {mostConnected ? (
             <button className="lab-stat-topic" style={{ color: colorFor(mostConnected.name) }} onClick={() => setSelected(mostConnected.name)}>
               {mostConnected.name}
-              <span className="muted small mono"> · {mostConnected.degree} link{mostConnected.degree === 1 ? '' : 's'}</span>
+              <span className="lab-stat-sub">{mostConnected.degree} link{mostConnected.degree === 1 ? '' : 's'}</span>
             </button>
           ) : (
             <div className="muted">—</div>
@@ -257,11 +258,11 @@ export default function MindMap() {
           <div className="panel-title" style={{ margin: 0 }}>
             Mind map
           </div>
-          <span className="muted small">tap a node · drag to rearrange</span>
+          <span className="muted small">Tap a topic, or drag to rearrange</span>
         </div>
         <div ref={wrapRef} className="lab-map-wrap">
           {graph.nodes.length === 0 ? (
-            <div className="empty">Your mind map is empty. Save a collision and watch the constellation begin.</div>
+            <div className="lab-map-empty">Your mind map is empty. Save a collision to see it start to grow.</div>
           ) : (
             <svg
               ref={svgRef}
@@ -274,15 +275,6 @@ export default function MindMap() {
               onPointerLeave={() => (drag.current = null)}
               onClick={(e) => e.target === e.currentTarget && setSelected(null)}
             >
-              <defs>
-                <filter id="lab-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="4" result="b" />
-                  <feMerge>
-                    <feMergeNode in="b" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
               <g>
                 {graph.edges.map((e) => {
                   const p = bodies.current.get(e.a)
@@ -297,9 +289,9 @@ export default function MindMap() {
                       y1={p.y}
                       x2={q.x}
                       y2={q.y}
-                      stroke={lit ? colorFor(focus!) : 'var(--violet)'}
-                      strokeOpacity={dim ? 0.08 : lit ? 0.9 : 0.35}
-                      strokeWidth={Math.min(5, 1 + e.w * 0.8)}
+                      style={{ stroke: lit ? colorFor(focus!) : 'var(--faint)' }}
+                      strokeOpacity={dim ? 0.2 : lit ? 0.9 : 1}
+                      strokeWidth={Math.min(2.5, 1 + (e.w - 1) * 0.5)}
                     />
                   )
                 })}
@@ -308,7 +300,7 @@ export default function MindMap() {
                 {graph.nodes.map((n) => {
                   const b = bodies.current.get(n.name)
                   if (!b) return null
-                  const r = 6 + Math.min(14, n.degree * 2 + n.count)
+                  const r = 4 + Math.min(7, n.degree + n.count * 0.5)
                   const c = colorFor(n.name)
                   const isFocus = focus === n.name
                   const dim = focus && !isFocus && !focusNb?.has(n.name)
@@ -318,16 +310,16 @@ export default function MindMap() {
                       key={n.name}
                       className="lab-node"
                       transform={`translate(${b.x},${b.y})`}
-                      opacity={dim ? 0.25 : 1}
+                      opacity={dim ? 0.3 : 1}
                       onPointerDown={(e) => onNodeDown(e, n.name)}
                       onPointerEnter={() => setHover(n.name)}
                       onPointerLeave={() => setHover(null)}
                     >
-                      <circle r={r + 8} fill="transparent" />
-                      <circle r={r} fill={c} fillOpacity={0.22} stroke={c} strokeWidth={selected === n.name ? 3 : 1.5} filter={isFocus ? 'url(#lab-glow)' : undefined} />
-                      <circle r={Math.max(2, r * 0.35)} fill={c} />
+                      <circle r={r + 10} fill="transparent" />
+                      {selected === n.name && <circle r={r + 4} fill="none" style={{ stroke: c }} strokeWidth={1.5} strokeOpacity={0.5} />}
+                      <circle r={r} style={{ fill: c }} className="lab-node-dot" />
                       {label && (
-                        <text y={r + 13} textAnchor="middle" className="lab-node-label">
+                        <text y={r + 14} textAnchor="middle" className={`lab-node-label${isFocus ? ' focus' : ''}`}>
                           {n.name.length > 26 ? n.name.slice(0, 24) + '…' : n.name}
                         </text>
                       )}
@@ -353,7 +345,7 @@ export default function MindMap() {
         <section className="panel stack lab-node-detail" style={{ ['--c' as string]: colorFor(selected) }}>
           <div className="row-between">
             <div>
-              <div className="panel-title" style={{ margin: 0, color: colorFor(selected) }}>
+              <div className="lab-eyebrow" style={{ color: colorFor(selected) }}>
                 {selTopic?.category ?? 'Topic'}
               </div>
               <h3 className="lab-node-title">{selected}</h3>
@@ -362,11 +354,11 @@ export default function MindMap() {
               Close
             </button>
           </div>
-          {selTopic && <p className="muted">{selTopic.hook}</p>}
+          {selTopic && <p className="lab-node-hook">{selTopic.hook}</p>}
           <SearchLinks query={selected} compact />
           {graph.neighbours.get(selected)?.size ? (
             <div className="muted small">
-              Collided with:{' '}
+              Paired with{' '}
               {[...graph.neighbours.get(selected)!].map((n, i) => (
                 <span key={n}>
                   {i > 0 && ', '}
@@ -377,7 +369,7 @@ export default function MindMap() {
               ))}
             </div>
           ) : null}
-          <div className="lab-entries">
+          <div className="lab-list lab-list-inset">
             {selEntries.map((e) => (
               <EntryCard key={e.id} entry={e} onTopic={setSelected} />
             ))}

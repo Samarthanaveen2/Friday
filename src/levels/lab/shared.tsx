@@ -9,7 +9,7 @@ export interface LabEntryX extends LabEntry {
 
 export function colorFor(name: string): string {
   const t = findTopic(name)
-  return t ? CATEGORY_COLORS[t.category as Category] : 'var(--violet)'
+  return t ? CATEGORY_COLORS[t.category as Category] : 'var(--purple)'
 }
 
 export function searchUrls(query: string) {
@@ -32,7 +32,7 @@ export function SearchLinks({ query, compact }: { query: string; compact?: boole
           target="_blank"
           rel="noopener noreferrer"
         >
-          {s.label} ↗
+          {s.label}
         </a>
       ))}
     </div>

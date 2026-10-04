@@ -21,29 +21,37 @@ export function EntryCard({ entry, onTopic }: { entry: LabEntryX; onTopic?: (nam
   }
   return (
     <article className={`lab-entry${entry.starred ? ' starred' : ''}`}>
-      <div className="row-between lab-entry-head">
+      <div className="lab-entry-head">
         <div className="lab-entry-topics">
           {entry.topics.map((t, i) => (
             <span key={t + i} className="lab-entry-topic">
-              {i > 0 && <span className="lab-x">×</span>}
+              {i > 0 && <span className="lab-x">+</span>}
               <TopicPill name={t} onClick={onTopic ? () => onTopic(t) : undefined} />
             </span>
           ))}
         </div>
-        <div className="row" style={{ gap: 4 }}>
-          <button className={`lab-star sm${entry.starred ? ' on' : ''}`} onClick={toggleStar} title="Star" aria-pressed={!!entry.starred}>
+      </div>
+      <div className="lab-entry-meta">
+        <span className="lab-entry-date">
+          {date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} ·{' '}
+          {date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+        </span>
+        <div className="lab-entry-actions">
+          <button
+            className={`lab-icon-btn lab-star-btn${entry.starred ? ' on' : ''}`}
+            onClick={toggleStar}
+            title={entry.starred ? 'Unstar' : 'Star'}
+            aria-label={entry.starred ? 'Unstar' : 'Star'}
+            aria-pressed={!!entry.starred}
+          >
             {entry.starred ? '★' : '☆'}
           </button>
-          <button className={`btn btn-sm ${confirming ? 'btn-danger' : 'btn-ghost'}`} onClick={remove}>
-            {confirming ? 'Sure?' : 'Delete'}
+          <button className={`btn btn-sm btn-ghost ${confirming ? 'lab-confirm' : 'lab-delete'}`} onClick={remove}>
+            {confirming ? 'Delete?' : 'Delete'}
           </button>
         </div>
       </div>
-      <div className="mono muted lab-entry-date">
-        {date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} ·{' '}
-        {date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-      </div>
-      {entry.prompt && <p className="lab-entry-prompt">“{entry.prompt}”</p>}
+      {entry.prompt && <p className="lab-entry-prompt">{entry.prompt}</p>}
       {entry.connection && (
         <div>
           <div className="lab-entry-label">Connection</div>
@@ -70,6 +78,13 @@ export function EntryCard({ entry, onTopic }: { entry: LabEntryX; onTopic?: (nam
   )
 }
 
+function monthLabel(ts: number) {
+  const d = new Date(ts)
+  const now = new Date()
+  if (d.toDateString() === now.toDateString()) return 'Today'
+  return d.toLocaleDateString(undefined, d.getFullYear() === now.getFullYear() ? { month: 'long' } : { month: 'long', year: 'numeric' })
+}
+
 export default function Log() {
   const entries = useLiveQuery(() => db.lab.orderBy('createdAt').reverse().toArray(), []) as LabEntryX[] | undefined
   const [q, setQ] = useState('')
@@ -85,17 +100,34 @@ export default function Log() {
     })
   }, [entries, q, starOnly])
 
+  const groups = useMemo(() => {
+    const out: { label: string; items: LabEntryX[] }[] = []
+    for (const e of filtered) {
+      const label = monthLabel(e.createdAt)
+      const last = out[out.length - 1]
+      if (last && last.label === label) last.items.push(e)
+      else out.push({ label, items: [e] })
+    }
+    return out
+  }, [filtered])
+
   if (!entries) return <div className="empty">Loading the log…</div>
 
   return (
     <div className="stack">
-      <div className="panel lab-log-bar">
-        <input className="input" placeholder="Search topics, connections, notes…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className={`lab-star${starOnly ? ' on' : ''}`} onClick={() => setStarOnly((s) => !s)} aria-pressed={starOnly}>
+      <div className="lab-log-bar">
+        <input
+          className="input lab-search-input"
+          type="search"
+          placeholder="Search topics, connections, notes"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <button className={`btn lab-star${starOnly ? ' on' : ''}`} onClick={() => setStarOnly((s) => !s)} aria-pressed={starOnly}>
           {starOnly ? '★' : '☆'} Starred
         </button>
       </div>
-      <div className="muted small mono">
+      <div className="lab-count">
         {filtered.length} of {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
       </div>
       {entries.length === 0 ? (
@@ -103,9 +135,16 @@ export default function Log() {
       ) : filtered.length === 0 ? (
         <div className="empty">No entries match.</div>
       ) : (
-        <div className="lab-entries">
-          {filtered.map((e) => (
-            <EntryCard key={e.id} entry={e} onTopic={setQ} />
+        <div className="lab-groups">
+          {groups.map((g) => (
+            <section key={g.label} className="lab-group">
+              <h3 className="lab-group-title">{g.label}</h3>
+              <div className="lab-list">
+                {g.items.map((e) => (
+                  <EntryCard key={e.id} entry={e} onTopic={setQ} />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
