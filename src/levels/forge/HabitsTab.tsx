@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { db } from '../../db/db'
-import { PRESETS, SOFT_CAP, defaultTiny, type DoneIndex, type ForgeHabit } from './stats'
+import { SOFT_CAP, defaultTiny, type DoneIndex, type ForgeHabit } from './stats'
 
 const IDENTITY_PREFIX = 'I am someone who '
 
@@ -40,23 +40,6 @@ function HabitForm({
   const uid = editing?.id ?? 'new'
   return (
     <div className="stack-sm">
-      {!editing && (
-        <div className="forge-preset-wrap">
-          <div className="forge-presets">
-            {PRESETS.map((p) => (
-              <button
-                key={p.name}
-                type="button"
-                className={`chip forge-chip ${d.name === p.name ? 'active' : ''}`}
-                onClick={() => setD({ name: p.name, identity: p.identity, tiny: p.tiny })}
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="forge-group">
         <div className="forge-field">
           <label htmlFor={`forge-name-${uid}`}>Habit</label>

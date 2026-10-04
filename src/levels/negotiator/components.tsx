@@ -2,8 +2,6 @@ import { useState } from 'react'
 import type { DealItem, DealStatus, IfThenRule } from '../../db/types'
 import { db } from '../../db/db'
 import { uid } from '../../lib/date'
-import type { Preset } from './presets'
-import { RULE_PRESETS } from './presets'
 import {
   type Balance,
   type NegDeal,
@@ -24,7 +22,6 @@ export function ItemColumn({
   subtitle,
   items,
   onChange,
-  presets,
   placeholder,
 }: {
   side: 'present' | 'future'
@@ -32,7 +29,6 @@ export function ItemColumn({
   subtitle: string
   items: DealItem[]
   onChange: (items: DealItem[]) => void
-  presets: Preset[]
   placeholder: string
 }) {
   const [text, setText] = useState('')
@@ -52,7 +48,6 @@ export function ItemColumn({
 
   const update = (id: string, patch: Partial<DealItem>) => onChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)))
   const remove = (id: string) => onChange(items.filter((i) => i.id !== id))
-  const unused = presets.filter((p) => !items.some((i) => i.text.toLowerCase() === p.text.toLowerCase()))
   const total = sumMinutes(items)
 
   return (
@@ -124,18 +119,8 @@ export function ItemColumn({
             </form>
           </li>
         </ul>
-        {items.length === 0 && <div className="neg-hint small">Nothing here yet. Type above or pick a suggestion.</div>}
+        {items.length === 0 && <div className="neg-hint small">Nothing here yet. Type above to add one.</div>}
 
-        {unused.length > 0 && (
-          <div className="neg-chips">
-            {unused.map((p) => (
-              <button key={p.text} className="chip neg-chip" type="button" onClick={() => add(p.text, p.minutes)}>
-                {p.text}
-                {p.minutes ? <span className="neg-chip-min">{p.minutes}m</span> : null}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </section>
   )
@@ -242,7 +227,6 @@ export function RulesEditor({ rules, onChange }: { rules: IfThenRule[]; onChange
     if (!w.trim() || !t.trim()) return
     onChange([...rules, { id: uid(), when: w.trim(), then: t.trim() }])
   }
-  const unused = RULE_PRESETS.filter((p) => !rules.some((r) => r.when === p.when))
 
   return (
     <div className="stack-sm">
@@ -288,15 +272,6 @@ export function RulesEditor({ rules, onChange }: { rules: IfThenRule[]; onChange
           Add rule
         </button>
       </form>
-      {unused.length > 0 && (
-        <div className="neg-chips">
-          {unused.slice(0, 5).map((p) => (
-            <button key={p.when} type="button" className="chip neg-chip" onClick={() => add(p.when, p.then)}>
-              If {p.when}…
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

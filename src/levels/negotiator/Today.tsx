@@ -13,7 +13,7 @@ import {
   fmtMin,
   sumMinutes,
 } from './logic'
-import { NEED_PRESETS, NEGOTIATION_LINES, WANT_PRESETS } from './presets'
+import { NEGOTIATION_LINES } from './presets'
 
 interface Draft {
   date: string
@@ -140,7 +140,6 @@ export function Negotiation({
             subtitle="Fun, rest, scrolling, gaming"
             items={draft.wants}
             onChange={(wants) => setDraft((d) => ({ ...d, wants }))}
-            presets={WANT_PRESETS}
             placeholder="I want…"
           />
           <ItemColumn
@@ -149,7 +148,6 @@ export function Negotiation({
             subtitle="Work, health, skills"
             items={draft.needs}
             onChange={(needs) => setDraft((d) => ({ ...d, needs }))}
-            presets={NEED_PRESETS}
             placeholder="I need…"
           />
       </div>
