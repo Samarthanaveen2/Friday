@@ -317,3 +317,8 @@
 .neg-log-talk { display: flex; flex-direction: column; gap: 12px; }
 .neg-log-talk + .neg-log-talk { padding-top: 14px; border-top: 0.5px dashed var(--line); }
 .neg-log-sub { font-size: 12px; font-weight: 600; color: var(--muted); }
+.neg-nego { display: flex; flex-direction: column; gap: 4px; }
+.neg-nego-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.neg-nego-head .panel-title { margin-bottom: 0; }
+.neg-nego-past { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.neg-nego .neg-table .panel { box-shadow: none; }

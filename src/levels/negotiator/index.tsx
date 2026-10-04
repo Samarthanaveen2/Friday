@@ -4,7 +4,7 @@ import LevelHeader from '../../components/LevelHeader'
 import { db, getSetting } from '../../db/db'
 import { dayKey } from '../../lib/date'
 import History from './History'
-import { Negotiation, SealedDeal } from './Today'
+import { TodayPage } from './Today'
 import { DEFAULT_RATE, type NegDeal, RATE_KEY, inheritedOwed, keepStats, keptStreak } from './logic'
 import './negotiator.css'
 
@@ -53,7 +53,17 @@ export default function Negotiator() {
 function TodayView({ deals, rate, today }: { deals: NegDeal[]; rate: number; today: string }) {
   const todayDeal = deals.find((d) => d.date === today)
   const keepRate = keepStats(deals, today).rate
-  if (todayDeal) return <SealedDeal key={todayDeal.id} deal={todayDeal} keepRate={keepRate} rate={rate} />
   const { owed, from, unreviewed } = inheritedOwed(deals, today)
-  return <Negotiation today={today} rate={rate} owedIn={owed} owedFrom={from} unreviewed={unreviewed} keepRate={keepRate} />
+  return (
+    <TodayPage
+      key={today}
+      today={today}
+      rate={rate}
+      deal={todayDeal}
+      owedIn={todayDeal ? 0 : owed}
+      owedFrom={from}
+      unreviewed={todayDeal ? undefined : unreviewed}
+      keepRate={keepRate}
+    />
+  )
 }
