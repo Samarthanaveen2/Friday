@@ -1,7 +1,7 @@
-/* ===== Samartha Tower — shared theme =====
-   Minimal, Apple-like: system font, quiet surfaces, soft shadows, one accent per level.
-   Follows the device's light/dark setting. No glows, grids or monospace "HUD" text.
-   Level-specific styles go in that level's own folder (e.g. levels/lab/lab.css). */
+/* ===== The Attic — shared theme =====
+   Minimal, Apple-like: system font, quiet surfaces, soft shadows, a purple accent.
+   Follows the device's light/dark setting.
+   Attic-specific styles live in attic/attic.css. */
 
 :root {
   /* Surfaces */
@@ -92,8 +92,7 @@ p { margin: 0; }
 ::selection { background: color-mix(in srgb, var(--blue) 25%, transparent); }
 
 /* ---- Layout ---- */
-.app { display: flex; min-height: 100vh; }
-.main { flex: 1; min-width: 0; padding: 40px clamp(16px, 4vw, 56px) 96px; max-width: 1080px; margin: 0 auto; width: 100%; }
+.main { min-width: 0; padding: calc(40px + env(safe-area-inset-top)) clamp(16px, 4vw, 56px) 96px; max-width: 1080px; margin: 0 auto; width: 100%; }
 
 .stack { display: flex; flex-direction: column; gap: 16px; }
 .stack-sm { display: flex; flex-direction: column; gap: 8px; }
@@ -103,7 +102,7 @@ p { margin: 0; }
 .grid-2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
 .spacer { flex: 1; }
 
-/* ---- Level header (large title, like iOS) ---- */
+/* ---- Page header (large title, like iOS) ---- */
 .level-header { margin-bottom: 28px; }
 .level-number { font-size: 13px; font-weight: 600; color: var(--accent, var(--blue)); }
 .level-title { font-size: clamp(30px, 5vw, 40px); font-weight: 700; letter-spacing: -0.03em; margin-top: 2px; }
@@ -170,47 +169,6 @@ p { margin: 0; }
 .big-number { font-family: var(--display); font-size: 34px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .empty { color: var(--muted); text-align: center; padding: 40px 16px; background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); }
 
-/* ---- Navigation (sidebar on desktop, tab bar on phone) ---- */
-.nav {
-  width: 240px; flex-shrink: 0; padding: 28px 12px;
-  border-right: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-2) 70%, var(--bg));
-  position: sticky; top: 0; height: 100vh;
-  display: flex; flex-direction: column; gap: 2px;
-}
-.nav-brand { padding: 0 12px 20px; }
-.nav-brand-title { font-family: var(--display); font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
-.nav-brand-sub { font-size: 13px; color: var(--muted); }
-.nav-link {
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 12px; border-radius: var(--radius-sm);
-  color: var(--text); text-decoration: none; font-size: 15px;
-}
-.nav-link:hover { background: var(--fill); text-decoration: none; }
-.nav-link.active { background: var(--fill-strong); font-weight: 600; }
-.nav-num {
-  width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
-  display: grid; place-items: center;
-  background: var(--accent); color: #fff; font-size: 12px; font-weight: 600;
-}
-.nav-text { display: flex; flex-direction: column; line-height: 1.25; }
-.nav-trait { font-size: 12px; color: var(--muted); font-weight: 400; }
-
 @media (max-width: 760px) {
-  .app { flex-direction: column; }
-  .main { padding-top: 24px; }
-  .nav {
-    position: fixed; bottom: 0; top: auto; left: 0; right: 0; z-index: 50;
-    width: 100%; height: auto; flex-direction: row; justify-content: space-around;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-    border-right: none; border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--panel) 82%, transparent);
-    backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
-  }
-  .nav-brand, .nav-trait { display: none; }
-  .nav-link { flex-direction: column; gap: 3px; padding: 4px 2px; font-size: 10px; flex: 1; text-align: center; color: var(--muted); }
-  .nav-link:hover { background: transparent; }
-  .nav-link.active { background: transparent; color: var(--accent); font-weight: 500; }
-  .nav-num { width: 24px; height: 24px; font-size: 11px; background: var(--fill); color: var(--muted); }
-  .nav-link.active .nav-num { background: var(--accent); color: #fff; }
+  .main { padding-top: calc(24px + env(safe-area-inset-top)); }
 }

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [claude/zealous-wozniak-ty2mzp, main]
+    branches: [claude/trusting-bell-xwahb9, claude/zealous-wozniak-ty2mzp, main]
   workflow_dispatch:
 
 permissions:

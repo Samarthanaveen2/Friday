@@ -1,10 +1,10 @@
-/* Samartha Tower service worker — hand-written, no plugins.
+/* The Attic service worker — hand-written, no plugins.
  * - Navigations: network-first, falling back to the cached app shell (index).
  * - Hashed build assets (assets/*): cache-first (they are immutable).
  * - Other same-origin GETs (icons, manifest): stale-while-revalidate.
  * Bump VERSION to invalidate every cache on the next activation.
  */
-const VERSION = 'v2'
+const VERSION = 'v3'
 const PREFIX = 'samartha-tower-'
 const SHELL_CACHE = `${PREFIX}shell-${VERSION}`
 const ASSET_CACHE = `${PREFIX}assets-${VERSION}`
@@ -66,7 +66,7 @@ async function networkFirstNavigation(request) {
   } catch {
     const cached = (await shell.match(INDEX_URL)) || (await shell.match(request))
     if (cached) return cached
-    return new Response('<h1>Offline</h1><p>The Tower has not been cached yet.</p>', {
+    return new Response('<h1>Offline</h1><p>The Attic has not been cached yet.</p>', {
       status: 503,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     })

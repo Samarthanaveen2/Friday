@@ -1,7 +1,7 @@
 {
-  "name": "Samartha Tower",
-  "short_name": "Tower",
-  "description": "A local-first personal OS. Everything stays on your device.",
+  "name": "The Attic",
+  "short_name": "Attic",
+  "description": "Spin topics, take dares and fuel your openness. Everything stays on your device.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

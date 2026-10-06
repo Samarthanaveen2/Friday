@@ -5,4 +5,6 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: './',
   plugins: [react()],
+  // One bundle holds the whole topic library (~2,000 hand-written topics), so it is legitimately big.
+  build: { chunkSizeWarningLimit: 900 },
 })

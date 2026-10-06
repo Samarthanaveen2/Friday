@@ -17,19 +17,3 @@ export function addDays(key: string, n: number): string {
   d.setDate(d.getDate() + n)
   return dayKey(d)
 }
-
-/** Monday of the week containing the given day. */
-export function weekStart(key: string = dayKey()): string {
-  const d = fromDayKey(key)
-  const offset = (d.getDay() + 6) % 7
-  d.setDate(d.getDate() - offset)
-  return dayKey(d)
-}
-
-export function prettyDay(key: string): string {
-  return fromDayKey(key).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-}
-
-export function uid(): string {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
-}

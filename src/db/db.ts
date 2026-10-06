@@ -1,17 +1,13 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Deal, Habit, HabitLog, LabEntry, Letter, Setting, Truth, WeeklyReview } from './types'
+import type { Dare, LabEntry, Setting } from './types'
 
 // Single local-first database. Nothing leaves the device.
+// The name and version 1 are kept from Samartha Tower so existing Lab entries carry over.
 // Only indexed fields are listed below; any other fields on the objects are stored too.
-// If you add a table or index, bump the version with a new db.version(n).stores({...}).
+// If you add a table or index, add a new db.version(n).stores({...}).
 export const db = new Dexie('samartha-tower') as Dexie & {
-  deals: EntityTable<Deal, 'id'>
-  truths: EntityTable<Truth, 'id'>
   lab: EntityTable<LabEntry, 'id'>
-  habits: EntityTable<Habit, 'id'>
-  habitLogs: EntityTable<HabitLog, 'id'>
-  reviews: EntityTable<WeeklyReview, 'id'>
-  letters: EntityTable<Letter, 'id'>
+  dares: EntityTable<Dare, 'id'>
   settings: EntityTable<Setting, 'key'>
 }
 
@@ -26,13 +22,6 @@ db.version(1).stores({
   settings: '&key',
 })
 
-export const TABLES = ['deals', 'truths', 'lab', 'habits', 'habitLogs', 'reviews', 'letters', 'settings'] as const
-
-export async function getSetting<T>(key: string, fallback: T): Promise<T> {
-  const row = await db.settings.get(key)
-  return row ? (row.value as T) : fallback
-}
-
-export async function setSetting(key: string, value: unknown) {
-  await db.settings.put({ key, value })
-}
+db.version(2).stores({
+  dares: '++id, createdAt, status, facet',
+})
