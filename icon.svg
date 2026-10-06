@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#ffffff"/>
+  <!-- The Attic: a roofline with a lit round window under it. -->
+  <polyline points="88,318 256,150 424,318" fill="none" stroke="#af52de" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="300" r="56" fill="#ff9500"/>
+  <circle cx="256" cy="300" r="56" fill="none" stroke="#5856d6" stroke-width="16"/>
+  <path d="M256 252v96M208 300h96" stroke="#5856d6" stroke-width="12"/>
+  <path d="M168 398h176" stroke="#af52de" stroke-width="22" stroke-linecap="round" opacity=".35"/>
+</svg>
