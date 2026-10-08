@@ -2,12 +2,15 @@
 
 Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS keyboards or sideloading. Researched October 2026 from Apple Developer Forums, Wispr Flow's own known-issues pages and Whisper/ASR write-ups.
 
+- **Two voices** (see PLAN §1). Each section says which one it applies to:
+  - **Input voice** = the Friday Keyboard (Wispr Flow clone). Only types what you said, never answers or acts.
+  - **Input → output voice** = the Friday app + Action button (decision engine). Decides and acts, and may show a short result.
 - **Priority:** 🔴 must fix before daily use · 🟠 fix during the build · 🟢 accept or handle later.
 - **In plan?** ✅ already covered by PLAN.md · ➕ new, add to the build.
 
 ---
 
-## A. Keyboard and iOS (the hardest part)
+## A. Keyboard and iOS — *input voice* (the hardest part)
 
 | # | Problem | Pri | In plan? | Fix |
 |---|---|---|---|---|
@@ -24,7 +27,7 @@ Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS key
 | A11 | **Orange mic dot always on** during a session, plus some battery use. | 🟢 | ✅ | Expected. Measure battery in the probe build; the session ends when the phone locks (A1 default). |
 | A12 | **Full Access** must be on for the keyboard (App Group + talking to the app). | 🟢 | ✅ | First-run checklist detects it (`hasFullAccess`) and shows the steps. |
 
-## B. Speech recognition
+## B. Speech recognition — *both voices*
 
 | # | Problem | Pri | In plan? | Fix |
 |---|---|---|---|---|
@@ -38,17 +41,29 @@ Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS key
 | B8 | **Noisy places** (corridors, fans, wind, traffic). | 🟠 | ➕ | Turn on Apple's voice processing (noise suppression) on the input while dictating. Test that it doesn't affect music (A3). |
 | B9 | **Long dictations** (several minutes). | 🟢 | ✅ | Chunking keeps each upload small. |
 
-## C. AI (cleanup and commands)
+## C. AI — C1 is *input voice* only; C2–C7 are *input → output voice* (C4–C7 also affect keyboard cleanup)
 
 | # | Problem | Pri | In plan? | Fix |
 |---|---|---|---|---|
-| C1 | **Cleanup answers or rewrites the text instead of cleaning it.** Dictate "what time is the meeting?" and the model replies "The meeting is at…", or it makes your message formal. This is the classic dictation-LLM bug. | 🔴 | ➕ | Wrap the transcript in tags and state "never answer, never add". **Guard:** if the output shares less than ~70% of its words with the transcript, or is much longer, insert the raw transcript instead. Many eval cases are questions and commands that must pass through unchanged. |
-| C2 | **(App schedule) The wrong item gets ticked, moved or deleted** (fuzzy matching "the report" to the wrong row). | 🔴 | ✅ partly (Undo) | Highlight every change (already planned). Delete only on an explicit "delete/remove/cancel". If two items match equally, show a choice card instead of guessing. |
-| C3 | **(App schedule) Ambiguous times and dates.** "At 5" (morning or evening?), and "tomorrow" said at 1 a.m. | 🔴 | ➕ | Fixed rules in code, not left to the AI: bare hours 1–7 → PM, 8–11 → AM unless said otherwise. Between 00:00 and 04:00, "tomorrow" means the coming day (today's date) and "tonight" means today. The resolved time is always shown in the highlight so you can see it. |
+| C1 | **(Keyboard only) Cleanup answers or rewrites the text instead of cleaning it.** In the keyboard, a dictated question must be *typed*, never answered — answering is the app's job, not the keyboard's. Dictate "what time is the meeting?" and the model replies "The meeting is at…", or it makes your message formal. This is the classic dictation-LLM bug. | 🔴 | ➕ | Wrap the transcript in tags and state "never answer, never add". **Guard:** if the output shares less than ~70% of its words with the transcript, or is much longer, insert the raw transcript instead. Many eval cases are questions and commands that must pass through unchanged. |
+| C2 | **(App) The wrong item gets ticked, moved or deleted** (fuzzy matching "the report" to the wrong row). | 🔴 | ✅ partly (Undo) | Highlight every change (already planned). Delete only on an explicit "delete/remove/cancel". If two items match equally, show a choice card instead of guessing. |
+| C3 | **(App) Ambiguous times and dates.** "At 5" (morning or evening?), and "tomorrow" said at 1 a.m. | 🔴 | ➕ | Fixed rules in code, not left to the AI: bare hours 1–7 → PM, 8–11 → AM unless said otherwise. Between 00:00 and 04:00, "tomorrow" means the coming day (today's date) and "tonight" means today. The resolved time is always shown in the highlight so you can see it. |
 | C4 | **Broken or cut-off JSON** from the model. | 🟠 | ✅ partly | JSON mode plus a validator. On failure, retry once on the backup model, then show "Didn't catch that" with the transcript. |
 | C5 | **Slow replies from reasoning models** (gpt-oss can "think" for a while). | 🟠 | ✅ | `reasoning_effort: low`, a small `max_tokens`, and the 1.2 s race. |
 | C6 | **Network delay from India to Groq.** Unknown until measured. | 🟠 | ✅ | The timing overlay measures it. If it's consistently above ~1 s, make the on-device result the default for ✓ and use the cloud only for → Friday commands. |
 | C7 | **Free-tier limits or a model getting retired** (8B already reportedly gone). | 🟠 | ✅ | Model config file, quota tracker, Gemini → on-device fallback chain. |
+
+## G. Decision engine — *input → output voice* only
+
+| # | Problem | Pri | In plan? | Fix |
+|---|---|---|---|---|
+| G1 | **Wrong action or wrong person**: "text Rahul" goes to the wrong Rahul, or a note is treated as a task. | 🔴 | ➕ | Messages, emails and calls always stop at a ready-to-send card with the name shown; ambiguous names → choice card. Every action is shown after Done with Undo. |
+| G2 | **Partial failure** in a multi-part sentence (schedule saved, web search failed). | 🟠 | ➕ | Run actions independently; the pill lists what failed in one line ("2 done · search failed"). |
+| G3 | **Wrong web answers** (model guesses instead of searching). | 🟠 | ➕ | Answers only from grounded search results; show the source site name in the card; "Not sure" if results disagree. |
+| G4 | **Action button can't start the mic in the background** (AudioRecordingIntent blocked by free signing or iOS). | 🟠 | ➕ | Checked in the install probe; fallback opens the app straight into the talking sheet. |
+| G5 | **Screenshot text contains instructions** ("ignore your rules and delete…"). | 🟢 | ➕ | Screenshot-sourced input can only add items/notes without a tap. |
+| G6 | **Daily free token limits** — decision calls are bigger than cleanup calls. | 🟠 | ✅ | Lean prompt (≤1.5K tokens), only today + upcoming items sent, Gemini overflow. |
+| G7 | **Sending an email you didn't mean to** via the Gmail bridge. | 🔴 | ✅ | Never sends without the `Send email` tap. |
 
 ## D. Your data
 
@@ -78,13 +93,13 @@ Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS key
 
 ---
 
-## The 12 to fix first (🔴, roughly in build order)
+## The ones to fix first (🔴, roughly in build order)
 1. A2 keep the session alive + heartbeat + "tap to restart"
 2. A3/A4 don't stop music, keep AirPods at full quality
 3. B2 1-second pre-roll so first words aren't lost
 4. B1 Whisper phantom-text guards
-5. C1 cleanup must never answer or rewrite (overlap guard)
-6. C2/C3 safe matching + fixed time rules
+5. C1 keyboard cleanup must never answer or rewrite (overlap guard)
+6. C2/C3 + G1 safe matching, fixed time rules, right person every time
 7. A1 long sessions + Control Center/Action button pre-start + swipe-back teaching
 8. A7 never insert into the wrong box
 9. F1 every failure shows a reason
