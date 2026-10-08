@@ -50,11 +50,11 @@ npm test   # unit tests for the command parser
 
 ## Clear Desk (`dashboard/`)
 
-A personal command center for getting a messy life back in order. Open `dashboard/index.html` in a browser (it saves to local storage), or use the published version on claude.ai, which saves to your account and connects Google Calendar and Claude.
+Your day as a white desk seen from above. The desk has five spots for notes, and **you can only write a new note when a spot is free**. Finish something first.
 
-- **Capture**: type anything and press Return. `#money` files it under an area, `!fri` / `!tomorrow` / `!2026-10-20` / `!+3` gives it a date. Or paste a whole brain dump and have Claude split it into tasks with areas and dates.
-- **Today's three**: star up to three tasks for today. Overdue and due-soon tasks are suggested.
-- **Calendar and day plan**: today's Google Calendar events, and a time-blocked plan for the rest of the day built around them.
-- **Tasks**: Today, Inbox (unsorted), Next 14 days, No date, All, Done.
-- **Habits**: a 7-day grid with streaks. **Bills**: what is due, what is overdue, what is left to pay this month.
-- **Weekly review**: a checklist that also sets the week's three outcomes, and turns red after 7 days.
+- **Notes**: tap a free spot (or the note pad) to write one. Drag a note to the **bin** when it's done (it crumples and flies in), or to the **drawer** to deal with later. Every action can be undone.
+- **Drawer**: everything that isn't for today. Capture with `#money`, `!fri`, `!tomorrow`, `!+3`, or paste a whole brain dump and let Claude sort it. Items go "To desk" only when there's room.
+- **Envelopes**: bills due within a week sit on the desk. Mark one paid and it gets stamped and slides off.
+- **Phone**: today's Google Calendar. **Legal pad**: Claude writes a plan for the rest of the day. **Index card**: today's habits. **Notebook**: the weekly review. **Mug**: the coffee level is how much of the day is left.
+
+Open `dashboard/index.html` in a browser to use it locally (saved in that browser), or use the claude.ai version, which saves to your account and connects Google Calendar and Claude.
