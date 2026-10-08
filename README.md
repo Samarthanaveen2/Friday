@@ -50,11 +50,14 @@ npm test   # unit tests for the command parser
 
 ## Clear Desk (`dashboard/`)
 
-Your day as a white desk seen from above. The desk has five spots for notes, and **you can only write a new note when a spot is free**. Finish something first.
+Your day as a white desk seen from above, lit by the real time of day. The desk has five spots for notes, and **you can only write a new note when a spot is free**.
 
-- **Notes**: tap a free spot (or the note pad) to write one. Drag a note to the **bin** when it's done (it crumples and flies in), or to the **drawer** to deal with later. Every action can be undone.
-- **Drawer**: everything that isn't for today. Capture with `#money`, `!fri`, `!tomorrow`, `!+3`, or paste a whole brain dump and let Claude sort it. Items go "To desk" only when there's room.
-- **Envelopes**: bills due within a week sit on the desk. Mark one paid and it gets stamped and slides off.
-- **Phone**: today's Google Calendar. **Legal pad**: Claude writes a plan for the rest of the day. **Index card**: today's habits. **Notebook**: the weekly review. **Mug**: the coffee level is how much of the day is left.
+- **Notes**: tap a free spot or the sticky pad; a sheet peels off, flies into place, and the pen follows your handwriting. Finish a note and it gets crossed out, crumpled and thrown into the wire bin. Drag notes to the bin, to the drawer, or onto each other to swap them. Everything can be undone.
+- **Light**: cool morning light through the blinds, warm golden hour, a lamp at night. Shadows lean with the sun, and leaf shadows drift across the desk.
+- **Letter tray**: bills due within a week arrive as envelopes; mark one paid and it gets stamped and filed.
+- **Phone**: today's Google Calendar on the lock screen, a day timeline on tap, and a Dynamic Island for focus and "up next".
+- **AirPods case**: opens a 25 minute focus session with brown noise; everything but the notes dims.
+- **Legal pad**: Claude writes a plan for the rest of the day while the pen moves along. **Index card**: habits with tally-mark streaks. **Notebook**: the weekly review, signed off by hand. **Mug**: the coffee level is how much of today is left. **Tear-off calendar**: yesterday's page tears away each morning.
+- **Drawer**: everything not for today, as index cards. Capture with `#money`, `!fri`, `!tomorrow`, `!+3`, or paste a brain dump for Claude to sort. Press `n` anywhere to write a note.
 
-Open `dashboard/index.html` in a browser to use it locally (saved in that browser), or use the claude.ai version, which saves to your account and connects Google Calendar and Claude.
+Open `dashboard/index.html` in a browser to use it locally (saved in that browser), or use the claude.ai version, which saves to your account and connects Google Calendar and Claude. Sounds are synthesised in the page; the speaker button mutes them.
