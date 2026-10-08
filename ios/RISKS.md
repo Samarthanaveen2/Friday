@@ -21,7 +21,7 @@ Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS key
 | A5 | **Phone calls, Siri, FaceTime and video apps** interrupt the audio session. | 🟠 | ➕ | Pause the session on interruption and resume after. If resuming isn't allowed from the background, the keyboard shows "tap to restart" (A2). |
 | A6 | **Keyboard memory limit** (~30–60 MB). Go over it and iOS kills the keyboard with no error. | 🟠 | ✅ | Keyboard has no audio, no AI, no network, no images. Measure memory in the probe build. |
 | A7 | **Text lands in the wrong box** if you tap another field (or another chat) while Friday is still processing. | 🟠 | ➕ | Record `textDocumentProxy.documentIdentifier` at ✓. If it changed by the time the result is ready, don't insert; copy to the clipboard and show "Copied". |
-| A8 | **No typing keys on the Friday keyboard.** | 🟢 | ✅ | By design, like Wispr Flow: tap 🌐 to switch to Apple's keyboard for typing. |
+| A8 | **No letter keys on the Friday keyboard.** | 🟢 | ✅ | By design, like Wispr Flow: number/symbol pad only; ABC/🌐 switches to Apple's keyboard. |
 | A9 | Not available in **password, phone-number and some banking/secure fields**. | 🟢 | ✅ | iOS swaps in the system keyboard automatically. Nothing to do. |
 | A10 | **Reading the text in the box is limited.** iOS only gives text near the cursor, and some apps return nothing. | 🟢 | ✅ | Context is a bonus for continuing sentences; dictation works without it. |
 | A11 | **Orange mic dot always on** during a session, plus some battery use. | 🟢 | ✅ | Expected. Measure battery in the probe build; the session ends when the phone locks (A1 default). |

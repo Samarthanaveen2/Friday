@@ -46,15 +46,25 @@ The two never mix. The keyboard writes text; the app makes decisions.
 | 100+ languages | ❌ English only |
 | History, team sharing, dashboards | ❌ not needed |
 
-### 2.2 Layout
-Voice only, like Wispr Flow. No letter keys, no autocorrect. To type, tap 🌐 to switch to Apple's keyboard.
+### 2.2 Layout (copy Wispr Flow's keyboard — see `design/wispr-keyboard-reference.png`)
+No letter keys, no autocorrect. For letters, tap 🌐 to switch to Apple's keyboard.
+
+**Idle:**
 ```
-[ live transcript strip / status line              ]
-[ 🌐 ]        (  🎤 big  )        [ ⌫ ]  [ return ]
+[ ≡ ]                                   [ Tone ] [ 🎤 ]
+[ 1 ][ 2 ][ 3 ][ 4 ][ 5 ][ 6 ][ 7 ][ 8 ][ 9 ][ 0 ]
+[ - ][ / ][ : ][ ; ][ ( ][ ) ][ ₹ ][ & ][ @ ][ " ]
+[ #+= ]  [ . ][ , ][ ? ][ ! ][ ' ]           [ ⌫ ]
+[ ABC ]  [          Friday (space)         ]  [ ⏎ ]
+(🌐 system globe below)
 ```
-- **🎤** starts recording; while recording it becomes **✓** (stop + insert) with a small **✕** (cancel).
-- **Strip:** live words while you speak, then a status (`Listening…`, `Done`, or the reason it failed). Shows `Paste last` if an insert was blocked.
-- **🌐** switches keyboards (long-press for the list). **⌫** and **return** for quick fixes.
+- **Top bar:** ≡ (session on/off, settings shortcut) on the left; **Tone** and **🎤** on the right. Nothing else (no "Start" button).
+- **Tone:** cycles the cleanup tone for the next dictation: `As said` (default) → `Casual` → `Formal`. Shows the current one as a small label.
+- **Number/symbol pad:** same as iOS's number layout. `#+=` shows the second symbol page. `ABC` switches to the next keyboard (Apple's letters). The space bar reads "Friday".
+
+**Recording (after tapping 🎤):** the whole pad disappears. In the middle, a live **voice-memo style waveform** with the live words underneath. **✕** (cancel) on the left, **✓** (done → insert) on the right. After insert, the pad comes back.
+
+- **Strip messages** (above the waveform or under the top bar): `Done`, or why it failed (`No internet — used phone`, `Session ended — tap 🎤`), or `Paste last` if an insert was blocked.
 
 ### 2.3 Flow session (same as Wispr)
 1. The first 🎤 in a session opens the Friday app (`friday://session`). The app starts the mic in the foreground (iOS only allows starting it there), then you swipe back along the bottom edge. iOS 26.4+ gives no way to return automatically; Apple confirmed this.
@@ -68,7 +78,7 @@ Voice only, like Wispr Flow. No letter keys, no autocorrect. To type, tap 🌐 t
 - The same intent is available as a Control Center control and as a Siri phrase.
 
 ### 2.5 Dictation rules (what "gets it right every time" means)
-- Your words, your tone, your slang. Never formalised, summarised, answered or expanded.
+- Your words, your tone, your slang (unless Tone is set to Casual/Formal). Never summarised, answered or expanded.
 - A question stays a question: "what time is the meeting?" is typed, not answered.
 - Fillers removed, backtracks applied, punctuation and capitals fixed.
 - Spoken formatting: "new line", "new paragraph", "comma", "full stop", "question mark", "bullet point", "number one… number two…".
