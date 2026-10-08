@@ -312,7 +312,7 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 3. Session engine: audio session, pre-roll, VAD, interruptions, heartbeat, Live Activity.
 4. Speech: SpeechAnalyzer live, Groq Whisper (whole + chunked), race, phantom-text guards.
 5. Cleanup: Groq/Gemini/Foundation Models chain, quota tracker, timing overlay, dictation evals.
-6. **Keyboard:** voice bar, IPC, session start/bounce, ✓ insert with context, ✕, `Paste last`, status lines, 1?# row. **Daily-usable at this point.**
+6. **Keyboard:** voice bar, IPC, session start/bounce, ✓ insert with context, ✕, `Paste last`, status lines. **Daily-usable at this point.**
 7. Action button + Control Center: **double use** — in the app's settings choose what the Action button does: "Start keyboard session" or "Talk to Friday" (decision engine without opening the app, via AudioRecordingIntent + Live Activity). Default: Talk to Friday; the Control Center button starts the keyboard session.
 8. Today UI, store, backup/restore, long-press edit, Settings, first-run checklist.
 9. Decision engine on schedule + notes: highlights, Undo, Notes screen, evals.
