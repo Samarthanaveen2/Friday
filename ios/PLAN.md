@@ -62,7 +62,7 @@ No letter keys, no autocorrect. For letters, tap 🌐 to switch to Apple's keybo
 - **Tone:** cycles the cleanup tone for the next dictation: `As said` (default) → `Casual` → `Formal`. Shows the current one as a small label.
 - **Number/symbol pad:** same as iOS's number layout. `#+=` shows the second symbol page. `ABC` switches to the next keyboard (Apple's letters). The space bar reads "Friday".
 
-**Recording (after tapping 🎤):** the whole pad disappears. In the middle, a live **voice-memo style waveform** with the live words underneath. **✕** (cancel) on the left, **✓** (done → insert) on the right. After insert, the pad comes back.
+**Recording (after tapping 🎤):** the whole pad disappears. In the middle, a live **voice-memo style waveform** only — no live words (like Wispr). The text appears all at once after ✓. **✕** (cancel) on the left, **✓** (done → insert) on the right. After insert, the pad comes back.
 
 - **Strip messages** (above the waveform or under the top bar): `Done`, or why it failed (`No internet — used phone`, `Session ended — tap 🎤`), or `Paste last` if an insert was blocked.
 
@@ -151,7 +151,7 @@ All network providers sit behind one **OpenAI-compatible client**. Model IDs liv
 
 | Job | Primary | Backup 1 | Backup 2 |
 |---|---|---|---|
-| Live words while talking | **Apple SpeechAnalyzer** (on-device, streaming) | — | — |
+| Hidden backup transcript while talking (never shown in the keyboard) | **Apple SpeechAnalyzer** (on-device, streaming) | — | — |
 | Final transcript | **Groq `whisper-large-v3-turbo`** (`language: en`, `temperature: 0`, `prompt` = dictionary) | SpeechAnalyzer final | — |
 | Dictation cleanup | **Groq `openai/gpt-oss-20b`** (`reasoning_effort: low`) | Gemini Flash-Lite | Apple Foundation Models |
 | Decision engine (app only) | **Groq `openai/gpt-oss-120b`** (`reasoning_effort: low`, JSON) | Gemini Flash | Apple Foundation Models (`@Generable`, schedule + notes only) |
@@ -177,7 +177,7 @@ Free limits (third-party figures, verify in the consoles): Groq Whisper ~2,000 r
 Budget after ✓: **~200 ms speech-to-text + ~200 ms cleanup + ~200 ms network**.
 
 1. **Engine always running during a session**, with a 1 s rolling pre-roll buffer prepended to each dictation, so the first word is never lost.
-2. **On-device live transcript** the whole time: instant preview and a guaranteed fallback.
+2. **On-device transcript runs silently** the whole time: not shown, only used as the instant fallback if the cloud is slow or offline.
 3. **Pause chunking** (for dictations > ~20 s): at ≥600 ms of silence, upload the finished chunk to Groq while you keep talking. On ✓ only the tail is left. Shorter dictations go whole. Silence is trimmed (VAD) and chunks with no speech are never sent (prevents Whisper's phantom "Thank you for watching").
 4. **Cleanup call:** short prompt, low reasoning, `max_tokens` ≈ 1.5× the transcript length.
 5. **Race:** if the cloud result isn't back **1.2 s** after ✓, insert the on-device transcript run through the deterministic cleanup (fillers, snippets, fix rules) and, if it's fast enough, Apple Foundation Models.
