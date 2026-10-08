@@ -3,468 +3,975 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>One Screen</title>
+<title>Clear Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one left-aligned column, read top to bottom like a keynote. Nothing on the page that can't be read in five seconds. */
+/* Layout: capture bar on top, then two columns. Left is today (three, calendar, plan, tasks); right rail is the upkeep (habits, money, weekly review). One column on phones. */
 :root {
-  --paper: #f3f4f5;   /* brushed aluminum, cool not cream */
-  --surface: #ffffff;
-  --ink: #111214;
-  --muted: #6a6e74;
-  --hair: #d7dadd;
-  --no: #b8321c;      /* semantic: only used when the answer is No or a date slips */
-  --serif: "EB Garamond", "Apple Garamond", Garamond, "Times New Roman", serif;
-  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --bg: #f1f2f4;
+  --panel: #ffffff;
+  --ink: #15171a;
+  --muted: #646a73;
+  --line: #dfe2e6;
+  --chip: #eceef1;
+  --accent: #2c4bd4;
+  --accent-ink: #ffffff;
+  --bad: #c2361f;
+  --warn: #9a5b00;
+  --good: #1f7a4a;
+  --serif: "EB Garamond", Garamond, "Times New Roman", serif;
+  --sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0d0e0f; --surface: #17181a; --ink: #f1f1ef; --muted: #8d9096; --hair: #2a2c30; --no: #ff705a;
+    --bg: #0e0f11; --panel: #17191c; --ink: #eceef0; --muted: #959ba5; --line: #2a2d32; --chip: #23262b;
+    --accent: #8ea2ff; --accent-ink: #0e0f11; --bad: #ff7a66; --warn: #e5a34a; --good: #57c08a;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --paper: #0d0e0f; --surface: #17181a; --ink: #f1f1ef; --muted: #8d9096; --hair: #2a2c30; --no: #ff705a;
+  --bg: #0e0f11; --panel: #17191c; --ink: #eceef0; --muted: #959ba5; --line: #2a2d32; --chip: #23262b;
+  --accent: #8ea2ff; --accent-ink: #0e0f11; --bad: #ff7a66; --warn: #e5a34a; --good: #57c08a;
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
-body {
-  background: var(--paper);
-  color: var(--ink);
-  font: 16px/1.5 var(--sans);
-  -webkit-font-smoothing: antialiased;
-  padding-inline: 20px;
-  padding-block: 0 96px;
-}
-.col { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 88px; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--sans); -webkit-font-smoothing: antialiased; padding-inline: 16px; padding-block: 0 64px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
-/* the day, as a hairline */
-.day { position: relative; height: 2px; background: var(--hair); margin-inline: -20px; }
-.day i { position: absolute; inset: 0 auto 0 0; background: var(--ink); width: 0; transition: width 1s ease; }
+/* header */
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; padding-top: 28px; }
+.eyebrow { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -0.02em; line-height: 1; margin: 4px 0 0; }
+.summary { margin: 0; flex: 1 1 360px; min-width: 0; font-size: 15px; color: var(--muted); max-width: 62ch; text-wrap: pretty; }
+.summary b { color: var(--ink); font-weight: 500; }
+.summary .bad { color: var(--bad); }
+.sync { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
-header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; padding-top: 28px; }
-.date { font-family: var(--serif); font-size: 22px; letter-spacing: -0.01em; }
-.gone { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+/* panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+.ph { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.ph h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+.ph .aside { font-size: 12px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 
-.label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0 0 18px; font-weight: 500; }
-
-h1, .big {
-  font-family: var(--serif); font-weight: 400; letter-spacing: -0.025em; line-height: 1.08; margin: 0; text-wrap: balance;
-}
-h1 { font-size: clamp(34px, 6.4vw, 60px); }
-h1 em { font-style: italic; }
-
-button { font: inherit; color: inherit; cursor: pointer; }
-:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
-
-.answer { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
-.pill {
-  border: 1px solid var(--ink); background: transparent; border-radius: 999px;
-  padding: 10px 30px; font-size: 16px; letter-spacing: 0.01em; transition: background .15s, color .15s;
-}
-.pill:hover { background: var(--ink); color: var(--paper); }
-.verdict { margin-top: 28px; font-size: 18px; max-width: 34em; }
-.verdict.no { color: var(--no); }
-.link { background: none; border: 0; padding: 0; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+/* controls */
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 7px 14px; font-weight: 500; font-size: 14px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.ghost { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 7px 12px; font-size: 14px; }
+.ghost:hover { border-color: var(--muted); }
+.link { border: 0; background: none; padding: 0; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
 .link:hover { color: var(--ink); }
+.field { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 8px 10px; min-width: 0; outline: none; }
+.field:focus { border-color: var(--accent); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.empty { color: var(--muted); font-size: 14px; margin: 4px 0; }
+.note { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.note.bad { color: var(--bad); }
 
-.dots { display: flex; gap: 10px; margin-top: 28px; align-items: center; flex-wrap: wrap; }
-.dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--hair); }
-.dot.yes { background: var(--ink); border-color: var(--ink); }
-.dot.no { border: 1.5px solid var(--no); }
-.dot.today { outline: 1px solid var(--muted); outline-offset: 3px; }
-.dots small { color: var(--muted); font-size: 12px; margin-left: 6px; }
+/* capture */
+.capture form { display: flex; gap: 8px; }
+.capture #quick { flex: 1; font-size: 16px; padding: 11px 12px; }
+.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.hint code { font-family: var(--mono); font-size: 11.5px; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+details.dump { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+details.dump summary { cursor: pointer; font-size: 14px; font-weight: 500; }
+details.dump textarea { width: 100%; min-height: 130px; margin: 10px 0; resize: vertical; line-height: 1.5; }
+.sorted { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.sorted .item { display: grid; grid-template-columns: 20px minmax(0, 1fr) 110px 140px; gap: 8px; align-items: center; }
+.sorted .item input[type="text"] { width: 100%; }
+@media (max-width: 600px) { .sorted .item { grid-template-columns: 20px minmax(0, 1fr); } .sorted .item select, .sorted .item input[type="date"] { grid-column: 2; } }
 
-/* plain-text inputs that look like the words they hold */
-.line {
-  width: 100%; border: 0; border-bottom: 1px solid var(--hair); background: transparent; color: var(--ink);
-  padding: 6px 0 10px; outline: none; border-radius: 0;
-}
-.line:focus { border-bottom-color: var(--ink); }
-.line::placeholder { color: var(--muted); opacity: .7; }
-.line.big { font-size: clamp(28px, 5vw, 44px); resize: none; overflow: hidden; display: block; }
-.line.small { font: 17px/1.4 var(--sans); }
+/* tasks */
+.seg { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+.seg button { border: 1px solid transparent; background: var(--chip); border-radius: 999px; padding: 4px 11px; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.seg .n { font-family: var(--mono); font-size: 11.5px; opacity: .75; margin-left: 4px; }
+.seg .n.bad { color: var(--bad); opacity: 1; }
+.seg button[aria-pressed="true"] .n.bad { color: inherit; }
+ul.tasks { list-style: none; margin: 0; padding: 0; }
+ul.tasks > li { border-top: 1px solid var(--line); }
+ul.tasks > li:first-child { border-top: 0; }
+.task { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 9px 0; }
+.check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--muted); background: transparent; padding: 0; display: grid; place-items: center; }
+.check:hover { border-color: var(--accent); }
+.check[aria-pressed="true"] { background: var(--good); border-color: var(--good); }
+.check[aria-pressed="true"]::after { content: ""; width: 8px; height: 4px; border: solid var(--panel); border-width: 0 0 1.5px 1.5px; transform: translateY(-1px) rotate(-45deg); }
+.task .title { overflow-wrap: anywhere; }
+.task.done .title { color: var(--muted); text-decoration: line-through; }
+.meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; }
+.chip { background: var(--chip); border-radius: 5px; padding: 1px 7px; color: var(--muted); }
+.chip.ex { border: 1px dashed var(--muted); background: transparent; }
+.due { font-family: var(--mono); font-size: 11.5px; padding: 1px 0; color: var(--muted); }
+.due.bad { color: var(--bad); }
+.due.warn { color: var(--warn); }
+.icon { border: 0; background: none; color: var(--muted); padding: 4px 6px; font-size: 16px; line-height: 1; border-radius: 6px; }
+.icon:hover { color: var(--ink); background: var(--chip); }
+.star[aria-pressed="true"] { color: var(--warn); }
+.triage { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.triage button { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 2px 9px; font-size: 12px; }
+.triage button:hover { border-color: var(--accent); color: var(--accent); }
+.editor { display: grid; grid-template-columns: minmax(0, 1fr) 130px 150px; gap: 8px; padding: 0 0 12px 32px; }
+.editor .row { grid-column: 1 / -1; }
+@media (max-width: 600px) { .editor { grid-template-columns: minmax(0, 1fr); padding-left: 0; } }
+.thisweek { font-size: 13px; color: var(--muted); margin: -4px 0 10px; }
+.thisweek b { color: var(--ink); font-weight: 500; }
 
-ol.three { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-ol.three li { display: grid; grid-template-columns: 28px 1fr auto; gap: 14px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--hair); }
-ol.three li:first-child { border-top: 1px solid var(--hair); }
-.tick { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink); background: transparent; padding: 0; display: grid; place-items: center; }
-.tick[aria-pressed="true"] { background: var(--ink); }
-.tick[aria-pressed="true"]::after { content: ""; width: 8px; height: 4px; border: solid var(--paper); border-width: 0 0 1.5px 1.5px; transform: translateY(-1px) rotate(-45deg); }
-.three .t { font-family: var(--serif); font-size: 24px; letter-spacing: -0.01em; min-width: 0; overflow-wrap: anywhere; }
-.three li.done .t { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
-.x { background: none; border: 0; color: var(--muted); font-size: 20px; line-height: 1; padding: 4px 6px; opacity: .55; }
-.x:hover { opacity: 1; color: var(--ink); }
-.note { color: var(--muted); font-size: 14px; margin: 16px 0 0; }
+/* calendar */
+ul.events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+ul.events li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); align-items: baseline; }
+ul.events li:first-child { border-top: 0; }
+ul.events time { font-family: var(--mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+ul.events li.past { opacity: .5; }
+ul.events li.now time { color: var(--accent); }
+ul.events a { color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+ul.events a:hover { text-decoration: underline; }
 
-.ritual { margin-top: 28px; background: var(--surface); border: 1px solid var(--hair); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-.ritual ol { margin: 0; padding-left: 26px; display: flex; flex-direction: column; gap: 4px; font-variant-numeric: tabular-nums; }
-.ritual li button { background: none; border: 0; padding: 4px 0; text-align: left; font-size: 17px; min-width: 0; overflow-wrap: anywhere; }
-.ritual li.struck button { color: var(--muted); text-decoration: line-through; }
-.ritual .status { font-size: 14px; color: var(--muted); margin: 0; }
-.ritual .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+/* plan */
+.plan { white-space: pre-wrap; font-family: var(--mono); font-size: 13px; line-height: 1.7; margin: 0; background: var(--bg); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
 
-.ship { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
-.ship .n { font-family: var(--serif); font-size: clamp(72px, 14vw, 132px); line-height: .9; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
-.ship .n.late { color: var(--no); }
-.ship .unit { font-size: 17px; color: var(--muted); }
-.shipform { display: grid; grid-template-columns: 1fr 180px; gap: 20px; margin-top: 20px; }
-.shipform label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); min-width: 0; }
-input[type="date"].line { font: 17px/1.4 var(--sans); }
+/* habits */
+.hgrid { display: grid; grid-template-columns: minmax(0, 1fr) repeat(7, 26px) 34px; gap: 6px 4px; align-items: center; }
+.hgrid .dh { font-family: var(--mono); font-size: 10.5px; color: var(--muted); text-align: center; }
+.hgrid .dh.today { color: var(--ink); font-weight: 500; }
+.hname { min-width: 0; overflow-wrap: anywhere; font-size: 14px; display: flex; align-items: center; gap: 4px; }
+.cell { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background: transparent; padding: 0; }
+.cell[aria-pressed="true"] { background: var(--good); border-color: var(--good); }
+.cell.today { border-color: var(--muted); }
+.streak { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-align: right; }
 
-.count { font-family: var(--serif); font-size: 26px; letter-spacing: -0.01em; margin: 0 0 18px; }
-ul.nos { list-style: none; padding: 0; margin: 16px 0 0; display: flex; flex-direction: column; }
-ul.nos li { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--hair); }
-ul.nos .t { text-decoration: line-through; text-decoration-color: var(--muted); text-decoration-thickness: 1px; min-width: 0; overflow-wrap: anywhere; }
-ul.nos time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* money */
+ul.bills { list-style: none; margin: 0; padding: 0; }
+ul.bills li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+ul.bills li:first-child { border-top: 0; }
+.amt { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.paid { border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 3px 8px; font-size: 12px; }
+.paid[aria-pressed="true"] { background: var(--good); border-color: var(--good); color: var(--panel); }
+.totals { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--ink); padding-top: 8px; margin-top: 6px; flex-wrap: wrap; }
+.totals b { color: var(--ink); font-family: var(--mono); font-weight: 500; }
+.billform { display: grid; grid-template-columns: minmax(0, 1fr) 84px 64px auto; gap: 6px; margin-top: 10px; }
+.addhabit { display: flex; gap: 6px; margin-top: 10px; }
+.addhabit input { flex: 1; }
 
-.brief { border-top: 1px solid var(--ink); padding-top: 24px; }
-.brief dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 40px; }
-.brief dt, .brief dd { padding: 14px 0; border-bottom: 1px solid var(--hair); margin: 0; }
-.brief dt { font-family: var(--serif); font-style: italic; font-size: 19px; line-height: 1.35; }
-.brief dd { color: var(--muted); font-size: 14px; }
-.brief .src { margin-top: 18px; font-size: 13px; color: var(--muted); max-width: 60ch; }
+/* review */
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.steps label { display: flex; gap: 9px; align-items: flex-start; font-size: 14px; cursor: pointer; }
+.steps input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); }
+.outcomes { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 0 25px; }
+.badge { font-size: 12px; border-radius: 999px; padding: 2px 9px; background: var(--chip); color: var(--muted); }
+.badge.bad { background: transparent; border: 1px solid var(--bad); color: var(--bad); }
 
-.sample { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
-
-@media (max-width: 560px) {
-  .col { gap: 64px; }
-  .shipform { grid-template-columns: 1fr; }
-  .brief dl { grid-template-columns: 1fr; }
-  .brief dt { border-bottom: 0; padding-bottom: 2px; }
-  .brief dd { padding-top: 0; }
-}
+.banner { border: 1px solid var(--bad); color: var(--bad); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-<div class="day" aria-hidden="true"><i id="dayFill"></i></div>
-
-<main class="col">
-  <header>
-    <div class="date" id="date"></div>
-    <div class="gone" id="gone"></div>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="dow"></div>
+      <h1 id="dateline"></h1>
+    </div>
+    <p class="summary" id="summary"></p>
+    <span class="sync" id="sync">Loading your desk…</span>
   </header>
 
-  <section aria-labelledby="mirror">
-    <p class="label">The mirror</p>
-    <h1 id="mirror">If today were the last day of your life, would you want to do what you are about to do <em>today?</em></h1>
-    <div id="answerArea"></div>
-    <div class="dots" id="dots" aria-label="Your last 14 answers"></div>
-  </section>
+  <div class="banner" id="banner" hidden></div>
 
-  <section aria-labelledby="oneLabel">
-    <p class="label" id="oneLabel">The one thing today</p>
-    <textarea id="one" class="line big" rows="1" maxlength="90" placeholder="What matters most today?"></textarea>
-  </section>
-
-  <section aria-labelledby="threeLabel">
-    <p class="label" id="threeLabel">The three</p>
-    <ol class="three" id="three"></ol>
-    <div id="threeAdd"></div>
-    <p class="note"><button class="link" id="ritualToggle" type="button">Not sure what the three are? List ten. Cross out seven.</button></p>
-    <div class="ritual" id="ritual" hidden></div>
-  </section>
-
-  <section aria-labelledby="shipLabel">
-    <p class="label" id="shipLabel">Shipping</p>
-    <div class="ship" id="ship"></div>
-    <div class="shipform">
-      <label for="shipName">Product<input id="shipName" class="line small" maxlength="60" autocomplete="off"></label>
-      <label for="shipDate">Ships on<input id="shipDate" class="line" type="date"></label>
-    </div>
-  </section>
-
-  <section aria-labelledby="noLabel">
-    <p class="label" id="noLabel">Said no</p>
-    <p class="count" id="noCount"></p>
-    <form id="noForm" autocomplete="off">
-      <input id="noInput" class="line small" maxlength="120" placeholder="What did you turn down? Press Return.">
+  <section class="panel capture" aria-label="Capture">
+    <form id="quickForm" autocomplete="off">
+      <input id="quick" class="field" placeholder="Add anything on your mind and press Return" aria-label="Add a task">
+      <button class="btn" type="submit">Add</button>
     </form>
-    <ul class="nos" id="nos"></ul>
+    <p class="hint">Add <code>#money</code> to file it, <code>!fri</code> or <code>!tomorrow</code> or <code>!2026-10-20</code> to give it a date. Anything without a <code>#area</code> goes to the Inbox.</p>
+    <details class="dump" id="dumpBox">
+      <summary>Too much in your head? Write it all out and sort it in one go</summary>
+      <textarea id="dump" class="field" placeholder="Write it the way it comes. e.g. mom's birthday next tuesday need a gift, lab report due friday, wifi bill, haven't been to the gym in two weeks, reply to the internship email, room is a mess"></textarea>
+      <div class="row">
+        <button class="btn" id="sortBtn" type="button" hidden>Sort it into tasks</button>
+        <button class="ghost" id="stopSort" type="button" hidden>Stop</button>
+        <button class="ghost" id="splitBtn" type="button">Add each line as a task</button>
+        <span class="small muted" id="sortStatus"></span>
+      </div>
+      <div class="sorted" id="sorted"></div>
+    </details>
   </section>
 
-  <section class="brief" aria-labelledby="briefLabel">
-    <p class="label" id="briefLabel">The brief this page was built from</p>
-    <dl>
-      <dt>“I don’t want a dashboard. Dashboards are where focus goes to die. One screen, readable in five seconds.”</dt>
-      <dd>One column. No charts, no widgets, no tabs. The only graphic is a line showing how much of today is gone.</dd>
-      <dt>“Every morning, ask me the question. Keep my answers. If I keep saying no, tell me. Don’t soften it.”</dt>
-      <dd>The mirror sits at the top. Fourteen days of answers as dots. Three Nos in a row and it says so, in red.</dd>
-      <dt>“Three things. Not five. If I try to add a fourth, make me kill one.”</dt>
-      <dd>The list stops taking input at three. The ten-then-three exercise is there when the three aren’t obvious.</dd>
-      <dt>“Show me what I said no to. I’m as proud of that list as the other one.”</dt>
-      <dd>A running count of declined things, struck through and dated.</dd>
-      <dt>“One ship date. Count it down in days. Not percentages, not burndown charts.”</dt>
-      <dd>One number, very large. It turns red the day after the date passes.</dd>
-      <dt>“No email count. No stock price. No weather. No news. If it’s important, someone will walk into my office.”</dt>
-      <dd>Nothing on this page updates itself except the date and the day line.</dd>
-      <dt>“Make the back of the cabinet as nice as the front.”</dt>
-      <dd>One file, no framework, no build step, no accounts. Your entries stay in this browser.</dd>
-    </dl>
-    <p class="src">The quoted prompts are imagined: what Steve Jobs might ask for today. The ideas behind them are his: the mirror question (Stanford commencement, 2005), “focus is about saying no” (WWDC, 1997), the top-ten list cut to three (described in Walter Isaacson’s <i>Steve Jobs</i>, 2011), and “real artists ship” (Macintosh team, 1983).</p>
-  </section>
+  <div class="grid">
+    <div class="col">
+      <section class="panel" aria-labelledby="threeH">
+        <div class="ph"><h2 id="threeH">Today’s three</h2><span class="aside" id="threeCount"></span></div>
+        <p class="thisweek" id="thisWeek" hidden></p>
+        <ul class="tasks" id="three"></ul>
+        <div id="threeSuggest"></div>
+      </section>
 
-  <div class="sample" id="sampleBar" hidden>
-    <span>The entries above are examples.</span>
-    <button class="link" id="clearSamples" type="button">Clear them and start with a blank page</button>
+      <section class="panel" aria-labelledby="calH">
+        <div class="ph"><h2 id="calH">Calendar today</h2><span class="aside" id="calAside"></span></div>
+        <div id="cal"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="planH">
+        <div class="ph"><h2 id="planH">Plan for the rest of today</h2>
+          <span class="row"><button class="ghost" id="planBtn" type="button" hidden>Plan my day</button><button class="ghost" id="stopPlan" type="button" hidden>Stop</button></span>
+        </div>
+        <div id="plan"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="tasksH">
+        <div class="ph"><h2 id="tasksH">Tasks</h2><span class="aside" id="tasksAside"></span></div>
+        <div class="seg" id="seg" role="group" aria-label="Show tasks"></div>
+        <ul class="tasks" id="tasks"></ul>
+      </section>
+    </div>
+
+    <aside class="col">
+      <section class="panel" aria-labelledby="habH">
+        <div class="ph"><h2 id="habH">Habits</h2><button class="link" id="habEdit" type="button">Edit</button></div>
+        <div class="hgrid" id="habits"></div>
+        <form class="addhabit" id="habForm" autocomplete="off" hidden>
+          <input id="habName" class="field small" maxlength="40" placeholder="New habit, e.g. Asleep by 12">
+          <button class="ghost small" type="submit">Add</button>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="monH">
+        <div class="ph"><h2 id="monH">Bills and subscriptions</h2>
+          <select id="currency" class="field small" aria-label="Currency"><option>₹</option><option>$</option><option>€</option><option>£</option></select>
+        </div>
+        <ul class="bills" id="bills"></ul>
+        <div class="totals" id="billTotals"></div>
+        <form class="billform" id="billForm" autocomplete="off">
+          <input id="billName" class="field small" maxlength="40" placeholder="Rent, phone…" aria-label="Bill name">
+          <input id="billAmt" class="field small" inputmode="decimal" placeholder="Amount" aria-label="Amount">
+          <input id="billDay" class="field small" inputmode="numeric" placeholder="Day" aria-label="Day of month it is due">
+          <button class="ghost small" type="submit">Add</button>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="revH">
+        <div class="ph"><h2 id="revH">Weekly review</h2><span id="revBadge" class="badge"></span></div>
+        <ul class="steps" id="steps"></ul>
+        <div class="row" style="margin-top:14px"><button class="btn" id="revDone" type="button">Finish this week’s review</button></div>
+      </section>
+    </aside>
   </div>
-</main>
+</div>
 
 <script>
 (() => {
-  const KEY = "one-screen-v1";
-  const $ = (id) => document.getElementById(id);
+  "use strict";
+  const AREAS = ["Work", "Study", "Health", "Money", "Home", "People", "Self"];
+  const DOCS = {
+    tasks: () => ({ items: [] }),
+    habits: () => ({ items: [] }),
+    bills: () => ({ items: [], currency: "₹" }),
+    review: () => ({ lastDone: "", checks: {}, outcomes: ["", "", ""] }),
+    day: () => ({ date: "", plan: "" }),
+  };
+  const LS = "clear-desk-v1";
+
+  /* ---------- dates ---------- */
   const pad = (n) => String(n).padStart(2, "0");
   const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-  const uid = () => Math.random().toString(36).slice(2, 9);
+  const fromKey = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
   const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const daysBetween = (a, b) => Math.round((b - a) / 86400000);
+  const tk = () => keyOf(today());
+  const DOW = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-  function sampleState() {
-    const t = today();
-    const answers = {};
-    ["yes", "yes", "no", "yes", "yes", "yes", "no", "no", "yes", "no", "no", "no"].forEach((a, i) => {
-      answers[keyOf(addDays(t, i - 12))] = a;
-    });
-    return {
-      sample: true,
-      answers,
-      one: "Finish ;;write so a reply drafts itself inside Gmail",
-      three: [
-        { id: uid(), text: "Ship ;;write in Friday", done: false },
-        { id: uid(), text: "Cut the popup down to one screen", done: true },
-        { id: uid(), text: "Rewrite the README in 100 words", done: false },
-      ],
-      ship: { name: "Friday 1.0", date: keyOf(addDays(t, 24)) },
-      nos: [
-        { text: "A settings page with thirty toggles", date: keyOf(addDays(t, -1)) },
-        { text: "Firefox port this month", date: keyOf(addDays(t, -3)) },
-        { text: "A new logo", date: keyOf(addDays(t, -6)) },
-        { text: "A fourth weekly sync", date: keyOf(addDays(t, -9)) },
-      ],
-      ritual: { open: false, items: [] },
-    };
+  /* "pay wifi #money !fri" -> {title, area, due} */
+  function parseQuick(text, base) {
+    let area = "", due = "";
+    const words = [];
+    for (const w of text.trim().split(/\s+/)) {
+      const lw = w.toLowerCase();
+      if (lw.startsWith("#") && lw.length > 1) {
+        const hit = AREAS.find((a) => a.toLowerCase().startsWith(lw.slice(1)));
+        if (hit) { area = hit; continue; }
+      }
+      if (lw.startsWith("!") && lw.length > 1) {
+        const v = lw.slice(1);
+        let d = null;
+        if (v === "today" || v === "tod") d = base;
+        else if (v === "tomorrow" || v === "tmr" || v === "tom") d = addDays(base, 1);
+        else if (/^\+\d{1,3}$/.test(v)) d = addDays(base, Number(v.slice(1)));
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(v)) d = fromKey(v);
+        else {
+          const i = DOW.findIndex((x) => v.startsWith(x));
+          if (i >= 0) d = addDays(base, (i - base.getDay() + 7) % 7);
+        }
+        if (d && !isNaN(d)) { due = keyOf(d); continue; }
+      }
+      words.push(w);
+    }
+    return { title: words.join(" "), area, due };
   }
-  const blankState = () => ({ sample: false, answers: {}, one: "", three: [], ship: { name: "", date: "" }, nos: [], ritual: { open: false, items: [] } });
 
-  let state;
-  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
-  if (!state || typeof state !== "object") state = sampleState();
-  state = Object.assign(blankState(), state);
+  function dueInfo(due) {
+    if (!due) return null;
+    const n = daysBetween(today(), fromKey(due));
+    if (n < 0) return { text: `${-n}d overdue`, cls: "bad" };
+    if (n === 0) return { text: "today", cls: "warn" };
+    if (n === 1) return { text: "tomorrow", cls: "" };
+    if (n < 7) return { text: fromKey(due).toLocaleDateString(undefined, { weekday: "short" }), cls: "" };
+    return { text: fromKey(due).toLocaleDateString(undefined, { month: "short", day: "numeric" }), cls: "" };
+  }
 
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+  /* ---------- state + storage ---------- */
+  const S = {};
+  for (const k of Object.keys(DOCS)) S[k] = DOCS[k]();
+  try {
+    const cached = JSON.parse(localStorage.getItem(LS));
+    if (cached) for (const k of Object.keys(DOCS)) if (cached[k]) S[k] = Object.assign(DOCS[k](), cached[k]);
+  } catch (e) {}
 
-  function el(tag, props = {}, ...kids) {
+  const store = { mode: "local", refs: {}, dirty: {}, inflight: {}, again: {}, timers: {}, retried: {}, readOnly: false };
+  const $ = (id) => document.getElementById(id);
+  const setSync = (t) => { $("sync").textContent = t; };
+  function banner(text) { $("banner").textContent = text; $("banner").hidden = !text; }
+
+  function save(name) {
+    try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {}
+    if (store.mode !== "db" || store.readOnly) return;
+    store.dirty[name] = true;
+    setSync("Saving…");
+    clearTimeout(store.timers[name]);
+    store.timers[name] = setTimeout(() => flush(name), 400);
+  }
+  async function flush(name) {
+    if (store.inflight[name]) { store.again[name] = true; return; }
+    store.inflight[name] = true;
+    store.dirty[name] = false;
+    try {
+      await store.refs[name].set(JSON.parse(JSON.stringify(S[name])));
+      store.retried[name] = false;
+      setSync("Saved");
+    } catch (e) {
+      const code = e && e.code;
+      if (code === "unavailable" && !store.retried[name]) {
+        store.retried[name] = true;
+        store.dirty[name] = true;
+        setTimeout(() => flush(name), 1000 + Math.random() * 1500);
+      } else if (code === "invalid_argument") {
+        store.readOnly = true;
+        banner("You can look at this desk but not change it. Changes you make stay in this browser only.");
+        setSync("Read-only");
+      } else if (code === "quota_exceeded") {
+        banner("Storage is full. Delete some finished tasks or old bills, then try again.");
+      } else {
+        banner("Couldn’t save to your account just now. Your changes are kept in this browser; reload to try again.");
+        setSync("Not saved");
+      }
+    }
+    store.inflight[name] = false;
+    if (store.again[name] || store.dirty[name]) { store.again[name] = false; if (!store.readOnly) flush(name); }
+  }
+
+  async function connectStore() {
+    if (!window.claude || !window.claude.use) { setSync("Saved in this browser"); render(); return; }
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    const id = user ? await user.id() : null;
+    if (!db || !id) { setSync("Saved in this browser"); render(); return; }
+    store.mode = "db";
+    const col = db.collection("data/users/" + id);
+    for (const name of Object.keys(DOCS)) {
+      const ref = col.doc("desk-" + name);
+      store.refs[name] = ref;
+      ref.onSnapshot((snap) => {
+        if (snap.metadata.hasPendingWrites || store.dirty[name] || store.inflight[name]) return;
+        if (snap.exists) S[name] = Object.assign(DOCS[name](), structuredClone(snap.data()));
+        else if (JSON.stringify(S[name]) !== JSON.stringify(DOCS[name]())) save(name); // first run: move this browser's data up
+        setSync("Saved to your account");
+        render();
+      }, (e) => {
+        if (e && e.code === "revoked") { store.mode = "local"; setSync("Saved in this browser"); }
+      });
+    }
+  }
+
+  /* ---------- tiny DOM helper ---------- */
+  function el(tag, props, ...kids) {
     const n = document.createElement(tag);
-    for (const [k, v] of Object.entries(props)) {
+    if (props) for (const [k, v] of Object.entries(props)) {
+      if (v === undefined || v === null || v === false) continue;
       if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
       else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
-      else if (v !== undefined && v !== null) n.setAttribute(k, v);
+      else n.setAttribute(k, v === true ? "" : v);
     }
-    n.append(...kids);
+    for (const c of kids) if (c !== null && c !== undefined && c !== false) n.append(c);
     return n;
   }
 
-  /* --- header and the day line --- */
-  function renderClock() {
-    const now = new Date();
-    $("date").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-    const mins = now.getHours() * 60 + now.getMinutes();
-    const pct = Math.round((mins / 1440) * 100);
-    $("dayFill").style.width = pct + "%";
-    const left = 1440 - mins;
-    $("gone").textContent = `${pct}% of today is gone · ${Math.floor(left / 60)}h ${pad(left % 60)}m left`;
+  /* ---------- derived ---------- */
+  const open = () => S.tasks.items.filter((t) => !t.done);
+  const isOverdue = (t) => !t.done && t.due && t.due < tk();
+  const isDueToday = (t) => !t.done && t.due === tk();
+  const threeToday = () => S.tasks.items.filter((t) => t.top === tk());
+  function money(n) {
+    const v = Number(n) || 0;
+    return S.bills.currency + v.toLocaleString(undefined, { maximumFractionDigits: v % 1 ? 2 : 0 });
   }
-
-  /* --- the mirror --- */
-  function noStreak() {
-    let d = today();
-    if (!state.answers[keyOf(d)]) d = addDays(d, -1);
-    let n = 0;
-    while (state.answers[keyOf(d)] === "no") { n++; d = addDays(d, -1); }
-    return n;
-  }
-  function answer(a) { state.answers[keyOf(today())] = a; save(); renderMirror(); }
-  function renderMirror() {
-    const area = $("answerArea");
-    area.replaceChildren();
-    const a = state.answers[keyOf(today())];
-    if (!a) {
-      area.append(el("div", { class: "answer" },
-        el("button", { class: "pill", type: "button", onclick: () => answer("yes") }, "Yes"),
-        el("button", { class: "pill", type: "button", onclick: () => answer("no") }, "No")));
-    } else {
-      const streak = noStreak();
-      let text;
-      if (a === "yes") text = "Yes. Then go do it.";
-      else if (streak >= 3) text = `No, ${streak} days running. Something has to change, and it should change today.`;
-      else text = "No. One No is just a day. Too many in a row means something has to change.";
-      area.append(el("p", { class: "verdict" + (a === "no" ? " no" : "") }, text, " ",
-        el("button", { class: "link", type: "button", onclick: () => { delete state.answers[keyOf(today())]; save(); renderMirror(); } }, "Change answer")));
-    }
-    const dots = $("dots");
-    dots.replaceChildren();
+  function billDue(b) {
     const t = today();
-    for (let i = 13; i >= 0; i--) {
-      const d = addDays(t, -i), v = state.answers[keyOf(d)];
-      const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ": " + (v || "no answer");
-      dots.append(el("span", { class: "dot" + (v ? " " + v : "") + (i === 0 ? " today" : ""), title: label, role: "img", "aria-label": label }));
-    }
-    dots.append(el("small", {}, "last 14 days"));
+    const ym = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+    const dayIn = (y, m) => new Date(y, m, Math.min(b.day, new Date(y, m + 1, 0).getDate()));
+    const thisDue = dayIn(t.getFullYear(), t.getMonth());
+    const paidThis = !!(b.paid && b.paid[ym(t)]);
+    if (!paidThis) return { date: thisDue, days: daysBetween(t, thisDue), paid: false, month: ym(t) };
+    const next = dayIn(t.getFullYear(), t.getMonth() + 1);
+    return { date: next, days: daysBetween(t, next), paid: true, month: ym(t) };
   }
 
-  /* --- the one thing --- */
-  const fitOne = () => { const t = $("one"); t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
-  $("one").value = state.one;
-  $("one").addEventListener("input", (e) => { state.one = e.target.value.replace(/\n/g, " "); e.target.value = state.one; save(); fitOne(); });
-  $("one").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } });
-  addEventListener("resize", fitOne);
+  /* ---------- header ---------- */
+  let cal = { status: "idle", events: [] };
+  function renderHeader() {
+    const now = new Date();
+    $("dow").textContent = now.toLocaleDateString(undefined, { weekday: "long" });
+    $("dateline").textContent = now.toLocaleDateString(undefined, { month: "long", day: "numeric" });
+    const s = $("summary");
+    s.replaceChildren();
+    const parts = [];
+    const od = open().filter(isOverdue).length;
+    const dt = open().filter(isDueToday).length;
+    const inbox = open().filter((t) => !t.area).length;
+    const habitsLeft = S.habits.items.filter((h) => !(h.log && h.log[tk()])).length;
+    const billsSoon = S.bills.items.map((b) => ({ b, d: billDue(b) })).filter((x) => !x.d.paid && x.d.days <= 7);
+    if (cal.status === "ok") {
+      const left = cal.events.filter((e) => !e.end || new Date(e.end) > now).length;
+      parts.push([`${left} ${left === 1 ? "event" : "events"} left today`]);
+    }
+    if (od) parts.push([`${od} overdue`, "bad"]);
+    if (dt) parts.push([`${dt} due today`]);
+    if (billsSoon.length) {
+      const late = billsSoon.filter((x) => x.d.days < 0).length;
+      parts.push([late ? `${late} ${late === 1 ? "bill" : "bills"} overdue` : `${billsSoon.length} ${billsSoon.length === 1 ? "bill" : "bills"} due this week`, late ? "bad" : ""]);
+    }
+    if (inbox) parts.push([`${inbox} to sort in the inbox`]);
+    if (habitsLeft) parts.push([`${habitsLeft} ${habitsLeft === 1 ? "habit" : "habits"} to do`]);
+    if (!parts.length) { s.textContent = "Nothing is late and nothing is waiting. A good time to plan the week."; return; }
+    parts.forEach(([t, cls], i) => {
+      if (i) s.append(i === parts.length - 1 ? " and " : ", ");
+      s.append(el("b", { class: cls || null, text: t }));
+    });
+    s.append(".");
+  }
 
-  /* --- the three --- */
+  /* ---------- tasks ---------- */
+  let view = null, editing = null, flash = "";
+  const VIEWS = [
+    ["today", "Today", (t) => !t.done && ((t.due && t.due <= tk()) || t.top === tk())],
+    ["inbox", "Inbox", (t) => !t.done && !t.area],
+    ["upcoming", "Next 14 days", (t) => !t.done && t.due > tk() && t.due <= keyOf(addDays(today(), 14))],
+    ["someday", "No date", (t) => !t.done && !t.due && t.area],
+    ["all", "All open", (t) => !t.done],
+    ["done", "Done", (t) => t.done],
+  ];
+
+  function mutateTasks(fn) {
+    fn();
+    // keep the list small: finished tasks drop off after 30 days
+    const cutoff = keyOf(addDays(today(), -30));
+    S.tasks.items = S.tasks.items.filter((t) => !t.done || (t.doneAt || "") >= cutoff);
+    save("tasks");
+    render();
+  }
+  function addTask(fields) {
+    mutateTasks(() => S.tasks.items.push(Object.assign({ id: uid(), title: "", area: "", due: "", top: "", done: false, doneAt: "", created: tk() }, fields)));
+  }
+  function toggleTop(t) {
+    if (t.top === tk()) { mutateTasks(() => { t.top = ""; }); return; }
+    if (threeToday().length >= 3) { flash = "Today already has three. Unstar one before adding another."; render(); return; }
+    flash = "";
+    mutateTasks(() => { t.top = tk(); });
+  }
+
+  function taskRow(t, opts = {}) {
+    const li = el("li");
+    const d = dueInfo(t.done ? "" : t.due);
+    const meta = el("div", { class: "meta" },
+      t.area ? el("span", { class: "chip", text: t.area }) : el("span", { class: "chip", text: "Inbox" }),
+      d ? el("span", { class: "due " + d.cls, text: d.text }) : null,
+      t.example ? el("span", { class: "chip ex", text: "example" }) : null);
+    const body = el("div", {}, el("div", { class: "title", text: t.title }), meta);
+    if (!t.area && !t.done && opts.triage) {
+      const tri = el("div", { class: "triage", "aria-label": "File under" });
+      AREAS.forEach((a) => tri.append(el("button", { type: "button", text: a, onclick: () => mutateTasks(() => { t.area = a; }) })));
+      body.append(tri);
+    }
+    li.append(el("div", { class: "task" + (t.done ? " done" : "") },
+      el("button", { class: "check", type: "button", "aria-pressed": String(!!t.done), "aria-label": t.done ? "Mark not done" : "Mark done",
+        onclick: () => mutateTasks(() => { t.done = !t.done; t.doneAt = t.done ? tk() : ""; }) }),
+      body,
+      t.done ? el("span") : el("button", { class: "icon star", type: "button", "aria-pressed": String(t.top === tk()), title: "One of today’s three", "aria-label": "Make it one of today’s three", text: t.top === tk() ? "★" : "☆", onclick: () => toggleTop(t) }),
+      el("button", { class: "icon", type: "button", "aria-label": "Edit task", "aria-expanded": String(editing === t.id), text: "⋯", onclick: () => { editing = editing === t.id ? null : t.id; render(); } })));
+    if (editing === t.id) {
+      const title = el("input", { class: "field", id: "ed-title-" + t.id, value: t.title, "aria-label": "Task" });
+      const area = el("select", { class: "field", id: "ed-area-" + t.id, "aria-label": "Area" }, el("option", { value: "", text: "Inbox" }), ...AREAS.map((a) => el("option", { value: a, text: a, selected: t.area === a })));
+      const due = el("input", { class: "field", id: "ed-due-" + t.id, type: "date", value: t.due || "", "aria-label": "Due date" });
+      li.append(el("div", { class: "editor" }, title, area, due,
+        el("div", { class: "row" },
+          el("button", { class: "btn", type: "button", text: "Save", onclick: () => { editing = null; mutateTasks(() => { t.title = title.value.trim() || t.title; t.area = area.value; t.due = due.value; }); } }),
+          el("button", { class: "ghost", type: "button", text: "Delete", onclick: () => { editing = null; mutateTasks(() => { S.tasks.items = S.tasks.items.filter((x) => x !== t); }); } }),
+          el("button", { class: "link", type: "button", text: "Cancel", onclick: () => { editing = null; render(); } }))));
+    }
+    return li;
+  }
+
+  function sortTasks(list) {
+    return list.slice().sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      if (a.done) return (b.doneAt || "").localeCompare(a.doneAt || "");
+      const ad = a.due || "9999", bd = b.due || "9999";
+      return ad.localeCompare(bd) || (a.created || "").localeCompare(b.created || "");
+    });
+  }
+
+  function renderTasks() {
+    const counts = Object.fromEntries(VIEWS.map(([k, , f]) => [k, S.tasks.items.filter(f).length]));
+    if (!view) view = counts.today ? "today" : counts.inbox ? "inbox" : "all";
+    const seg = $("seg");
+    seg.replaceChildren(...VIEWS.map(([k, label]) => el("button", { type: "button", "aria-pressed": String(view === k), onclick: () => { view = k; render(); } },
+      label, el("span", { class: "n" + (k === "today" && open().some(isOverdue) ? " bad" : ""), text: String(counts[k]) }))));
+    const f = VIEWS.find((v) => v[0] === view)[2];
+    const list = sortTasks(S.tasks.items.filter(f));
+    const ul = $("tasks");
+    ul.replaceChildren(...list.map((t) => taskRow(t, { triage: view === "inbox" })));
+    const ex = S.tasks.items.some((t) => t.example);
+    const aside = $("tasksAside");
+    aside.replaceChildren();
+    if (ex) aside.append(el("button", { class: "link", type: "button", text: "Remove example tasks", onclick: () => mutateTasks(() => { S.tasks.items = S.tasks.items.filter((t) => !t.example); }) }));
+    if (!list.length) {
+      const msg = {
+        today: "Nothing due today. Star a task to make it one of today’s three.",
+        inbox: "Inbox is empty. Everything is filed.",
+        upcoming: "Nothing due in the next two weeks.",
+        someday: "No undated tasks.",
+        all: "No open tasks. Add one above.",
+        done: "Finished tasks show up here for 30 days.",
+      }[view];
+      ul.append(el("li", {}, el("p", { class: "empty", text: msg })));
+    }
+  }
+
   function renderThree() {
-    const list = $("three");
-    list.replaceChildren();
-    state.three.forEach((item) => {
-      list.append(el("li", { class: item.done ? "done" : "" },
-        el("button", { class: "tick", type: "button", "aria-pressed": String(item.done), "aria-label": item.done ? "Mark not done" : "Mark done",
-          onclick: () => { item.done = !item.done; save(); renderThree(); } }),
-        el("span", { class: "t" }, item.text),
-        el("button", { class: "x", type: "button", "aria-label": "Let this one go: " + item.text,
-          onclick: () => { state.three = state.three.filter((x) => x !== item); save(); renderThree(); } }, "×")));
-    });
-    const add = $("threeAdd");
-    add.replaceChildren();
-    if (state.three.length < 3) {
-      const input = el("input", { id: "threeInput", class: "line small", maxlength: "80", placeholder: `Priority ${state.three.length + 1} of 3. Press Return.`, autocomplete: "off" });
-      const form = el("form", { onsubmit: (e) => {
-        e.preventDefault();
-        const v = input.value.trim();
-        if (!v) return;
-        state.three.push({ id: uid(), text: v, done: false });
-        save(); renderThree();
-        const next = $("threeInput"); if (next) next.focus();
-      } }, input);
-      form.style.marginTop = "14px";
-      add.append(form);
-    } else {
-      add.append(el("p", { class: "note" }, "Three is the limit. To add one, let one go."));
+    const three = sortTasks(threeToday());
+    $("threeCount").textContent = `${three.filter((t) => t.done).length} of ${three.length} done`;
+    $("three").replaceChildren(...three.map((t) => taskRow(t)));
+    const wk = S.review.outcomes.filter((o) => o && o.trim());
+    const tw = $("thisWeek");
+    tw.hidden = !wk.length;
+    tw.replaceChildren("This week: ", el("b", { text: wk.join(" · ") }));
+    const sug = $("threeSuggest");
+    sug.replaceChildren();
+    if (flash) sug.append(el("p", { class: "note bad", text: flash }));
+    if (three.length < 3) {
+      const cands = sortTasks(open().filter((t) => t.top !== tk() && t.due && t.due <= keyOf(addDays(today(), 2)))).slice(0, 3 - three.length);
+      if (!three.length) sug.append(el("p", { class: "empty", text: "Pick up to three things that would make today a good day. Tap ☆ on any task." }));
+      if (cands.length) {
+        sug.append(el("p", { class: "note", text: "Due soon, not picked yet:" }));
+        const ul = el("ul", { class: "tasks" });
+        cands.forEach((t) => ul.append(taskRow(t)));
+        sug.append(ul);
+      }
     }
   }
 
-  /* --- ten, then three --- */
-  function renderRitual() {
-    const box = $("ritual");
-    box.hidden = !state.ritual.open;
-    $("ritualToggle").textContent = state.ritual.open ? "Close the list" : "Not sure what the three are? List ten. Cross out seven.";
-    if (!state.ritual.open) return;
-    box.replaceChildren();
-    const items = state.ritual.items;
-    const kept = items.filter((i) => !i.struck);
-    box.append(el("p", { class: "label", style: "margin:0" }, "Ten, then three"));
-    if (items.length) {
-      const ol = el("ol");
-      items.forEach((item) => ol.append(el("li", { class: item.struck ? "struck" : "" },
-        el("button", { type: "button", "aria-pressed": String(item.struck), title: item.struck ? "Bring it back" : "Cross it out",
-          onclick: () => { item.struck = !item.struck; save(); renderRitual(); } }, item.text))));
-      box.append(ol);
-    }
-    if (items.length < 10) {
-      const input = el("input", { id: "ritualInput", class: "line small", maxlength: "80", placeholder: `Idea ${items.length + 1} of 10. Press Return.`, autocomplete: "off" });
-      box.append(el("form", { onsubmit: (e) => {
-        e.preventDefault();
-        const v = input.value.trim();
-        if (!v) return;
-        items.push({ id: uid(), text: v, struck: false });
-        save(); renderRitual();
-        const next = $("ritualInput"); if (next) next.focus();
-      } }, input));
-    }
-    let status;
-    if (items.length < 4) status = "Write down everything you could do next. Up to ten.";
-    else if (kept.length > 3) status = `Now tap to cross out the ones that don’t make it. ${kept.length - 3} more to go.`;
-    else if (kept.length === 3) status = "These are the three.";
-    else status = `You crossed out too many. Bring back ${3 - kept.length}.`;
-    const row = el("div", { class: "row" }, el("p", { class: "status" }, status));
-    if (items.length >= 4 && kept.length === 3) {
-      row.append(el("button", { class: "pill", type: "button", onclick: () => {
-        state.three = kept.map((i) => ({ id: uid(), text: i.text, done: false }));
-        state.ritual = { open: false, items: [] };
-        save(); renderThree(); renderRitual();
-      } }, "Make these my three"));
-    }
-    if (items.length) row.append(el("button", { class: "link", type: "button", onclick: () => { state.ritual.items = []; save(); renderRitual(); } }, "Start over"));
-    box.append(row);
-  }
-  $("ritualToggle").addEventListener("click", () => { state.ritual.open = !state.ritual.open; save(); renderRitual(); });
-
-  /* --- shipping --- */
-  function renderShip() {
-    const box = $("ship");
-    box.replaceChildren();
-    const { name, date } = state.ship;
-    if (!date) { box.append(el("span", { class: "unit" }, "Pick the one thing you are shipping and the day it ships.")); return; }
-    const [y, m, d] = date.split("-").map(Number);
-    const days = Math.round((new Date(y, m - 1, d) - today()) / 86400000);
-    const what = name || "it";
-    if (days > 0) box.append(el("span", { class: "n" }, String(days)), el("span", { class: "unit" }, `${days === 1 ? "day" : "days"} until ${what} ships`));
-    else if (days === 0) box.append(el("span", { class: "n" }, "Today"), el("span", { class: "unit" }, `${what} ships today.`));
-    else box.append(el("span", { class: "n late" }, String(-days)), el("span", { class: "unit" }, `${-days === 1 ? "day" : "days"} late. Real artists ship.`));
-  }
-  $("shipName").value = state.ship.name;
-  $("shipDate").value = state.ship.date;
-  $("shipName").addEventListener("input", (e) => { state.ship.name = e.target.value; save(); renderShip(); });
-  $("shipDate").addEventListener("input", (e) => { state.ship.date = e.target.value; save(); renderShip(); });
-
-  /* --- said no --- */
-  function renderNos() {
-    const n = state.nos.length;
-    $("noCount").textContent = n === 0 ? "Nothing declined yet. Focus is about saying no."
-      : `You said no to ${n} ${n === 1 ? "thing" : "things"}. That is the job.`;
-    const list = $("nos");
-    list.replaceChildren();
-    state.nos.forEach((item) => {
-      const [y, m, d] = item.date.split("-").map(Number);
-      list.append(el("li", {},
-        el("span", { class: "t" }, item.text),
-        el("time", { datetime: item.date }, new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" })),
-        el("button", { class: "x", type: "button", "aria-label": "Remove: " + item.text,
-          onclick: () => { state.nos = state.nos.filter((x) => x !== item); save(); renderNos(); } }, "×")));
-    });
-  }
-  $("noForm").addEventListener("submit", (e) => {
+  /* ---------- quick add ---------- */
+  $("quickForm").addEventListener("submit", (e) => {
     e.preventDefault();
-    const v = $("noInput").value.trim();
+    const p = parseQuick($("quick").value, today());
+    if (!p.title) return;
+    addTask(p);
+    $("quick").value = "";
+    if (!p.area && !p.due) view = "inbox";
+  });
+
+  /* ---------- brain dump ---------- */
+  let sampleFn = null, sortCtl = null, sorted = [];
+  $("splitBtn").addEventListener("click", () => {
+    const lines = $("dump").value.split(/\n|;/).map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    mutateTasks(() => lines.forEach((l) => S.tasks.items.push(Object.assign({ id: uid(), top: "", done: false, doneAt: "", created: tk() }, parseQuick(l, today())))));
+    $("dump").value = "";
+    $("sortStatus").textContent = `Added ${lines.length} to the inbox.`;
+    view = "inbox"; render();
+  });
+  const SAMPLE_COPY = {
+    not_granted: "Claude isn’t allowed for this page, so sorting is off. Use “Add each line as a task”.",
+    sampling_disabled: "Claude isn’t available on this account. Use “Add each line as a task”.",
+    rate_limited: "Too many requests right now. Try again in a minute.",
+    session_expired: "Sign in to claude.ai again, then try.",
+    invalid_json: "The answer came back in the wrong shape. Try again.",
+    refused: "Claude declined to sort this text. Try rewording it.",
+    prompt_too_large: "That’s too much text at once. Split it into two dumps.",
+  };
+  const sampleError = (e) => SAMPLE_COPY[e && e.code] || "Something went wrong talking to Claude. Try again.";
+  function hideSampleIfGone(e) {
+    if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(e && e.code)) {
+      $("sortBtn").hidden = true; $("planBtn").hidden = true;
+    }
+  }
+
+  $("sortBtn").addEventListener("click", async () => {
+    const text = $("dump").value.trim();
+    if (!text || !sampleFn) return;
+    const t = today();
+    const prompt = `Today is ${t.toLocaleDateString("en-US", { weekday: "long" })}, ${keyOf(t)}. Turn this brain dump into a clean task list.
+Rules:
+- One task per distinct action. Start each with a verb. At most 12 words.
+- "area" is exactly one of: ${AREAS.join(", ")}.
+- "due" is YYYY-MM-DD only when the text names or implies a day or deadline (resolve words like "tomorrow", "Friday", "next week" against today). Otherwise "".
+- "urgent" is true only when it has to happen today or is already late.
+- Leave out feelings and non-actions. When a worry implies an action, write the action.
+Reply with only a JSON array, like [{"title":"Pay the electricity bill","area":"Money","due":"${keyOf(addDays(t, 2))}","urgent":false}].
+
+Brain dump:
+"""
+${text.slice(0, 8000)}
+"""`;
+    sortCtl = new AbortController();
+    $("sortBtn").disabled = true; $("stopSort").hidden = false;
+    $("sortStatus").textContent = "Sorting… (this can take half a minute)";
+    try {
+      const out = await sampleFn.json(prompt, { signal: sortCtl.signal });
+      const arr = Array.isArray(out) ? out : [];
+      sorted = arr.filter((x) => x && x.title).slice(0, 40).map((x) => ({
+        keep: true,
+        title: String(x.title).slice(0, 140),
+        area: AREAS.includes(x.area) ? x.area : "",
+        due: /^\d{4}-\d{2}-\d{2}$/.test(x.due || "") ? x.due : (x.urgent ? keyOf(t) : ""),
+        urgent: !!x.urgent,
+      }));
+      $("sortStatus").textContent = sorted.length ? `Found ${sorted.length} tasks. Untick any you don’t want.` : "Didn’t find any actions in that text.";
+    } catch (e) {
+      if (e && e.code !== "cancelled") $("sortStatus").textContent = sampleError(e);
+      else $("sortStatus").textContent = "";
+      hideSampleIfGone(e);
+    }
+    $("sortBtn").disabled = false; $("stopSort").hidden = true;
+    renderSorted();
+  });
+  $("stopSort").addEventListener("click", () => sortCtl && sortCtl.abort());
+
+  function renderSorted() {
+    const box = $("sorted");
+    box.replaceChildren();
+    if (!sorted.length) return;
+    sorted.forEach((s, i) => {
+      box.append(el("div", { class: "item" },
+        el("input", { type: "checkbox", id: "keep-" + i, checked: s.keep, "aria-label": "Keep", onchange: (e) => { s.keep = e.target.checked; } }),
+        el("input", { type: "text", class: "field small", id: "st-" + i, value: s.title, "aria-label": "Task", oninput: (e) => { s.title = e.target.value; } }),
+        el("select", { class: "field small", id: "sa-" + i, "aria-label": "Area", onchange: (e) => { s.area = e.target.value; } },
+          el("option", { value: "", text: "Inbox" }), ...AREAS.map((a) => el("option", { value: a, text: a, selected: s.area === a }))),
+        el("input", { type: "date", class: "field small", id: "sd-" + i, value: s.due, "aria-label": "Due", onchange: (e) => { s.due = e.target.value; } })));
+    });
+    box.append(el("div", { class: "row" },
+      el("button", { class: "btn", type: "button", text: "Add these tasks", onclick: () => {
+        const keep = sorted.filter((s) => s.keep && s.title.trim());
+        let room = 3 - threeToday().length;
+        mutateTasks(() => keep.forEach((s) => {
+          const top = s.urgent && room > 0 ? (room--, tk()) : "";
+          S.tasks.items.push({ id: uid(), title: s.title.trim(), area: s.area, due: s.due, top, done: false, doneAt: "", created: tk() });
+        }));
+        $("sortStatus").textContent = `Added ${keep.length} tasks.`;
+        sorted = []; $("dump").value = ""; renderSorted();
+      } }),
+      el("button", { class: "link", type: "button", text: "Discard", onclick: () => { sorted = []; renderSorted(); $("sortStatus").textContent = ""; } })));
+  }
+
+  /* ---------- calendar ---------- */
+  let mcpNs = null, calUnsub = null, calKey = "";
+  const CAL = "Google Calendar";
+  function parseEvents(p) {
+    const arr = Array.isArray(p) ? p : (p && (p.items || p.events)) || [];
+    return arr.filter((e) => e && e.status !== "cancelled").map((e) => {
+      const s = e.start || {}, en = e.end || {};
+      return {
+        title: e.summary || e.title || "(No title)",
+        start: s.dateTime || e.startTime || "",
+        end: en.dateTime || e.endTime || "",
+        allDay: !!(s.date && !s.dateTime),
+        link: typeof e.htmlLink === "string" && e.htmlLink.startsWith("https://") ? e.htmlLink : null,
+        location: e.location || "",
+      };
+    }).sort((a, b) => (a.allDay ? "" : a.start).localeCompare(b.allDay ? "" : b.start));
+  }
+  const CAL_DENIED = {
+    needs_reauth: "Reconnect Google Calendar in claude.ai Settings → Connectors to see today’s events.",
+    server_not_connected: "Add Google Calendar in claude.ai Settings → Connectors to see today’s events here.",
+    selection_required: "Choose which Google Calendar connection to use when claude.ai asks, then reload.",
+    not_in_manifest: "Calendar access is turned off for this page. You can turn it on from the page’s permissions.",
+    blocked_by_policy: "Your organization doesn’t allow calendar access here.",
+  };
+  function watchCalendar() {
+    if (!mcpNs) return;
+    const k = tk();
+    if (k === calKey) return;
+    calKey = k;
+    if (calUnsub) calUnsub();
+    const input = { startTime: k + "T00:00:00", endTime: keyOf(addDays(today(), 1)) + "T00:00:00", orderBy: "startTime", pageSize: 50 };
+    cal = { status: "loading", events: [] };
+    calUnsub = mcpNs.watchTool(CAL, "list_events", input, (ev) => {
+      if (ev.type === "data") {
+        cal = { status: "ok", events: parseEvents(ev.result.payload), at: (ev.result.cache && ev.result.cache.storedAt) || Date.now() };
+      } else {
+        const code = ev.error && ev.error.code;
+        if (CAL_DENIED[code]) cal = { status: "denied", events: [], msg: CAL_DENIED[code] };
+        else if (code === "approval_required") cal = { status: "approval", events: [] };
+        else if (cal.status === "ok") cal = Object.assign({}, cal, { stale: true });
+        else cal = { status: "error", events: [], msg: "Couldn’t reach Google Calendar. It will try again in a few minutes." };
+      }
+      render();
+    }, { refetchInterval: 5 * 60 * 1000 });
+  }
+  function renderCalendar() {
+    const box = $("cal");
+    box.replaceChildren();
+    const aside = $("calAside");
+    aside.textContent = "";
+    if (cal.status === "idle") { box.append(el("p", { class: "empty", text: "Your Google Calendar shows up here when this page is opened on claude.ai." })); return; }
+    if (cal.status === "loading") { box.append(el("p", { class: "empty", text: "Loading today’s events…" })); return; }
+    if (cal.status === "denied" || cal.status === "error") { box.append(el("p", { class: "empty", text: cal.msg })); return; }
+    if (cal.status === "approval") {
+      box.append(el("p", { class: "empty", text: "Google Calendar needs your OK before this page can read it." }),
+        el("button", { class: "ghost", type: "button", text: "Show my calendar", onclick: async () => {
+          try { const r = await mcpNs.callTool(CAL, "list_events", { startTime: tk() + "T00:00:00", endTime: keyOf(addDays(today(), 1)) + "T00:00:00", orderBy: "startTime", pageSize: 50 }); cal = { status: "ok", events: parseEvents(r.payload), at: Date.now() }; }
+          catch (e) { cal = { status: "denied", events: [], msg: CAL_DENIED[e && e.code] || "Calendar access wasn’t allowed." }; }
+          render();
+        } }));
+      return;
+    }
+    if (cal.at) aside.textContent = (cal.stale ? "Couldn’t refresh · " : "Updated ") + new Date(cal.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    if (!cal.events.length) { box.append(el("p", { class: "empty", text: "No events today. The whole day is yours." })); return; }
+    const now = new Date();
+    const fmt = (s) => new Date(s).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    const ul = el("ul", { class: "events" });
+    cal.events.forEach((e) => {
+      const past = !e.allDay && e.end && new Date(e.end) < now;
+      const live = !e.allDay && e.start && new Date(e.start) <= now && (!e.end || new Date(e.end) > now);
+      const when = e.allDay ? "All day" : e.start ? fmt(e.start) + (e.end ? "–" + fmt(e.end) : "") : "";
+      const title = e.link ? el("a", { href: e.link, target: "_blank", rel: "noopener", text: e.title }) : el("span", { text: e.title });
+      ul.append(el("li", { class: past ? "past" : live ? "now" : null }, el("time", { text: when }),
+        el("div", {}, title, e.location ? el("div", { class: "small muted", text: e.location }) : null)));
+    });
+    box.append(ul);
+  }
+
+  /* ---------- plan my day ---------- */
+  let planCtl = null, planLive = "";
+  function renderPlan() {
+    const box = $("plan");
+    box.replaceChildren();
+    const text = planLive || (S.day.date === tk() ? S.day.plan : "");
+    if (text) box.append(el("pre", { class: "plan", text }));
+    else box.append(el("p", { class: "empty", text: sampleFn
+      ? "Claude can lay out the rest of your day around your calendar, today’s three and what’s due."
+      : "Day planning works when this page is opened on claude.ai." }));
+  }
+  $("planBtn").addEventListener("click", async () => {
+    if (!sampleFn) return;
+    const now = new Date();
+    const evs = cal.status === "ok" ? cal.events.map((e) => `- ${e.allDay ? "All day" : new Date(e.start).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) + "–" + (e.end ? new Date(e.end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "")}: ${e.title}`).join("\n") : "(calendar not available)";
+    const three = threeToday().filter((t) => !t.done).map((t) => `- ${t.title}`).join("\n") || "(none picked)";
+    const due = sortTasks(open().filter((t) => t.due && t.due <= tk() && t.top !== tk())).slice(0, 20).map((t) => `- ${t.title} (${dueInfo(t.due).text})`).join("\n") || "(none)";
+    const habits = S.habits.items.filter((h) => !(h.log && h.log[tk()])).map((h) => `- ${h.name}`).join("\n") || "(all done)";
+    const week = S.review.outcomes.filter((o) => o && o.trim()).join("; ") || "(not set)";
+    const prompt = `It is ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} on ${now.toLocaleDateString("en-US", { weekday: "long" })}. Plan the rest of my day realistically.
+
+Calendar today:
+${evs}
+
+Today's three (most important):
+${three}
+
+Other tasks due today or overdue:
+${due}
+
+Habits still to do today:
+${habits}
+
+This week's outcomes: ${week}
+
+Rules: Start from now. Fit work into the gaps between events. Put today's three in the best slots first. Add short breaks and a meal if it's near a mealtime. Don't overfill: if it won't all fit, say what to move.
+Format: one line per block, "HH:MM–HH:MM  what". Then a line "Move to tomorrow: ..." if anything doesn't fit. At most 14 lines. No intro, no closing sentence.`;
+    planCtl = new AbortController();
+    $("planBtn").disabled = true; $("stopPlan").hidden = false;
+    planLive = "Thinking…"; renderPlan();
+    try {
+      const { text } = await sampleFn(prompt, { signal: planCtl.signal, cache: false, onText: ({ text }) => { planLive = text; renderPlan(); } });
+      S.day = { date: tk(), plan: text };
+      save("day");
+    } catch (e) {
+      if (e && e.code !== "cancelled") { planLive = ""; renderPlan(); $("plan").append(el("p", { class: "note bad", text: sampleError(e) })); }
+      hideSampleIfGone(e);
+    }
+    planLive = "";
+    $("planBtn").disabled = false; $("stopPlan").hidden = true;
+    if (!$("plan").querySelector(".note")) renderPlan();
+  });
+  $("stopPlan").addEventListener("click", () => planCtl && planCtl.abort());
+
+  /* ---------- habits ---------- */
+  let habEditing = false;
+  function streak(h) {
+    let d = today();
+    if (!(h.log && h.log[keyOf(d)])) d = addDays(d, -1);
+    let n = 0;
+    while (h.log && h.log[keyOf(d)]) { n++; d = addDays(d, -1); }
+    return n;
+  }
+  function renderHabits() {
+    const g = $("habits");
+    g.replaceChildren();
+    $("habEdit").textContent = habEditing ? "Done" : "Edit";
+    $("habForm").hidden = !habEditing && S.habits.items.length > 0;
+    if (!S.habits.items.length) { g.style.display = "block"; g.append(el("p", { class: "empty", text: "Add two or three habits you want to keep. Fewer is better." })); return; }
+    g.style.display = "";
+    const days = Array.from({ length: 7 }, (_, i) => addDays(today(), i - 6));
+    g.append(el("span"));
+    days.forEach((d, i) => g.append(el("span", { class: "dh" + (i === 6 ? " today" : ""), text: d.toLocaleDateString(undefined, { weekday: "narrow" }) })));
+    g.append(el("span", { class: "dh", text: "run" }));
+    S.habits.items.forEach((h) => {
+      g.append(el("div", { class: "hname" },
+        habEditing ? el("button", { class: "icon", type: "button", "aria-label": "Remove " + h.name, text: "×", onclick: () => { S.habits.items = S.habits.items.filter((x) => x !== h); save("habits"); render(); } }) : null,
+        el("span", { text: h.name })));
+      days.forEach((d, i) => {
+        const k = keyOf(d), on = !!(h.log && h.log[k]);
+        g.append(el("button", { class: "cell" + (i === 6 ? " today" : ""), type: "button", "aria-pressed": String(on),
+          "aria-label": `${h.name}, ${d.toLocaleDateString(undefined, { weekday: "long" })}`,
+          onclick: () => { h.log = h.log || {}; if (on) delete h.log[k]; else h.log[k] = true; save("habits"); render(); } }));
+      });
+      const n = streak(h);
+      g.append(el("span", { class: "streak", text: n ? n + "d" : "–" }));
+    });
+  }
+  $("habEdit").addEventListener("click", () => { habEditing = !habEditing; render(); });
+  $("habForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = $("habName").value.trim();
     if (!v) return;
-    state.nos.unshift({ text: v, date: keyOf(today()) });
-    $("noInput").value = "";
-    save(); renderNos();
+    S.habits.items.push({ id: uid(), name: v, log: {} });
+    $("habName").value = "";
+    save("habits"); render();
   });
 
-  /* --- samples --- */
-  function renderSample() { $("sampleBar").hidden = !state.sample; }
-  $("clearSamples").addEventListener("click", () => {
-    state = blankState();
-    save();
-    $("one").value = ""; fitOne(); $("shipName").value = ""; $("shipDate").value = "";
-    renderAll();
+  /* ---------- bills ---------- */
+  function renderBills() {
+    $("currency").value = S.bills.currency;
+    const ul = $("bills");
+    ul.replaceChildren();
+    const rows = S.bills.items.map((b) => ({ b, d: billDue(b) })).sort((x, y) => x.d.days - y.d.days);
+    if (!rows.length) ul.append(el("li", { style: "display:block" }, el("p", { class: "empty", text: "Add rent, phone, internet and subscriptions. You’ll see what’s due before it’s late." })));
+    rows.forEach(({ b, d }) => {
+      const label = d.paid ? `Paid · next ${d.date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+        : d.days < 0 ? `${-d.days}d overdue` : d.days === 0 ? "Due today" : d.days === 1 ? "Due tomorrow" : `Due in ${d.days} days`;
+      const cls = d.paid ? "due" : d.days < 0 ? "due bad" : d.days <= 3 ? "due warn" : "due";
+      ul.append(el("li", {},
+        el("div", { style: "min-width:0" }, el("div", { text: b.name, style: "overflow-wrap:anywhere" }), el("div", { class: cls, text: label })),
+        el("span", { class: "amt", text: money(b.amount) }),
+        el("span", { class: "row", style: "gap:2px;flex-wrap:nowrap" },
+          el("button", { class: "paid", type: "button", "aria-pressed": String(d.paid), text: d.paid ? "Paid" : "Mark paid",
+            onclick: () => { b.paid = b.paid || {}; if (d.paid) delete b.paid[d.month]; else b.paid[d.month] = true; save("bills"); render(); } }),
+          el("button", { class: "icon", type: "button", "aria-label": "Remove " + b.name, text: "×", onclick: () => { S.bills.items = S.bills.items.filter((x) => x !== b); save("bills"); render(); } }))));
+    });
+    const tot = $("billTotals");
+    tot.replaceChildren();
+    if (rows.length) {
+      const all = rows.reduce((s, r) => s + (Number(r.b.amount) || 0), 0);
+      const left = rows.filter((r) => !r.d.paid).reduce((s, r) => s + (Number(r.b.amount) || 0), 0);
+      tot.append(el("span", {}, "Every month ", el("b", { text: money(all) })), el("span", {}, "Still to pay this month ", el("b", { text: money(left) })));
+    }
+  }
+  $("currency").addEventListener("change", (e) => { S.bills.currency = e.target.value; save("bills"); render(); });
+  $("billForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = $("billName").value.trim();
+    const amount = parseFloat($("billAmt").value.replace(/[^\d.]/g, ""));
+    const day = parseInt($("billDay").value, 10);
+    if (!name || !(amount >= 0) || !(day >= 1 && day <= 31)) {
+      $("billTotals").replaceChildren(el("span", { class: "note bad", text: "Give it a name, an amount, and the day of the month it’s due (1–31)." }));
+      return;
+    }
+    S.bills.items.push({ id: uid(), name, amount, day, paid: {} });
+    $("billName").value = ""; $("billAmt").value = ""; $("billDay").value = "";
+    save("bills"); render();
   });
 
-  function renderAll() { fitOne(); renderClock(); renderMirror(); renderThree(); renderRitual(); renderShip(); renderNos(); renderSample(); }
-  renderAll();
+  /* ---------- weekly review ---------- */
+  function renderReview() {
+    const last = S.review.lastDone;
+    const ago = last ? daysBetween(fromKey(last), today()) : null;
+    const badge = $("revBadge");
+    badge.className = "badge" + (ago === null || ago > 7 ? " bad" : "");
+    badge.textContent = ago === null ? "Never done" : ago === 0 ? "Done today" : `Last done ${ago}d ago`;
+    const inbox = open().filter((t) => !t.area).length;
+    const od = open().filter(isOverdue).length;
+    const soon = S.bills.items.filter((b) => { const d = billDue(b); return !d.paid && d.days <= 14; }).length;
+    const steps = [
+      ["inbox", `Empty the inbox${inbox ? ` (${inbox} left)` : " ✓"}`],
+      ["overdue", `Reschedule or delete overdue tasks${od ? ` (${od})` : " ✓"}`],
+      ["calendar", "Look at next week’s calendar and add prep tasks"],
+      ["bills", `Check bills due in the next two weeks${soon ? ` (${soon})` : ""}`],
+      ["habits", "Look at the habit grid. Keep, change or drop one."],
+      ["outcomes", "Write the three outcomes that would make next week a win"],
+    ];
+    const ul = $("steps");
+    ul.replaceChildren();
+    steps.forEach(([k, label]) => {
+      const li = el("li", {}, el("label", {}, el("input", { type: "checkbox", id: "rv-" + k, checked: !!S.review.checks[k],
+        onchange: (e) => { S.review.checks[k] = e.target.checked; save("review"); } }), el("span", { text: label })));
+      if (k === "outcomes") {
+        const box = el("div", { class: "outcomes" });
+        [0, 1, 2].forEach((i) => box.append(el("input", { class: "field small", id: "oc-" + i, maxlength: "80", value: S.review.outcomes[i] || "", placeholder: `Outcome ${i + 1}`,
+          oninput: (e) => { S.review.outcomes[i] = e.target.value; save("review"); renderThree(); } })));
+        li.append(box);
+      }
+      ul.append(li);
+    });
+  }
+  $("revDone").addEventListener("click", () => {
+    S.review.lastDone = tk();
+    S.review.checks = {};
+    save("review"); render();
+  });
 
-  // Roll over at midnight without a reload: the date, the mirror and the countdown all depend on "today".
-  let lastDay = keyOf(today());
+  /* ---------- render ---------- */
+  function render() {
+    renderHeader(); renderThree(); renderCalendar(); renderPlan(); renderTasks(); renderHabits(); renderBills(); renderReview();
+  }
+  render();
+  if (!S.tasks.items.length) $("dumpBox").open = true;
+
+  /* ---------- connect capabilities ---------- */
+  connectStore();
+  if (window.claude && window.claude.use) {
+    claude.use("sample").then((s) => { sampleFn = s; $("sortBtn").hidden = !s; $("planBtn").hidden = !s; render(); });
+    claude.use("mcp").then((m) => { mcpNs = m; if (m) watchCalendar(); else { cal = { status: "denied", events: [], msg: "Calendar isn’t available in this view." }; render(); } });
+  }
+
+  // Roll over at midnight: "today" drives almost everything on the page.
+  let lastDay = tk();
   setInterval(() => {
-    renderClock();
-    if (keyOf(today()) !== lastDay) { lastDay = keyOf(today()); renderMirror(); renderShip(); }
-  }, 30000);
+    if (tk() !== lastDay) { lastDay = tk(); flash = ""; watchCalendar(); render(); }
+    else renderHeader();
+  }, 60000);
 })();
 </script>
 </body>

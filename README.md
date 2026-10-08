@@ -48,6 +48,13 @@ Click the toolbar icon to change the prefix, see the cheat sheet, or read your n
 npm test   # unit tests for the command parser
 ```
 
-## One Screen (`dashboard/`)
+## Clear Desk (`dashboard/`)
 
-A daily page built from one question: what would Steve Jobs want on his screen today? Open `dashboard/index.html` in a browser. It holds the mirror question with 14 days of answers, one thing for today, three priorities (no more), one ship date counted down in days, and a list of what you said no to. Entries stay in your browser's local storage.
+A personal command center for getting a messy life back in order. Open `dashboard/index.html` in a browser (it saves to local storage), or use the published version on claude.ai, which saves to your account and connects Google Calendar and Claude.
+
+- **Capture**: type anything and press Return. `#money` files it under an area, `!fri` / `!tomorrow` / `!2026-10-20` / `!+3` gives it a date. Or paste a whole brain dump and have Claude split it into tasks with areas and dates.
+- **Today's three**: star up to three tasks for today. Overdue and due-soon tasks are suggested.
+- **Calendar and day plan**: today's Google Calendar events, and a time-blocked plan for the rest of the day built around them.
+- **Tasks**: Today, Inbox (unsorted), Next 14 days, No date, All, Done.
+- **Habits**: a 7-day grid with streaks. **Bills**: what is due, what is overdue, what is left to pay this month.
+- **Weekly review**: a checklist that also sets the week's three outcomes, and turns red after 7 days.
