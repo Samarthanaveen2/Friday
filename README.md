@@ -47,3 +47,7 @@ Click the toolbar icon to change the prefix, see the cheat sheet, or read your n
 ```
 npm test   # unit tests for the command parser
 ```
+
+## One Screen (`dashboard/`)
+
+A daily page built from one question: what would Steve Jobs want on his screen today? Open `dashboard/index.html` in a browser. It holds the mirror question with 14 days of answers, one thing for today, three priorities (no more), one ship date counted down in days, and a list of what you said no to. Entries stay in your browser's local storage.

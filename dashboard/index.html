@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>One Screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+/* Layout: one left-aligned column, read top to bottom like a keynote. Nothing on the page that can't be read in five seconds. */
+:root {
+  --paper: #f3f4f5;   /* brushed aluminum, cool not cream */
+  --surface: #ffffff;
+  --ink: #111214;
+  --muted: #6a6e74;
+  --hair: #d7dadd;
+  --no: #b8321c;      /* semantic: only used when the answer is No or a date slips */
+  --serif: "EB Garamond", "Apple Garamond", Garamond, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0d0e0f; --surface: #17181a; --ink: #f1f1ef; --muted: #8d9096; --hair: #2a2c30; --no: #ff705a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0d0e0f; --surface: #17181a; --ink: #f1f1ef; --muted: #8d9096; --hair: #2a2c30; --no: #ff705a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  padding-inline: 20px;
+  padding-block: 0 96px;
+}
+.col { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 88px; }
+
+/* the day, as a hairline */
+.day { position: relative; height: 2px; background: var(--hair); margin-inline: -20px; }
+.day i { position: absolute; inset: 0 auto 0 0; background: var(--ink); width: 0; transition: width 1s ease; }
+
+header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; padding-top: 28px; }
+.date { font-family: var(--serif); font-size: 22px; letter-spacing: -0.01em; }
+.gone { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0 0 18px; font-weight: 500; }
+
+h1, .big {
+  font-family: var(--serif); font-weight: 400; letter-spacing: -0.025em; line-height: 1.08; margin: 0; text-wrap: balance;
+}
+h1 { font-size: clamp(34px, 6.4vw, 60px); }
+h1 em { font-style: italic; }
+
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+
+.answer { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+.pill {
+  border: 1px solid var(--ink); background: transparent; border-radius: 999px;
+  padding: 10px 30px; font-size: 16px; letter-spacing: 0.01em; transition: background .15s, color .15s;
+}
+.pill:hover { background: var(--ink); color: var(--paper); }
+.verdict { margin-top: 28px; font-size: 18px; max-width: 34em; }
+.verdict.no { color: var(--no); }
+.link { background: none; border: 0; padding: 0; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--ink); }
+
+.dots { display: flex; gap: 10px; margin-top: 28px; align-items: center; flex-wrap: wrap; }
+.dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--hair); }
+.dot.yes { background: var(--ink); border-color: var(--ink); }
+.dot.no { border: 1.5px solid var(--no); }
+.dot.today { outline: 1px solid var(--muted); outline-offset: 3px; }
+.dots small { color: var(--muted); font-size: 12px; margin-left: 6px; }
+
+/* plain-text inputs that look like the words they hold */
+.line {
+  width: 100%; border: 0; border-bottom: 1px solid var(--hair); background: transparent; color: var(--ink);
+  padding: 6px 0 10px; outline: none; border-radius: 0;
+}
+.line:focus { border-bottom-color: var(--ink); }
+.line::placeholder { color: var(--muted); opacity: .7; }
+.line.big { font-size: clamp(28px, 5vw, 44px); resize: none; overflow: hidden; display: block; }
+.line.small { font: 17px/1.4 var(--sans); }
+
+ol.three { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+ol.three li { display: grid; grid-template-columns: 28px 1fr auto; gap: 14px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--hair); }
+ol.three li:first-child { border-top: 1px solid var(--hair); }
+.tick { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink); background: transparent; padding: 0; display: grid; place-items: center; }
+.tick[aria-pressed="true"] { background: var(--ink); }
+.tick[aria-pressed="true"]::after { content: ""; width: 8px; height: 4px; border: solid var(--paper); border-width: 0 0 1.5px 1.5px; transform: translateY(-1px) rotate(-45deg); }
+.three .t { font-family: var(--serif); font-size: 24px; letter-spacing: -0.01em; min-width: 0; overflow-wrap: anywhere; }
+.three li.done .t { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.x { background: none; border: 0; color: var(--muted); font-size: 20px; line-height: 1; padding: 4px 6px; opacity: .55; }
+.x:hover { opacity: 1; color: var(--ink); }
+.note { color: var(--muted); font-size: 14px; margin: 16px 0 0; }
+
+.ritual { margin-top: 28px; background: var(--surface); border: 1px solid var(--hair); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+.ritual ol { margin: 0; padding-left: 26px; display: flex; flex-direction: column; gap: 4px; font-variant-numeric: tabular-nums; }
+.ritual li button { background: none; border: 0; padding: 4px 0; text-align: left; font-size: 17px; min-width: 0; overflow-wrap: anywhere; }
+.ritual li.struck button { color: var(--muted); text-decoration: line-through; }
+.ritual .status { font-size: 14px; color: var(--muted); margin: 0; }
+.ritual .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+.ship { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.ship .n { font-family: var(--serif); font-size: clamp(72px, 14vw, 132px); line-height: .9; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.ship .n.late { color: var(--no); }
+.ship .unit { font-size: 17px; color: var(--muted); }
+.shipform { display: grid; grid-template-columns: 1fr 180px; gap: 20px; margin-top: 20px; }
+.shipform label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); min-width: 0; }
+input[type="date"].line { font: 17px/1.4 var(--sans); }
+
+.count { font-family: var(--serif); font-size: 26px; letter-spacing: -0.01em; margin: 0 0 18px; }
+ul.nos { list-style: none; padding: 0; margin: 16px 0 0; display: flex; flex-direction: column; }
+ul.nos li { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--hair); }
+ul.nos .t { text-decoration: line-through; text-decoration-color: var(--muted); text-decoration-thickness: 1px; min-width: 0; overflow-wrap: anywhere; }
+ul.nos time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.brief { border-top: 1px solid var(--ink); padding-top: 24px; }
+.brief dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 40px; }
+.brief dt, .brief dd { padding: 14px 0; border-bottom: 1px solid var(--hair); margin: 0; }
+.brief dt { font-family: var(--serif); font-style: italic; font-size: 19px; line-height: 1.35; }
+.brief dd { color: var(--muted); font-size: 14px; }
+.brief .src { margin-top: 18px; font-size: 13px; color: var(--muted); max-width: 60ch; }
+
+.sample { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .col { gap: 64px; }
+  .shipform { grid-template-columns: 1fr; }
+  .brief dl { grid-template-columns: 1fr; }
+  .brief dt { border-bottom: 0; padding-bottom: 2px; }
+  .brief dd { padding-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="day" aria-hidden="true"><i id="dayFill"></i></div>
+
+<main class="col">
+  <header>
+    <div class="date" id="date"></div>
+    <div class="gone" id="gone"></div>
+  </header>
+
+  <section aria-labelledby="mirror">
+    <p class="label">The mirror</p>
+    <h1 id="mirror">If today were the last day of your life, would you want to do what you are about to do <em>today?</em></h1>
+    <div id="answerArea"></div>
+    <div class="dots" id="dots" aria-label="Your last 14 answers"></div>
+  </section>
+
+  <section aria-labelledby="oneLabel">
+    <p class="label" id="oneLabel">The one thing today</p>
+    <textarea id="one" class="line big" rows="1" maxlength="90" placeholder="What matters most today?"></textarea>
+  </section>
+
+  <section aria-labelledby="threeLabel">
+    <p class="label" id="threeLabel">The three</p>
+    <ol class="three" id="three"></ol>
+    <div id="threeAdd"></div>
+    <p class="note"><button class="link" id="ritualToggle" type="button">Not sure what the three are? List ten. Cross out seven.</button></p>
+    <div class="ritual" id="ritual" hidden></div>
+  </section>
+
+  <section aria-labelledby="shipLabel">
+    <p class="label" id="shipLabel">Shipping</p>
+    <div class="ship" id="ship"></div>
+    <div class="shipform">
+      <label for="shipName">Product<input id="shipName" class="line small" maxlength="60" autocomplete="off"></label>
+      <label for="shipDate">Ships on<input id="shipDate" class="line" type="date"></label>
+    </div>
+  </section>
+
+  <section aria-labelledby="noLabel">
+    <p class="label" id="noLabel">Said no</p>
+    <p class="count" id="noCount"></p>
+    <form id="noForm" autocomplete="off">
+      <input id="noInput" class="line small" maxlength="120" placeholder="What did you turn down? Press Return.">
+    </form>
+    <ul class="nos" id="nos"></ul>
+  </section>
+
+  <section class="brief" aria-labelledby="briefLabel">
+    <p class="label" id="briefLabel">The brief this page was built from</p>
+    <dl>
+      <dt>“I don’t want a dashboard. Dashboards are where focus goes to die. One screen, readable in five seconds.”</dt>
+      <dd>One column. No charts, no widgets, no tabs. The only graphic is a line showing how much of today is gone.</dd>
+      <dt>“Every morning, ask me the question. Keep my answers. If I keep saying no, tell me. Don’t soften it.”</dt>
+      <dd>The mirror sits at the top. Fourteen days of answers as dots. Three Nos in a row and it says so, in red.</dd>
+      <dt>“Three things. Not five. If I try to add a fourth, make me kill one.”</dt>
+      <dd>The list stops taking input at three. The ten-then-three exercise is there when the three aren’t obvious.</dd>
+      <dt>“Show me what I said no to. I’m as proud of that list as the other one.”</dt>
+      <dd>A running count of declined things, struck through and dated.</dd>
+      <dt>“One ship date. Count it down in days. Not percentages, not burndown charts.”</dt>
+      <dd>One number, very large. It turns red the day after the date passes.</dd>
+      <dt>“No email count. No stock price. No weather. No news. If it’s important, someone will walk into my office.”</dt>
+      <dd>Nothing on this page updates itself except the date and the day line.</dd>
+      <dt>“Make the back of the cabinet as nice as the front.”</dt>
+      <dd>One file, no framework, no build step, no accounts. Your entries stay in this browser.</dd>
+    </dl>
+    <p class="src">The quoted prompts are imagined: what Steve Jobs might ask for today. The ideas behind them are his: the mirror question (Stanford commencement, 2005), “focus is about saying no” (WWDC, 1997), the top-ten list cut to three (described in Walter Isaacson’s <i>Steve Jobs</i>, 2011), and “real artists ship” (Macintosh team, 1983).</p>
+  </section>
+
+  <div class="sample" id="sampleBar" hidden>
+    <span>The entries above are examples.</span>
+    <button class="link" id="clearSamples" type="button">Clear them and start with a blank page</button>
+  </div>
+</main>
+
+<script>
+(() => {
+  const KEY = "one-screen-v1";
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2, "0");
+  const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+
+  function sampleState() {
+    const t = today();
+    const answers = {};
+    ["yes", "yes", "no", "yes", "yes", "yes", "no", "no", "yes", "no", "no", "no"].forEach((a, i) => {
+      answers[keyOf(addDays(t, i - 12))] = a;
+    });
+    return {
+      sample: true,
+      answers,
+      one: "Finish ;;write so a reply drafts itself inside Gmail",
+      three: [
+        { id: uid(), text: "Ship ;;write in Friday", done: false },
+        { id: uid(), text: "Cut the popup down to one screen", done: true },
+        { id: uid(), text: "Rewrite the README in 100 words", done: false },
+      ],
+      ship: { name: "Friday 1.0", date: keyOf(addDays(t, 24)) },
+      nos: [
+        { text: "A settings page with thirty toggles", date: keyOf(addDays(t, -1)) },
+        { text: "Firefox port this month", date: keyOf(addDays(t, -3)) },
+        { text: "A new logo", date: keyOf(addDays(t, -6)) },
+        { text: "A fourth weekly sync", date: keyOf(addDays(t, -9)) },
+      ],
+      ritual: { open: false, items: [] },
+    };
+  }
+  const blankState = () => ({ sample: false, answers: {}, one: "", three: [], ship: { name: "", date: "" }, nos: [], ritual: { open: false, items: [] } });
+
+  let state;
+  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+  if (!state || typeof state !== "object") state = sampleState();
+  state = Object.assign(blankState(), state);
+
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+  function el(tag, props = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === "class") n.className = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null) n.setAttribute(k, v);
+    }
+    n.append(...kids);
+    return n;
+  }
+
+  /* --- header and the day line --- */
+  function renderClock() {
+    const now = new Date();
+    $("date").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    const mins = now.getHours() * 60 + now.getMinutes();
+    const pct = Math.round((mins / 1440) * 100);
+    $("dayFill").style.width = pct + "%";
+    const left = 1440 - mins;
+    $("gone").textContent = `${pct}% of today is gone · ${Math.floor(left / 60)}h ${pad(left % 60)}m left`;
+  }
+
+  /* --- the mirror --- */
+  function noStreak() {
+    let d = today();
+    if (!state.answers[keyOf(d)]) d = addDays(d, -1);
+    let n = 0;
+    while (state.answers[keyOf(d)] === "no") { n++; d = addDays(d, -1); }
+    return n;
+  }
+  function answer(a) { state.answers[keyOf(today())] = a; save(); renderMirror(); }
+  function renderMirror() {
+    const area = $("answerArea");
+    area.replaceChildren();
+    const a = state.answers[keyOf(today())];
+    if (!a) {
+      area.append(el("div", { class: "answer" },
+        el("button", { class: "pill", type: "button", onclick: () => answer("yes") }, "Yes"),
+        el("button", { class: "pill", type: "button", onclick: () => answer("no") }, "No")));
+    } else {
+      const streak = noStreak();
+      let text;
+      if (a === "yes") text = "Yes. Then go do it.";
+      else if (streak >= 3) text = `No, ${streak} days running. Something has to change, and it should change today.`;
+      else text = "No. One No is just a day. Too many in a row means something has to change.";
+      area.append(el("p", { class: "verdict" + (a === "no" ? " no" : "") }, text, " ",
+        el("button", { class: "link", type: "button", onclick: () => { delete state.answers[keyOf(today())]; save(); renderMirror(); } }, "Change answer")));
+    }
+    const dots = $("dots");
+    dots.replaceChildren();
+    const t = today();
+    for (let i = 13; i >= 0; i--) {
+      const d = addDays(t, -i), v = state.answers[keyOf(d)];
+      const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ": " + (v || "no answer");
+      dots.append(el("span", { class: "dot" + (v ? " " + v : "") + (i === 0 ? " today" : ""), title: label, role: "img", "aria-label": label }));
+    }
+    dots.append(el("small", {}, "last 14 days"));
+  }
+
+  /* --- the one thing --- */
+  const fitOne = () => { const t = $("one"); t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
+  $("one").value = state.one;
+  $("one").addEventListener("input", (e) => { state.one = e.target.value.replace(/\n/g, " "); e.target.value = state.one; save(); fitOne(); });
+  $("one").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } });
+  addEventListener("resize", fitOne);
+
+  /* --- the three --- */
+  function renderThree() {
+    const list = $("three");
+    list.replaceChildren();
+    state.three.forEach((item) => {
+      list.append(el("li", { class: item.done ? "done" : "" },
+        el("button", { class: "tick", type: "button", "aria-pressed": String(item.done), "aria-label": item.done ? "Mark not done" : "Mark done",
+          onclick: () => { item.done = !item.done; save(); renderThree(); } }),
+        el("span", { class: "t" }, item.text),
+        el("button", { class: "x", type: "button", "aria-label": "Let this one go: " + item.text,
+          onclick: () => { state.three = state.three.filter((x) => x !== item); save(); renderThree(); } }, "×")));
+    });
+    const add = $("threeAdd");
+    add.replaceChildren();
+    if (state.three.length < 3) {
+      const input = el("input", { id: "threeInput", class: "line small", maxlength: "80", placeholder: `Priority ${state.three.length + 1} of 3. Press Return.`, autocomplete: "off" });
+      const form = el("form", { onsubmit: (e) => {
+        e.preventDefault();
+        const v = input.value.trim();
+        if (!v) return;
+        state.three.push({ id: uid(), text: v, done: false });
+        save(); renderThree();
+        const next = $("threeInput"); if (next) next.focus();
+      } }, input);
+      form.style.marginTop = "14px";
+      add.append(form);
+    } else {
+      add.append(el("p", { class: "note" }, "Three is the limit. To add one, let one go."));
+    }
+  }
+
+  /* --- ten, then three --- */
+  function renderRitual() {
+    const box = $("ritual");
+    box.hidden = !state.ritual.open;
+    $("ritualToggle").textContent = state.ritual.open ? "Close the list" : "Not sure what the three are? List ten. Cross out seven.";
+    if (!state.ritual.open) return;
+    box.replaceChildren();
+    const items = state.ritual.items;
+    const kept = items.filter((i) => !i.struck);
+    box.append(el("p", { class: "label", style: "margin:0" }, "Ten, then three"));
+    if (items.length) {
+      const ol = el("ol");
+      items.forEach((item) => ol.append(el("li", { class: item.struck ? "struck" : "" },
+        el("button", { type: "button", "aria-pressed": String(item.struck), title: item.struck ? "Bring it back" : "Cross it out",
+          onclick: () => { item.struck = !item.struck; save(); renderRitual(); } }, item.text))));
+      box.append(ol);
+    }
+    if (items.length < 10) {
+      const input = el("input", { id: "ritualInput", class: "line small", maxlength: "80", placeholder: `Idea ${items.length + 1} of 10. Press Return.`, autocomplete: "off" });
+      box.append(el("form", { onsubmit: (e) => {
+        e.preventDefault();
+        const v = input.value.trim();
+        if (!v) return;
+        items.push({ id: uid(), text: v, struck: false });
+        save(); renderRitual();
+        const next = $("ritualInput"); if (next) next.focus();
+      } }, input));
+    }
+    let status;
+    if (items.length < 4) status = "Write down everything you could do next. Up to ten.";
+    else if (kept.length > 3) status = `Now tap to cross out the ones that don’t make it. ${kept.length - 3} more to go.`;
+    else if (kept.length === 3) status = "These are the three.";
+    else status = `You crossed out too many. Bring back ${3 - kept.length}.`;
+    const row = el("div", { class: "row" }, el("p", { class: "status" }, status));
+    if (items.length >= 4 && kept.length === 3) {
+      row.append(el("button", { class: "pill", type: "button", onclick: () => {
+        state.three = kept.map((i) => ({ id: uid(), text: i.text, done: false }));
+        state.ritual = { open: false, items: [] };
+        save(); renderThree(); renderRitual();
+      } }, "Make these my three"));
+    }
+    if (items.length) row.append(el("button", { class: "link", type: "button", onclick: () => { state.ritual.items = []; save(); renderRitual(); } }, "Start over"));
+    box.append(row);
+  }
+  $("ritualToggle").addEventListener("click", () => { state.ritual.open = !state.ritual.open; save(); renderRitual(); });
+
+  /* --- shipping --- */
+  function renderShip() {
+    const box = $("ship");
+    box.replaceChildren();
+    const { name, date } = state.ship;
+    if (!date) { box.append(el("span", { class: "unit" }, "Pick the one thing you are shipping and the day it ships.")); return; }
+    const [y, m, d] = date.split("-").map(Number);
+    const days = Math.round((new Date(y, m - 1, d) - today()) / 86400000);
+    const what = name || "it";
+    if (days > 0) box.append(el("span", { class: "n" }, String(days)), el("span", { class: "unit" }, `${days === 1 ? "day" : "days"} until ${what} ships`));
+    else if (days === 0) box.append(el("span", { class: "n" }, "Today"), el("span", { class: "unit" }, `${what} ships today.`));
+    else box.append(el("span", { class: "n late" }, String(-days)), el("span", { class: "unit" }, `${-days === 1 ? "day" : "days"} late. Real artists ship.`));
+  }
+  $("shipName").value = state.ship.name;
+  $("shipDate").value = state.ship.date;
+  $("shipName").addEventListener("input", (e) => { state.ship.name = e.target.value; save(); renderShip(); });
+  $("shipDate").addEventListener("input", (e) => { state.ship.date = e.target.value; save(); renderShip(); });
+
+  /* --- said no --- */
+  function renderNos() {
+    const n = state.nos.length;
+    $("noCount").textContent = n === 0 ? "Nothing declined yet. Focus is about saying no."
+      : `You said no to ${n} ${n === 1 ? "thing" : "things"}. That is the job.`;
+    const list = $("nos");
+    list.replaceChildren();
+    state.nos.forEach((item) => {
+      const [y, m, d] = item.date.split("-").map(Number);
+      list.append(el("li", {},
+        el("span", { class: "t" }, item.text),
+        el("time", { datetime: item.date }, new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" })),
+        el("button", { class: "x", type: "button", "aria-label": "Remove: " + item.text,
+          onclick: () => { state.nos = state.nos.filter((x) => x !== item); save(); renderNos(); } }, "×")));
+    });
+  }
+  $("noForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = $("noInput").value.trim();
+    if (!v) return;
+    state.nos.unshift({ text: v, date: keyOf(today()) });
+    $("noInput").value = "";
+    save(); renderNos();
+  });
+
+  /* --- samples --- */
+  function renderSample() { $("sampleBar").hidden = !state.sample; }
+  $("clearSamples").addEventListener("click", () => {
+    state = blankState();
+    save();
+    $("one").value = ""; fitOne(); $("shipName").value = ""; $("shipDate").value = "";
+    renderAll();
+  });
+
+  function renderAll() { fitOne(); renderClock(); renderMirror(); renderThree(); renderRitual(); renderShip(); renderNos(); renderSample(); }
+  renderAll();
+
+  // Roll over at midnight without a reload: the date, the mirror and the countdown all depend on "today".
+  let lastDay = keyOf(today());
+  setInterval(() => {
+    renderClock();
+    if (keyOf(today()) !== lastDay) { lastDay = keyOf(today()); renderMirror(); renderShip(); }
+  }, 30000);
+})();
+</script>
+</body>
+</html>
