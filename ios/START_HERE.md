@@ -19,7 +19,9 @@ After that works, say "next step" each time, or "build the rest" to let it go th
 - **SideStore**: install it on your iPhone (needs a computer once — your 2017 Air is fine). Guide: sidestore.io.
 - **Free API keys** (no card needed), pasted into Friday's Settings later:
   - Groq (required): console.groq.com → API Keys
-  - Gemini (recommended backup): aistudio.google.com → Get API key
+  - Gemini (recommended, backup + web answers): aistudio.google.com → Get API key
+  - Tavily (web search backup): tavily.com
+  - Optional: Notion token, Spotify developer app, Gmail bridge (Friday walks you through it)
 - Optional: a separate free Apple ID just for SideStore signing.
 
 ## Files
