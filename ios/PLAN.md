@@ -169,29 +169,6 @@ Keys live in the Keychain, shared with the keyboard via a keychain access group.
 
 ---
 
-## 8b. Personal memory (Friday learns the owner)
-
-The models have no memory of their own. Friday keeps a small **memory file** (`memory.json` in the App Group) and sends the relevant parts with every request, so every model (Groq, Gemini, on-device) "knows" the owner. No retraining needed.
-
-What it holds (kept compact, ≤ ~600 tokens when sent):
-- **People:** "warden" → contact X; "the group" → WhatsApp group "Project 4"; "mom" → contact Y.
-- **Places:** hostel, market, library (coordinates for location reminders).
-- **Habits / defaults:** "gym" usually 17:00; "lab" means the Signals lab; lectures come from the calendar.
-- **Words:** names and terms Friday mis-heard before, and how they're spelled (feeds the dictionary, §8).
-- **Writing style:** how the owner writes messages (e.g. lowercase, short, "bro", no full stops) so cleanup and drafted messages sound like them, not like an assistant.
-- **Facts:** anything said with "remember that…" ("remember my roll number is…").
-
-How it learns (automatically, quietly):
-1. **Voice:** "remember that…" / "forget that…" → add/remove an entry.
-2. **Undo + re-say:** if a command is undone and re-said differently, store what the owner meant (e.g. "the group" was the Project 4 group).
-3. **Edits after dictation:** after ✓ inserts text, the keyboard re-reads the box a few seconds later; if a word was changed (e.g. "Samartha" fixed from "Samantha"), add it to Words.
-4. **Choice cards:** when the owner picks "Rahul K" over "Rahul S", remember that "Rahul" = Rahul K.
-5. **Long-press edits** on items (renamed title, changed time) update Habits.
-
-Rules: the memory is plain, viewable and editable in Settings ("What Friday knows"). The command brain may propose `{"a":"remember","key":s,"value":s}`; the app saves it without asking. Only send the entries relevant to the current request (match by words in the transcript) to keep prompts short and fast. Every learned miss is also appended to `ios/evals/` as a test case during tuning.
-
----
-
 ## 9. Prompts
 
 ### 9.1 Dictation cleanup (system)
@@ -216,7 +193,6 @@ Input:
 ```
 NOW: 2026-10-08T08:14 Thu (Asia/Kolkata)
 PLACES: ["hostel","market"]
-MEMORY: {"people":{"warden":"Mr. Rao","the group":"WhatsApp: Project 4"},"habits":{"gym":"17:00"},"style":"lowercase, short, says bro"}
 ITEMS: [{"id":"a1","t":"Finish lab report","d":"2026-10-08","tm":"11:30","f":true,"x":false}, ...]   // today + future + done today, compact keys
 SAID: "<transcript>"
 ```
@@ -240,7 +216,6 @@ Other:
  {"a":"shortcut","name":s,"input":s|null}
  {"a":"open","target":s}
  {"a":"ask","kind":"web"|"email"|"health"|"contacts","query":s}
- {"a":"remember","key":s,"value":s} {"a":"forget","key":s}
 Rules:
 - Match existing items by meaning ("the report" = "Finish lab report"); use their id; never invent ids.
 - focus=true ONLY if the user explicitly calls it priority/important/top/focus. "Priority today is X and Y" -> focus on for X and Y (add them if missing).
