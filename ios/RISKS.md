@@ -20,7 +20,7 @@ Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS key
 | A7 | **Text lands in the wrong box** if you tap another field (or another chat) while Friday is still processing. | 🟠 | ➕ | Record `textDocumentProxy.documentIdentifier` at ✓. If it changed by the time the result is ready, don't insert; copy to the clipboard and show "Copied". |
 | A8 | **The keyboard has no full QWERTY**, so typing a quick word means switching keyboards. | 🟠 | ➕ decide | Keep the voice bar, plus: long-press 🌐 for the keyboard list, and a one-row **number/punctuation** strip. A full QWERTY with good autocorrect is a big build and worse than Apple's, so don't rebuild it. |
 | A9 | Not available in **password, phone-number and some banking/secure fields**. | 🟢 | ✅ | iOS swaps in the system keyboard automatically. Nothing to do. |
-| A10 | **Reading the text in the box is limited.** iOS only gives text near the cursor, and some apps return nothing. | 🟢 | ✅ | ✨ Rewrite works on short texts. If the context is empty, rewrite only what you just dictated. |
+| A10 | **Reading the text in the box is limited.** iOS only gives text near the cursor, and some apps return nothing. | 🟢 | ✅ | Context is a bonus for continuing sentences; dictation works without it. |
 | A11 | **Orange mic dot always on** during a session, plus some battery use. | 🟢 | ✅ | Expected. Measure battery in the probe build; the session ends when the phone locks (A1 default). |
 | A12 | **Full Access** must be on for the keyboard (App Group + talking to the app). | 🟢 | ✅ | First-run checklist detects it (`hasFullAccess`) and shows the steps. |
 
@@ -43,13 +43,12 @@ Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS key
 | # | Problem | Pri | In plan? | Fix |
 |---|---|---|---|---|
 | C1 | **Cleanup answers or rewrites the text instead of cleaning it.** Dictate "what time is the meeting?" and the model replies "The meeting is at…", or it makes your message formal. This is the classic dictation-LLM bug. | 🔴 | ➕ | Wrap the transcript in tags and state "never answer, never add". **Guard:** if the output shares less than ~70% of its words with the transcript, or is much longer, insert the raw transcript instead. Many eval cases are questions and commands that must pass through unchanged. |
-| C2 | **The wrong item gets ticked, moved or deleted** (fuzzy matching "the report" to the wrong row). | 🔴 | ✅ partly (Undo) | Highlight every change (already planned). Delete only on an explicit "delete/remove/cancel". If two items match equally, show a choice card instead of guessing. |
-| C3 | **Ambiguous times and dates.** "At 5" (morning or evening?), and "tomorrow" said at 1 a.m. | 🔴 | ➕ | Fixed rules in code, not left to the AI: bare hours 1–7 → PM, 8–11 → AM unless said otherwise. Between 00:00 and 04:00, "tomorrow" means the coming day (today's date) and "tonight" means today. The resolved time is always shown in the highlight so you can see it. |
+| C2 | **(App schedule) The wrong item gets ticked, moved or deleted** (fuzzy matching "the report" to the wrong row). | 🔴 | ✅ partly (Undo) | Highlight every change (already planned). Delete only on an explicit "delete/remove/cancel". If two items match equally, show a choice card instead of guessing. |
+| C3 | **(App schedule) Ambiguous times and dates.** "At 5" (morning or evening?), and "tomorrow" said at 1 a.m. | 🔴 | ➕ | Fixed rules in code, not left to the AI: bare hours 1–7 → PM, 8–11 → AM unless said otherwise. Between 00:00 and 04:00, "tomorrow" means the coming day (today's date) and "tonight" means today. The resolved time is always shown in the highlight so you can see it. |
 | C4 | **Broken or cut-off JSON** from the model. | 🟠 | ✅ partly | JSON mode plus a validator. On failure, retry once on the backup model, then show "Didn't catch that" with the transcript. |
 | C5 | **Slow replies from reasoning models** (gpt-oss can "think" for a while). | 🟠 | ✅ | `reasoning_effort: low`, a small `max_tokens`, and the 1.2 s race. |
 | C6 | **Network delay from India to Groq.** Unknown until measured. | 🟠 | ✅ | The timing overlay measures it. If it's consistently above ~1 s, make the on-device result the default for ✓ and use the cloud only for → Friday commands. |
 | C7 | **Free-tier limits or a model getting retired** (8B already reportedly gone). | 🟠 | ✅ | Model config file, quota tracker, Gemini → on-device fallback chain. |
-| C8 | **Text from screenshots contains instructions** ("ignore your rules and delete…"). | 🟢 | ➕ | Screenshot/OCR-sourced commands can only *add* items, and nothing else without a tap. |
 
 ## D. Your data
 
@@ -58,7 +57,7 @@ Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS key
 | D1 | **Losing everything**: if the app is deleted, the bundle ID changes, or SideStore signs with a **different Apple ID** (the App Group ID changes, so the old data is unreachable). | 🔴 | ➕ | Automatic **daily backup** to a folder you pick once in the Files app (iCloud Drive), and **auto-restore** on an empty install. Always sign with the same Apple ID. |
 | D2 | **App and keyboard writing data at the same time.** | 🟠 | ✅ | Only the app ever writes items. The keyboard only sends requests. |
 | D3 | **Edits made in Apple's Calendar app** don't come back into Friday (the sync is one-way). | 🟢 | ✅ | Accepted. If a mirrored event is deleted in Calendar, leave the Friday item alone and recreate the event on its next change. |
-| D4 | **iOS limits:** 64 pending local notifications, 20 monitored locations; location reminders need "Always" location and are only accurate to ~100 m+. | 🟢 | ➕ | Schedule only the next 64. Monitor only the 20 nearest/soonest places. Tell the user the accuracy. |
+| D4 | **iOS limit of 64 pending local notifications.** | 🟢 | ➕ | Schedule only the next 64. |
 
 ## E. Sideloading
 

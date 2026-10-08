@@ -1,352 +1,266 @@
 # Friday for iPhone — the plan
 
-The full spec for the Friday iOS app and the single source of truth. Build all of it; there is no v1/v2. Section 13 is the build order.
+Single source of truth for the Friday iOS app. Read `RISKS.md` alongside it: its 🔴 items are part of the build. Build all of it; there is no v1/v2. Section 12 is the build order.
 
 - **Device:** iPhone 16 Pro, iOS 26. English only.
 - **Constraints:** no paid Apple Developer account, no usable Mac. Built by GitHub Actions, installed with SideStore on a free Apple ID (re-signed every 7 days).
-- **Priorities:** fast, free, gets it done. Privacy is not a goal: cloud is fine.
-- **Style:** high agency, very low noise. No assistant voice ("Sure! I've…"), no history screens, no stats, no chat UI. Short, plain text everywhere.
+- **Priorities:** fast, accurate, free. Privacy is not a goal: cloud is fine.
+- **Style:** it never talks back. No replies, no chat, no assistant voice, no history screens, no stats.
 
 ---
 
-## 1. What Friday is
+## 1. Friday is two things
 
-You talk, it gets done. Three entry points, one brain:
+1. **Friday Keyboard: a one-to-one Wispr Flow clone.** Works in any app. Tap 🎤, talk, tap ✓, and clean, correct text appears in the box. Dictation only: it never answers, never runs commands, never saves anything to the schedule.
+2. **Friday app: your day, by voice.** Open the app, tap 🎤, say what's on your plate / what you finished / what's priority, tap **Done**. The Today schedule updates. No replies.
 
-| Entry | What you do | What happens |
-|---|---|---|
-| **Friday keyboard** (in any app) | 🎤 → talk → ✓ | Clean text typed into the box (Wispr Flow clone) |
-| | 🎤 → talk → **→ Friday** | Treated as a command (day list, message, alarm, …) |
-| | ✨ → "make it shorter" | Rewrites the text already in the box |
-| **Action button / Siri** (anywhere, no app open) | press → talk → press | Command |
-| **Friday app** (Today screen) | mic → talk → stop | Command |
+The two never mix. The keyboard writes text; the app manages the schedule.
 
 ---
 
-## 2. The Today screen (the only real screen)
+## 2. Friday Keyboard (Wispr Flow clone)
 
-Matches `ios/design/`. Native SwiftUI, styled like stock iOS.
+### 2.1 What Wispr Flow does (research, Oct 2026) and what we copy
+
+| Wispr Flow feature | Friday |
+|---|---|
+| Custom keyboard + main app holding the mic ("Flow session") | ✅ Same design |
+| Cloud speech-to-text + LLM cleanup; target **≤700 ms after you stop talking** (Wispr's own budget: ~200 ms ASR, ~200 ms LLM, ~200 ms network) | ✅ Same target and budget (§5) |
+| Filler removal (um, uh, pauses) | ✅ |
+| **Backtrack**: "meet Tuesday, wait, Wednesday" → "meet Wednesday" | ✅ |
+| Auto punctuation from pauses and tone, plus spoken marks ("comma", "new line") | ✅ |
+| Numbered and bulleted lists from speech | ✅ |
+| Name spelling from surrounding context | ✅ uses the text already in the box |
+| **Dictionary**: manual words + auto-added when you correct a spelling | ✅ manual; auto-add is a setting, **off by default** |
+| **Snippets**: spoken cue → saved text ("my email") | ✅ |
+| Whisper mode (quiet speech) | ✅ mic gain + voice processing |
+| Action button | ✅ starts a session (§2.4) |
+| Styles per app, Command Mode | ❌ desktop-only in Wispr (and iOS 26.4 hides which app you're in) |
+| 100+ languages | ❌ English only |
+| History, team sharing, dashboards | ❌ not needed |
+
+### 2.2 Layout
+A compact voice bar with minimal keys. Not a full QWERTY (see RISKS A8).
+```
+[ live transcript strip / status line                     ]
+[ 🌐 ]  [ 1?# ]   (  🎤 big  )   [ ⌫ ]  [ return ]
+[                 space                  ]
+```
+- **🎤** starts recording. While recording, it becomes **✓** (stop + insert), with a small **✕** (cancel) beside it.
+- **Live transcript strip:** shows words as you speak (on-device recognition), then the status: `Listening…`, `Done`, or a reason on failure (`No internet — used phone`, `Session ended — tap 🎤`).
+- **1?#**: one row of numbers and common punctuation.
+- **🌐**: switch keyboards (long-press for the list).
+- **Paste last:** if an insert was blocked (RISKS A7), a `Paste last` chip appears in the strip.
+
+### 2.3 Flow session (same as Wispr)
+1. The first 🎤 in a session opens the Friday app (`friday://session`). The app starts the mic in the foreground (iOS only allows starting it there), then you swipe back along the bottom edge. iOS 26.4+ gives no way to return automatically; Apple confirmed this.
+2. The app keeps the mic engine running in the background for the whole session (UIBackgroundModes: audio), discarding audio until you tap 🎤. A Live Activity in the Dynamic Island shows "Friday on".
+3. **Session length:** until the phone locks (default) / 15 min / 1 h / never.
+4. While the session is live, 🎤 starts instantly with no bounce.
+5. **No bounce at all:** start the session *before* opening WhatsApp, via the **Action button** or a **Control Center button**.
+
+### 2.4 Action button / Control Center
+- Action button → "Start Friday" (an App Intent). It starts a Flow session using `AudioRecordingIntent` + Live Activity, so iOS lets it start the mic without opening the app. If free signing or iOS blocks that, it opens the app briefly instead.
+- The same intent is available as a Control Center control and as a Siri phrase.
+
+### 2.5 Dictation rules (what "gets it right every time" means)
+- Your words, your tone, your slang. Never formalised, summarised, answered or expanded.
+- A question stays a question: "what time is the meeting?" is typed, not answered.
+- Fillers removed, backtracks applied, punctuation and capitals fixed.
+- Spoken formatting: "new line", "new paragraph", "comma", "full stop", "question mark", "bullet point", "number one… number two…".
+- Numbers and formats: times `5:30`, money `₹500`, emails `name@gmail.com`, links `example.com`, percentages `20%`.
+- Continues naturally from the text already in the box: no capital mid-sentence, no doubled words.
+- Dictionary spellings always win. Snippet cues expand to their saved text.
+
+---
+
+## 3. Friday app: Today schedule
+
+The only main screen (matches `ios/design/`). Native SwiftUI, stock iOS look.
 
 - **Header:** date in small grey caps, large title **Today**, small gear (Settings) top-right.
-- **Focus:** only items you named as priority today. Big rows (18 pt semibold) in a white card.
-  - If you haven't named any today: one quiet line, `Say what matters today.`
-- **Also:** everything else. Small grey rows (15 pt), no card. Includes read-only events from your other calendars (lectures, Google Calendar) with a small calendar dot.
+- **Focus:** only items you named as priority today. Big rows (18 pt semibold) in a white card. If none named today: `Say what matters today.`
+- **Also:** everything else. Small grey rows (15 pt), no card. Read-only events from your calendars (lectures, Google Calendar) appear here with a calendar dot.
 - **Next:** one line for the next thing after today: `Next: Project meeting · Sat 16:00`.
-- **Rows:** 44 pt checkbox (tap toggles), title, time on the right, small 📍 if it's location-triggered. Long-press: Edit, Move to tomorrow, Delete.
-- **Mic:** 76 pt accent circle at the bottom centre.
-- **After a command:** changed rows get a light tint and a short note (`New`, `Done`, `from 14:00`, `→ Sun`) for ~5 s. A dark pill `N changes · Undo` appears above the mic.
-- **Result card** (for non-list results), above the mic, dismissible, one at a time:
-  - **Answer:** 1–3 lines of text (e.g. "Arsenal play Chelsea Sat 22:00 IST").
-  - **Action:** a short preview plus one button: `Send on WhatsApp`, `Send email`, `Call Rahul`, `Open`. A second, smaller button: `Edit`.
-  - **Choice:** when a name is ambiguous ("Rahul S" / "Rahul K"): 2–3 buttons.
+- **Rows:** 44 pt checkbox (tap to toggle), title, time on the right. Long-press: Edit, Move to tomorrow, Delete.
+- **Mic:** 76 pt accent circle at the bottom.
+- **Talking:** a bottom sheet with waveform, live transcript, and **Cancel** / **Done**.
+- **After Done:** the sheet closes, changed rows get a light tint and a note (`New`, `Done`, `from 14:00`, `→ Sun`) for ~5 s, and a dark pill `N changes · Undo` sits above the mic.
+- **Nothing understood:** the pill says `Didn't catch that` and the transcript stays visible to retry. No other text, ever.
 
-### Talking state
-A bottom sheet over the dimmed list shows a waveform, the **live transcript** (20 pt) and a red stop button. On stop the sheet closes and changes land.
-
----
-
-## 3. Priority and rollover rules (you decide, the app never guesses)
-
+### 3.1 Priority and rollover rules (you decide, the app never guesses)
 - You say priorities explicitly, in the same breath or later: "priority today is the warden and the group reply", "make gym top priority", "laundry isn't important".
 - Named items → **Focus** (today only). Everything else → **Also**.
-- **Rollover** runs on the first activity of a new day (app open, keyboard use, Action button) and on every foreground:
-  - unfinished items from past days move to today, keeping their time of day;
-  - rolled-over items always land in **Also**. Focus resets daily.
+- **Rollover** (on the first activity of a new day, and every time the app comes to the foreground): unfinished items from past days move to today, keeping their time of day, and always land in **Also**. Focus resets daily.
 - Future-dated items ("Sunday", "tomorrow 10") wait for their day.
 
----
-
-## 4. The Friday keyboard (Wispr Flow clone)
-
-A compact voice bar with minimal keys. Not a full QWERTY.
-
-```
-[ 🌐 ]  [ ✨ ]   ( 🎤 big )   [ → Friday ]  [ ⌫ ]
-[         space          ]  [ return ]
-```
-
-- **🎤** starts and stops recording. While recording, the live transcript shows in a strip above the keys and 🎤 becomes **✓**.
-- **✓**: stop, clean up, insert with `textDocumentProxy.insertText`.
-- **→ Friday**: stop, send to the command brain. The strip shows `3 changes · Undo` or the result card's one-liner. Action buttons (e.g. `Send on WhatsApp`) appear in the strip.
-- **✨ Command mode**: talk an instruction ("make it shorter", "more polite", "fix grammar", "turn into bullet points"). Friday reads the text in the box (`documentContextBeforeInput` + `documentContextAfterInput`), rewrites it, deletes the old text and inserts the new. iOS only exposes text near the cursor (roughly the current paragraph or a few hundred characters), so this works on messages and short drafts, not long documents.
-- **Context:** for ✓ the text already before the cursor is sent as context, so dictation continues mid-sentence correctly (no stray capital or duplicated words).
-- **Session (same as Wispr Flow):**
-  1. The first 🎤 of a session opens the main app (`friday://session`) through the responder-chain `openURL` trick keyboards use. The app starts the audio session and returns. On iOS 26.4+ the user may have to swipe back. Show a one-line hint the first time.
-  2. The session stays alive until idle for N minutes (5 / 15 / 60 / never, default 15). While it's alive, 🎤 starts instantly with no bounce.
-  3. While a session is live the orange mic dot is on. That's expected.
-- iOS switches to the system keyboard by itself for password, phone and number fields.
+### 3.2 Calendar, Reminders, notifications
+- Friday's own store is the source of truth. Timed items mirror one-way to a **Friday** calendar and untimed ones to a **Friday** Reminders list (EventKit).
+- Local notifications only, and only for **Focus items with a time** (10 min before).
 
 ---
 
-## 5. Everything Friday can do (the command brain's abilities)
+## 4. AI stack (free + fast)
 
-All of these come from one spoken command, in the app, through **→ Friday**, or from the Action button.
-
-| Ability | Example | How |
-|---|---|---|
-| **Day list** | "done with the report, gym to 5, laundry Sunday, priority is warden" | Own store, mirrored to Calendar/Reminders |
-| **Calendar** | "lunch with Ana Friday 1pm" | EventKit. Timed items mirror to a **Friday** calendar. Reads all calendars, Google included if the account is added in iOS Settings |
-| **Reminders** | (untimed items) | EventKit, a **Friday** Reminders list |
-| **Messages: WhatsApp** | "tell Rahul I'll be 10 min late" | Contact lookup → `whatsapp://send?phone=…&text=…`. Opens ready to send, you tap Send |
-| **Messages: SMS/iMessage** | "text mom I reached" | `MFMessageComposeViewController` (or `sms:` with body). You tap Send |
-| **Email (Gmail)** | "email the professor asking for an extension" | Draft shown in the result card → `Send email` sends through the Gmail bridge (§7). Or "summarise my unread emails" → answer card |
-| **Calls** | "call warden" | `tel:`. iOS asks once, you tap Call |
-| **Alarms & timers** | "wake me at 6:30", "timer 20 min" | AlarmKit (iOS 26). Fallback: Shortcuts bridge |
-| **Location reminders** | "remind me to buy milk when I reach the market" | Apple Maps search near you (`MKLocalSearch`) + `CLMonitor` geofence → local notification. Saved places: "this is my hostel" saves the current location |
-| **Contacts** | "what's Rahul's number", and names for messages/calls | `CNContactStore`, fuzzy match locally, choice card if ambiguous |
-| **Health** | "how many steps today", "how did I sleep" | HealthKit read (if free signing allows it, see §13 step 1). Fallback: Shortcuts bridge |
-| **Music** | "play lofi on Spotify", "play my gym playlist" | Spotify Web API (PKCE login; playback control needs Premium) or a `spotify:` deep link. Apple Music library via `MPMusicPlayerController` |
-| **Notion** | "add this idea to my Notion" | Notion API with an internal integration token. Appends to a chosen page or database |
-| **Web questions** | "when's the next Arsenal match, add it" | Gemini with Google Search grounding; Tavily search as backup (§6) |
-| **Screenshots / photos → items** | Share a screenshot of a notice → "add these" | Share extension + Vision OCR (on-device) → command brain |
-| **Your Shortcuts** | "run my study-mode shortcut" | `shortcuts://run-shortcut?name=…&input=…` |
-| **Open apps / places** | "open Instagram", "directions to the station" | URL schemes, Apple Maps directions URL |
-| **Dictation extras** | (keyboard) | Personal dictionary and snippets (§8) |
-
-**One-tap rule:** iOS never lets an app send a WhatsApp/iMessage or place a call by itself. Friday prepares it and you tap once. Email through the Gmail bridge *can* send without opening anything, but still needs the one tap on `Send email` (no voice-only sends, to avoid mistakes).
-
----
-
-## 6. AI stack (free + fast) — final choices
-
-Every network provider is behind one **OpenAI-compatible client**, with model IDs in one config file (`ios/Friday/Config/Models.swift`). Swapping a provider is a config change.
+All network providers sit behind one **OpenAI-compatible client**. Model IDs live in one config file (`Config/Models.swift`). Check `console.groq.com/docs/models` before hard-coding: the catalogue changes (e.g. `llama-3.1-8b-instant` is reportedly leaving the free tier).
 
 | Job | Primary | Backup 1 | Backup 2 |
 |---|---|---|---|
-| Live words while talking | **Apple SpeechAnalyzer / SpeechTranscriber** (on-device, streaming) | — | — |
-| Final transcript | **Groq `whisper-large-v3-turbo`** | SpeechAnalyzer final result | — |
-| Dictation cleanup (✓) | **Groq `openai/gpt-oss-20b`** (`reasoning_effort: low`) | Gemini Flash-Lite | Apple Foundation Models |
-| Rewrite (✨) | **Groq `openai/gpt-oss-20b`** | Gemini Flash-Lite | Apple Foundation Models |
-| Command brain | **Groq `openai/gpt-oss-120b`** (`reasoning_effort: low`, JSON output) | Gemini Flash | Apple Foundation Models (`@Generable`, day-list ops only) |
-| Web answers | **Gemini Flash + Google Search grounding** | Tavily search → Groq 120b summarises | "Can't search right now" |
-| OCR | **Apple Vision** (on-device) | — | — |
+| Live words while talking | **Apple SpeechAnalyzer** (on-device, streaming) | — | — |
+| Final transcript | **Groq `whisper-large-v3-turbo`** (`language: en`, `temperature: 0`, `prompt` = dictionary) | SpeechAnalyzer final | — |
+| Dictation cleanup | **Groq `openai/gpt-oss-20b`** (`reasoning_effort: low`) | Gemini Flash-Lite | Apple Foundation Models |
+| Schedule commands (app only) | **Groq `openai/gpt-oss-120b`** (`reasoning_effort: low`, JSON) | Gemini Flash | Apple Foundation Models (`@Generable`) |
 
-Why these:
-- **Groq** runs these models at hundreds to 1,000+ tokens/s, which is what makes it feel instant. It's free with a key, no card. `llama-3.1-8b-instant` is reportedly being retired from the free tier, so use `gpt-oss-20b` for the fast path. Check `console.groq.com/docs/models` before hard-coding.
-- **gpt-oss models are reasoning models:** always send `reasoning_effort: "low"` and a small `max_tokens`, or latency goes up.
-- **Gemini** (Google AI Studio key, free, no card) is the overflow when Groq's daily free limit is hit, and the free way to get Google-grounded web answers.
-- **Apple Foundation Models** is the offline and last-resort path, so Friday never fully stops working.
-- **Apple SpeechAnalyzer** is accurate for English, streams in real time and costs nothing. Whisper is the "final" because it's better on names and accents.
+Keys: **Groq** (required), **Gemini** from aistudio.google.com (recommended backup). Both free, no card. Stored in the Keychain; if free signing blocks keychain sharing, in the App Group container.
 
-### 6.1 Speed: the Wispr trick
-1. Capture 16 kHz mono with `AVAudioEngine`. Feed SpeechAnalyzer live the whole time, for the instant preview and a guaranteed fallback.
-2. **Chunk on pauses:** when VAD sees ≥600 ms silence and the chunk is ≥4 s, upload that chunk to Groq Whisper right away while you keep talking. Cap it at ~15 audio requests/min (the free tier is ~20 RPM).
-3. On ✓, upload only the last chunk and stitch the chunk transcripts in order.
-4. Pass Whisper a `prompt` with your dictionary words (§8) for names and terms.
-5. Run cleanup/command with a short prompt, low reasoning and small `max_tokens`.
-6. **Race:** if the cloud result isn't back **1.2 s** after ✓, use the on-device transcript plus the next backup model. Never wait on the network.
-7. Keep one warm `URLSession` (HTTP/2 keep-alive). Send a tiny pre-warm request when a session starts.
-8. **Quota tracker:** count requests and tokens per provider per day. Switch to the backup *before* hitting a limit, and on any 429/5xx.
-
-**Target:** ✓ → text in the box in **0.5–1 s**. A debug timing overlay (toggle in Settings) shows each stage's ms so it can be tuned on the phone.
-
-### 6.2 Free limits (verify in each console; they change)
-Third-party listings put Groq Whisper at ~2,000 requests/day and ~8 h of audio/day. gpt-oss models have daily token caps (reportedly ~200K tokens/day) and Gemini Flash ~1,500 requests/day. Your use is far below that if prompts stay lean: the command prompt should be ≤1.5K tokens per call. Paid fallback would cost under $1/month, but isn't needed.
+Free limits (third-party figures, verify in the consoles): Groq Whisper ~2,000 requests/day and ~8 h audio/day, ~20 requests/min; gpt-oss daily token caps; Gemini Flash ~1,500 requests/day. One person's use is far below these. A quota tracker switches to the backup *before* a limit and on any 429/5xx.
 
 ---
 
-## 7. Integrations setup (all free)
+## 5. Speed (Wispr's 700 ms budget)
 
-| Service | What you set up once | Stored as |
-|---|---|---|
-| Groq | console.groq.com → API key | Settings → Keys |
-| Gemini | aistudio.google.com → API key | Settings → Keys |
-| Tavily | tavily.com → API key (1,000 searches/month free) | Settings → Keys |
-| **Gmail bridge** | A Google Apps Script web app in *your* Google account (script in `ios/integrations/gmail-bridge.gs`): deploy as "Execute as me", paste its URL + a secret into Friday. Endpoints: `unread_summary`, `search`, `send`, `draft`. No OAuth tokens expiring weekly, nothing to pay | Settings → Gmail |
-| Google Calendar | Add your Google account in iOS Settings → Calendar. Friday reads it through EventKit | — |
-| Notion | notion.so/my-integrations → internal integration token, share the target page with it | Settings → Notion |
-| Spotify | Spotify developer app (dev mode, free) → client ID. Friday logs in with PKCE | Settings → Spotify |
+Budget after ✓: **~200 ms speech-to-text + ~200 ms cleanup + ~200 ms network**.
 
-Keys live in the Keychain, shared with the keyboard via a keychain access group. If free signing rejects keychain sharing, use a file in the App Group container (`completeUntilFirstUserAuthentication` protection).
+1. **Engine always running during a session**, with a 1 s rolling pre-roll buffer prepended to each dictation, so the first word is never lost.
+2. **On-device live transcript** the whole time: instant preview and a guaranteed fallback.
+3. **Pause chunking** (for dictations > ~20 s): at ≥600 ms of silence, upload the finished chunk to Groq while you keep talking. On ✓ only the tail is left. Shorter dictations go whole. Silence is trimmed (VAD) and chunks with no speech are never sent (prevents Whisper's phantom "Thank you for watching").
+4. **Cleanup call:** short prompt, low reasoning, `max_tokens` ≈ 1.5× the transcript length.
+5. **Race:** if the cloud result isn't back **1.2 s** after ✓, insert the on-device transcript run through the deterministic cleanup (fillers, snippets, fix rules) and, if it's fast enough, Apple Foundation Models.
+6. **Warm connection:** one `URLSession` with HTTP/2 keep-alive, pre-warmed when the session starts.
+7. **Timing overlay** (Settings toggle): ms per stage, so it can be tuned on the phone.
 
----
-
-## 8. Dictation quality features
-- **Personal dictionary:** words and names Friday must spell exactly (e.g. "Samartha"), plus your contacts' names. Added by hand only, in Settings (type the word once). Sent as Whisper's `prompt` and as SpeechAnalyzer contextual strings, which bias recognition toward those spellings. No voice training, no learned state.
-- **Fix rules:** hand-made "heard → write" pairs (e.g. `summer tha` → `Samartha`), applied deterministically after transcription, before cleanup. The safety net for anything the dictionary alone doesn't catch.
-- **Snippets:** "my email" → `you@…`, "my address" → full address. Replaced deterministically *before* the LLM cleanup.
-- **Spoken formatting:** "new line", "new paragraph", "question mark", "bullet point".
-- **Self-corrections:** "at 5, no wait, 6" → "at 6".
+If Groq round trips from India are consistently slow (> ~1 s), switch ✓ to on-device speech-to-text + cloud cleanup only, and re-measure.
 
 ---
 
-## 9. Prompts
+## 6. Dictionary, snippets and fix rules
+- **Dictionary:** words that must be spelled exactly ("Samartha"), plus contacts' names. Added in Settings. Sent as Whisper's `prompt` (≤ ~30 relevant words) and as SpeechAnalyzer contextual strings. Optional **auto-add** (off by default): if you correct a just-dictated word in the box, the keyboard offers `Add "Samartha" to dictionary?`. One tap, never silent.
+- **Snippets:** cue → text ("my email" → `you@…`). Expanded deterministically before cleanup.
+- **Fix rules:** "heard → write" pairs (`summer tha` → `Samartha`). Applied deterministically after transcription. A guaranteed safety net.
 
-### 9.1 Dictation cleanup (system)
+---
+
+## 7. Prompts
+
+### 7.1 Dictation cleanup (system)
 ```
-You clean up dictated text. Output ONLY the final text.
+You are a dictation cleaner, not an assistant. The user is typing by voice.
+Output ONLY the cleaned text inside <out></out>. Never answer, reply, explain, add, or summarise.
 - Remove filler words (um, uh, like, you know) and false starts.
-- Apply spoken self-corrections ("at 5, no wait, 6" -> "at 6").
-- Fix punctuation, capitalisation and obvious mis-hearings. Use DICTIONARY spellings.
-- Keep the speaker's words, tone and slang. Do not add, summarise or make it formal.
-- Apply spoken formatting: "new line", "new paragraph", "question mark", "bullet point".
+- Apply backtracking ("Tuesday, wait, Wednesday" -> "Wednesday"; "at 5, no 6" -> "at 6").
+- Fix punctuation, capitalisation and obvious mis-hearings. Use DICTIONARY spellings exactly.
+- Keep the speaker's words, tone and slang. Do not make it formal. Do not translate.
+- Spoken formatting: "new line", "new paragraph", "comma", "full stop", "question mark", "bullet point", numbered items.
+- Format times (5:30), money (₹500), emails, links and percentages normally.
 - Continue naturally from CONTEXT (no capital mid-sentence, no repeated words).
+- If the dictation is a question or an instruction, type it as written. Do not respond to it.
 ```
-User: `CONTEXT: <≤300 chars before cursor>\nDICTIONARY: <words>\nDICTATION: <transcript>`
+User: `<context>…≤300 chars before cursor…</context>\n<dictionary>…</dictionary>\n<dictation>…</dictation>`
 
-### 9.2 Rewrite (✨, system)
-```
-Rewrite TEXT following INSTRUCTION. Output ONLY the rewritten text. Keep the language, meaning and the speaker's voice unless told otherwise.
-```
+**Guard (in code):** if the output shares under ~70% of its words with the transcript, or is more than 1.3× longer, insert the deterministic-cleaned transcript instead (RISKS C1).
 
-### 9.3 Command brain (system, JSON mode)
+### 7.2 Schedule commands (app only, system, JSON mode)
 Input:
 ```
 NOW: 2026-10-08T08:14 Thu (Asia/Kolkata)
-PLACES: ["hostel","market"]
-ITEMS: [{"id":"a1","t":"Finish lab report","d":"2026-10-08","tm":"11:30","f":true,"x":false}, ...]   // today + future + done today, compact keys
+ITEMS: [{"id":"a1","t":"Finish lab report","d":"2026-10-08","tm":"11:30","f":true,"x":false}, ...]
 SAID: "<transcript>"
 ```
 System:
 ```
-Turn what the user said into actions. Output JSON only: {"actions":[...]}.
-Day list:
- {"a":"add","title":s,"date":"YYYY-MM-DD","time":"HH:MM"|null,"focus":b,"place":s|null}
- {"a":"complete","id":s} {"a":"uncomplete","id":s} {"a":"delete","id":s}
- {"a":"move","id":s,"date":"YYYY-MM-DD","time":"HH:MM"|null}
- {"a":"rename","id":s,"title":s} {"a":"focus","id":s,"on":b}
-Other:
- {"a":"message","app":"whatsapp"|"sms","to":s,"text":s}
- {"a":"email","to":s,"subject":s,"body":s}
- {"a":"call","to":s}
- {"a":"alarm","time":"HH:MM","date":"YYYY-MM-DD"|null,"label":s|null}
- {"a":"timer","minutes":n,"label":s|null}
- {"a":"save_place","name":s}
- {"a":"music","service":"spotify"|"apple","query":s}
- {"a":"notion","text":s}
- {"a":"shortcut","name":s,"input":s|null}
- {"a":"open","target":s}
- {"a":"ask","kind":"web"|"email"|"health"|"contacts","query":s}
+Turn what the user said into changes to their schedule. Output JSON only: {"ops":[...]}.
+ {"op":"add","title":s,"date":"YYYY-MM-DD","time":"HH:MM"|null,"focus":b}
+ {"op":"complete","id":s} {"op":"uncomplete","id":s} {"op":"delete","id":s}
+ {"op":"move","id":s,"date":"YYYY-MM-DD","time":"HH:MM"|null}
+ {"op":"rename","id":s,"title":s} {"op":"focus","id":s,"on":b}
 Rules:
-- Match existing items by meaning ("the report" = "Finish lab report"); use their id; never invent ids.
-- focus=true ONLY if the user explicitly calls it priority/important/top/focus. "Priority today is X and Y" -> focus on for X and Y (add them if missing).
-- Resolve relative dates/times from NOW. Titles short, no dates/times inside them.
-- Messages/emails: write the text the user would send, in their voice.
-- Use "ask" only when an answer needs outside info.
-- Nothing actionable -> {"actions":[]}.
+- Match existing items by meaning; use their id; never invent ids.
+- delete only if the user clearly says delete/remove/cancel/drop.
+- focus=true ONLY if the user explicitly calls it priority/important/top/focus.
+- Output dates/times as said; keep vague times as said text in "time_said" if unsure.
+- Titles short, verb-first when natural, no dates/times inside.
+- Nothing schedulable -> {"ops":[]}.
 ```
+**Time rules in code, not the model (RISKS C3):** bare hours 1–7 → PM, 8–11 → AM unless said otherwise. Between 00:00 and 04:00, "tomorrow" = the coming day (today's date). Validate every op (unknown id → choice card; bad date → drop). Apply all ops in one transaction with one undo entry.
 
-**Execution:** the app validates every action (unknown id → drop, bad date → drop, unknown contact → choice card) and applies all day-list actions in one transaction with one undo entry. Each `ask` runs its fetch (web/Gmail/HealthKit/Contacts), then a **second** short call turns the fetched data into a 1–3 line answer and, if the user asked for it, follow-up actions ("add it" → `add`). All other abilities finish in **one** LLM round.
-
-### 9.4 Prompt tests
-`ios/evals/commands.jsonl`: 40+ real-style utterances with the expected actions. `ios/evals/run.sh` runs them against the configured provider with a local API key and prints pass/fail. Run it whenever a prompt or model changes.
+### 7.3 Evals
+`ios/evals/dictation.jsonl` (≥60 cases: fillers, backtracks, questions that must not be answered, lists, numbers, emails, names, mid-sentence continuation) and `ios/evals/schedule.jsonl` (≥40 cases). `ios/evals/run.sh` runs them against the configured models with a local key and prints pass/fail. Every real miss on the phone becomes a new case.
 
 ---
 
-## 10. Architecture
+## 8. Architecture
 
 ```
 Friday (app, SwiftUI)
- ├─ Audio        AVAudioEngine capture, VAD chunking, background keep-alive (UIBackgroundModes: audio)
- ├─ Speech       SpeechAnalyzer live + Groq Whisper chunks + race
- ├─ AI           OpenAI-compatible client (Groq, Gemini), Foundation Models, quota tracker, prompts
- ├─ Brain        builds the command input, validates + executes actions, ask → fetch → answer
- ├─ Store        items JSON in the App Group container (file-coordinated), undo stack, rollover
- ├─ Mirror       EventKit calendar + reminders, read other calendars
- ├─ Abilities    Contacts, Messages, Mail(Gmail bridge), Calls, AlarmKit, Location(CLMonitor, MKLocalSearch),
- │               HealthKit, Music(Spotify/MPMusicPlayer), Notion, Web(Gemini/Tavily), Shortcuts, Open
- ├─ Notifier     local notifications: timed Focus items (10 min before), location triggers
- └─ Intents      TalkToFriday (AudioRecordingIntent + Live Activity), App Shortcuts for Siri/Action button
+ ├─ Session     Flow session lifecycle, AVAudioEngine (always on in session), pre-roll, VAD, interruptions,
+ │              heartbeat to App Group, music-friendly audio session (mixWithOthers, built-in mic preferred)
+ ├─ Speech      SpeechAnalyzer live + Groq Whisper (whole or pause-chunked) + race
+ ├─ Clean       deterministic pass (snippets, fix rules, fillers) + LLM cleanup + guard
+ ├─ Schedule    command call, validation, apply, undo, rollover, time rules
+ ├─ Store       items JSON in the App Group (app is the only writer), daily backup to a Files folder, auto-restore
+ ├─ Mirror      EventKit calendar + reminders, read other calendars
+ ├─ Notifier    timed Focus items; "refresh in SideStore" 2 days before signing expiry
+ └─ Intents     Start Friday (AudioRecordingIntent + Live Activity), Control Center control, App Shortcut
 FridayKeyboard (keyboard extension, RequestsOpenAccess = YES)
- └─ voice bar UI; NO models, NO audio, NO network. Talks to the app over the App Group.
-FridayLive (widget extension)   Live Activity UI (listening / thinking / done)
-FridayShare (share extension)   receives images/text → OCR → hands to the app
+ └─ voice bar UI only. No audio, no AI, no network. Talks to the app over the App Group.
+FridayLive (widget extension)   Live Activity + Control Center control
 FridayCore (Swift package, no UIKit/SwiftUI)
- └─ models, action schema, validation, apply, undo, rollover, date resolution, snippets — `swift test` on Linux + CI
+ └─ deterministic cleanup, snippets/fix rules, guard, schedule ops, validation, apply, undo, rollover,
+    time rules — `swift test` on Linux and in CI
 ```
 
-- **Keyboard ↔ app:** App Group `group.com.samarth.friday`. The keyboard writes a request (`start`, `stop_insert`, `stop_command`, `rewrite`, `cancel`) to a small JSON file and posts a Darwin notification. The app does the work, writes the result and posts back, and the keyboard inserts/updates. Keyboards get ~50–70 MB, so all heavy work stays in the app.
-- **Data model** (`FridayCore.Item`): `id, title, date, time?, focus, focusDate?, done, doneAt?, place?, ekID?, createdAt`. `focus` only counts when `focusDate == today`.
-- **Bundle IDs (never change after the first install, or the data is lost):** `com.samarth.friday`, `.keyboard`, `.live`, `.share`.
+- **Keyboard ↔ app:** App Group `group.com.samarth.friday`. The keyboard writes a request (`start`, `stop_insert`, `cancel`) with a request ID plus `documentIdentifier` to a JSON file (atomic write) and posts a Darwin notification. The app replies the same way. The keyboard inserts only if the request ID and `documentIdentifier` still match; otherwise it shows `Paste last`.
+- **Bundle IDs (never change after the first install):** `com.samarth.friday`, `.keyboard`, `.live`. That's 3 App IDs out of the free 10/week.
 - **Deployment target:** iOS 26.0. Swift 6, SwiftUI, Observation.
 
 ---
 
-## 11. Settings and first run
-
+## 9. Settings and first run
 **First run:** one checklist screen. Each row has a status and a Fix button:
-- Microphone, Speech, Calendar, Reminders, Notifications, Contacts, Location (Always), Health.
-- "Add the Friday keyboard" (opens Settings, plus 3-line instructions incl. Full Access).
-- "Set up the Action button" (instructions).
-- Keys: Groq (required), Gemini (recommended), Tavily, Gmail bridge, Notion, Spotify (optional).
+- Microphone, Speech, Calendar, Reminders, Notifications.
+- Add the Friday keyboard + Full Access.
+- Action button / Control Center setup.
+- Groq key (required), Gemini key (recommended).
+- Backup folder (pick once in Files / iCloud Drive).
 
-**Settings sheet:**
-- Keys and integrations
-- AI mode: `Cloud + on-device backup` (default) / `On-device only`
-- Keyboard session timeout
-- Dictionary, Snippets, Saved places
-- Accent colour (4 swatches)
-- Export (JSON to Files), debug timing overlay
+**Settings:** keys; session length; dictionary, snippets, fix rules; dictionary auto-add (off); "Use AirPods mic" (off); accent colour; export; timing overlay.
 
 ---
 
-## 12. Build and install without a Mac
-
-1. **Project:** XcodeGen `ios/project.yml`, checked in. Never commit a hand-edited `.xcodeproj`.
-2. **CI** `.github/workflows/ios.yml` on the newest macOS runner with Xcode 26:
-   - `swift test` for FridayCore
-   - `brew install xcodegen && xcodegen generate`
-   - `xcodebuild -scheme Friday -sdk iphoneos -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build`
-   - zip `Payload/Friday.app` (with `PlugIns/`) → `Friday.ipa`; build number = run number
-   - publish to the GitHub Release `latest` and update `ios/sidestore-source.json` (AltStore/SideStore source format). The phone then sees updates inside SideStore: add the source once, tap Update.
-   - The repo is public, so macOS minutes are free.
-3. **Install:** SideStore → Sources → add the raw URL of `ios/sidestore-source.json` → install Friday. SideStore re-signs with the free Apple ID and rewrites the extension and App Group IDs.
-4. **Refresh:** every 7 days in SideStore (or its background refresh). Data survives refreshes and updates. Never delete the app.
-5. **Free Apple ID budget:** 4 App IDs (app + keyboard + widget + share) out of 10 per 7 days. SideStore counts as one of the 3 active apps.
+## 10. Build and install without a Mac
+1. **Project:** XcodeGen `ios/project.yml`. Never commit a hand-edited `.xcodeproj`.
+2. **CI** `.github/workflows/ios.yml` on the newest macOS runner with Xcode 26: `swift test` (FridayCore) → `xcodegen generate` → `xcodebuild … -sdk iphoneos CODE_SIGNING_ALLOWED=NO` → zip `Payload/Friday.app` into `Friday.ipa` (build number = run number) → GitHub Release `latest` → update `ios/sidestore-source.json`. The repo is public, so macOS minutes are free.
+3. **Install:** SideStore → Sources → add the raw URL of `ios/sidestore-source.json` → install. Updates appear in SideStore.
+4. **Refresh** every 7 days (Friday warns 2 days before). Data survives refreshes and updates. Always sign with the same Apple ID (RISKS D1).
 
 ---
 
-## 13. Build order (everything ships; this is just the order)
-
-1. **Install probe:** the minimal app plus all 3 extensions, App Group, keychain sharing, background audio, and HealthKit + AlarmKit + Location usage keys. It shows a screen reporting what works: App Group read/write from the keyboard, the keyboard opening the app, HealthKit authorisation, AlarmKit authorisation. CI → install via SideStore → the owner sends a screenshot. **Anything free signing blocks moves to the Shortcuts bridge.** Don't build further until this works.
-2. FridayCore with tests: models, actions, validation, apply, undo, rollover, dates, snippets.
-3. Today UI (per `ios/design/` + result card), store, long-press edit, Settings, first-run checklist.
-4. Audio + SpeechAnalyzer live transcript + Talking sheet.
-5. AI layer: OpenAI-compatible client, Groq Whisper chunking, race, quota tracker, Gemini + Foundation Models fallbacks, timing overlay.
-6. Command brain end to end on the day list: highlights, Undo pill. Evals file + runner.
-7. Keyboard: voice bar, IPC, session/bounce, ✓ insert with context, → Friday, ✨ rewrite.
-8. Action button: AudioRecordingIntent + Live Activity + App Shortcuts.
-9. EventKit mirror + read calendars, notifications.
-10. Abilities: contacts, messages, calls, alarms/timers, location reminders + saved places, health, music, Notion, Shortcuts, open.
-11. Web answers (Gemini grounding, Tavily) and the Gmail bridge script + client.
-12. Share extension + OCR.
-13. Tune on the phone: latency, VAD thresholds, prompts against real speech (add each miss to the evals).
-
-**Time:** roughly 3–5 days of calendar time, mostly waiting on CI rounds, the owner's testing and Claude usage limits.
+## 11. Limits
+**Can:** dictate into any app that allows third-party keyboards; read the text near the cursor in that box; manage the schedule; Calendar/Reminders mirror; local notifications; Action button, Control Center, Siri.
+**Cannot:** password and some secure/banking fields (iOS swaps in its own keyboard); return to the previous app automatically after a session start (iOS 26.4+); know which app you're typing in (iOS 26.4+); read other apps' content; work while the signing has expired.
 
 ---
 
-## 14. Limits (where the line is)
-
-**Can:** everything in §5. Dictate into any app and read the text in the box being typed in. Calendar, Reminders, Contacts, Location, Health*, Photos. Alarms*, timers, local notifications, Live Activities, Action button, Siri/Shortcuts. Prepare messages, emails and calls. Anything with a web API.
-
-**Cannot (iOS blocks every app, no matter the permissions):**
-- Read WhatsApp/Instagram/iMessage chats, other apps' notifications, or the screen.
-- Send WhatsApp/iMessage or place calls by itself (one tap from you, always).
-- Tap buttons or control other apps.
-- Always-on "Hey Friday" when no session is running.
-- Server push notifications, iCloud sync (paid developer account only).
-- Type in password fields or apps that block third-party keyboards.
-
-\* depends on the install probe; the fallback is the Shortcuts bridge.
-
----
-
-## 15. Risks and fallbacks
-
-The full, researched list of problems and fixes is in `ios/RISKS.md`. Its 🔴 items are part of the build, not optional.
-
-| Risk | Fallback |
-|---|---|
-| Keyboard → app bounce needs a manual swipe back (iOS 26.4+) | Once per session only. The Action button path never needs it |
-| Free signing rejects HealthKit / AlarmKit / keychain sharing | Shortcuts bridge / App Group file for keys |
-| Groq free limits or models change | Config file, quota tracker, Gemini → on-device chain |
-| Gemini free grounding changes | Tavily search |
-| Background mic session drains battery | Idle timeout (default 15 min) |
+## 12. Build order (everything ships; this is just the order)
+1. **Install probe:** minimal app + keyboard + widget, App Group, keychain sharing, background audio, AudioRecordingIntent + Live Activity. It shows a report screen (App Group round trip with the keyboard, keyboard → app open, background mic survives 2 min in another app, intent can start the mic). CI → SideStore install → owner sends a screenshot. Adjust the plan to whatever free signing blocks before going further.
+2. FridayCore + tests: deterministic cleanup, guard, schedule ops, validation, undo, rollover, time rules.
+3. Session engine: audio session, pre-roll, VAD, interruptions, heartbeat, Live Activity.
+4. Speech: SpeechAnalyzer live, Groq Whisper (whole + chunked), race, phantom-text guards.
+5. Cleanup: Groq/Gemini/Foundation Models chain, quota tracker, timing overlay, dictation evals.
+6. **Keyboard:** voice bar, IPC, session start/bounce, ✓ insert with context, ✕, `Paste last`, status lines, 1?# row. **Daily-usable at this point.**
+7. Action button + Control Center start.
+8. Today UI, store, backup/restore, long-press edit, Settings, first-run checklist.
+9. Schedule commands end to end, highlights, Undo, schedule evals.
+10. EventKit mirror + calendar read, notifications, expiry warning.
+11. Dictionary, snippets, fix rules, optional auto-add.
+12. Tune on the phone: latency, VAD thresholds, prompts against real speech.
 
 ---
 
-## 16. Design reference
-`ios/design/` (HTML artboards, 390×844): `Main.dc.html` (Today), `Listening.dc.html` (Talking), `Updated.dc.html` (after a command). The result card and keyboard follow the same look.
+## 13. Design reference
+`ios/design/` (HTML artboards, 390×844): `Main.dc.html` (Today), `Listening.dc.html` (talking sheet; its stop button becomes **Cancel / Done**), `Updated.dc.html` (after Done). The keyboard follows the same look.
 
-**Tokens:** background `#F2F2F7`, cards `#FFFFFF` radius 16, separators `#E3E3E8`, text `#111114`, secondary `#5F5F66`, accent `#4338CA`, change tint `#EEF0FF`, stop red `#D92D20`, undo pill `#111114`. SF system font. Build it in native SwiftUI, not as a web port.
+**Tokens:** background `#F2F2F7`, cards `#FFFFFF` radius 16, separators `#E3E3E8`, text `#111114`, secondary `#5F5F66`, accent `#4338CA`, change tint `#EEF0FF`, stop red `#D92D20`, pill `#111114`. SF system font. Native SwiftUI, not a web port.
+
+## Sources (Wispr research)
+[Wispr: technical challenges (700 ms budget)](https://wisprflow.ai/post/technical-challenges) · [Wispr features](https://wisprflow.ai/features) · [Baseten case study](https://www.baseten.co/resources/customers/wispr-flow/) · [Wispr docs: iPhone keyboard](https://docs.wisprflow.ai/articles/7453988911-set-up-the-flow-keyboard-on-iphone) · [Wispr docs: iOS 26.4](https://docs.wisprflow.ai/articles/6269634092-adapting-to-ios-26-4?lang=en) · [Apple forums: keyboard round trip](https://developer.apple.com/forums/thread/826851) · [Zack Proser: Wispr vs Apple dictation](https://zackproser.com/blog/wisprflow-vs-apple-dictation-2026) · [eesel overview](https://www.eesel.ai/blog/wispr-flow-overview) · [Netolink guide](https://netolink.com/wispr-flow/)
