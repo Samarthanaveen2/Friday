@@ -8,7 +8,7 @@
 ## 2. Paste this as the first message
 
 ```
-Read CLAUDE.md and ios/PLAN.md fully. We're building the Friday iPhone app described there, for my iPhone 16 Pro on iOS 26. I have no Mac and no paid Apple developer account: you write the code, GitHub Actions builds an unsigned .ipa, and I install it with SideStore.
+Read CLAUDE.md, ios/PLAN.md and ios/RISKS.md fully. We're building the Friday iPhone app described there, for my iPhone 16 Pro on iOS 26. I have no Mac and no paid Apple developer account: you write the code, GitHub Actions builds an unsigned .ipa, and I install it with SideStore.
 
 Start with step 1 of the build order (the install probe): XcodeGen project, empty app + keyboard + widget extensions, App Group, background audio, and the GitHub Actions workflow that publishes Friday.ipa to a GitHub Release tagged "latest". Push it, watch CI until it's green, then tell me in 3 short lines how to install it. Keep your messages short.
 ```
@@ -25,5 +25,6 @@ After that works, say "next step" each time, or "build the rest" to let it go th
 - Optional: a separate free Apple ID just for SideStore signing.
 
 ## Files
+- `ios/RISKS.md` — every known problem and its fix (🔴 = must do)
 - `ios/PLAN.md` — the full spec (features, AI pipeline, prompts, architecture, build, limits).
 - `ios/design/` — the agreed screen mockups.

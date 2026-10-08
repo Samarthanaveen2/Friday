@@ -334,6 +334,8 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 
 ## 15. Risks and fallbacks
 
+The full, researched list of problems and fixes is in `ios/RISKS.md`. Its 🔴 items are part of the build, not optional.
+
 | Risk | Fallback |
 |---|---|
 | Keyboard → app bounce needs a manual swipe back (iOS 26.4+) | Once per session only. The Action button path never needs it |
