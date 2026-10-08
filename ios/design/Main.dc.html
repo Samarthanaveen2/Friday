@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Friday — Today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4338CA}a:hover{color:#312E81}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F2F2F7; display: flex; flex-direction: column; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #111114; overflow: hidden">
+  <div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 24px; padding: 64px 16px 0; overflow: hidden">
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 4px">
+      <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: #5F5F66">Thursday, 8 October</div>
+      <h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 0.3px">Today</h1>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="padding: 0 4px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: {{accent}}">Focus</div>
+      <div style="background: #FFFFFF; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column">
+        <sc-for list="{{focus}}" as="item" hint-placeholder-count="3">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 8px 16px 8px 6px; min-height: 68px; box-sizing: border-box; background: {{item.bg}}; border-bottom: {{item.border}}">
+            <button aria-label="{{item.label}}" style="width: 44px; height: 44px; flex: 0 0 auto; border: none; background: none; padding: 0; display: flex; align-items: center; justify-content: center; color: {{item.checkColor}}">
+              <sc-if value="{{item.done}}" hint-placeholder-val="{{false}}">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="currentColor"></circle><path d="M7.5 12.5l3 3 6-6" stroke="#FFFFFF"></path></svg>
+              </sc-if>
+              <sc-if value="{{item.open}}" hint-placeholder-val="{{true}}">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>
+              </sc-if>
+            </button>
+            <div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 1px; min-width: 0">
+              <div style="font-size: 18px; font-weight: 600; color: {{item.titleColor}}; text-decoration: {{item.deco}}">{{item.title}}</div>
+              <sc-if value="{{item.hasNote}}" hint-placeholder-val="{{false}}">
+                <div style="font-size: 13px; font-weight: 600; color: {{accent}}">{{item.note}}</div>
+              </sc-if>
+            </div>
+            <div style="font-size: 16px; font-weight: 500; color: #5F5F66; font-variant-numeric: tabular-nums">{{item.time}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <div style="padding: 0 4px 4px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: #5F5F66">Also</div>
+      <sc-for list="{{also}}" as="item" hint-placeholder-count="3">
+        <div style="display: flex; align-items: center; gap: 4px; padding: 0 8px 0 0; min-height: 44px; background: {{item.bg}}; border-radius: 10px">
+          <button aria-label="{{item.label}}" style="width: 44px; height: 44px; flex: 0 0 auto; border: none; background: none; padding: 0; display: flex; align-items: center; justify-content: center; color: {{item.checkColor}}">
+            <sc-if value="{{item.done}}" hint-placeholder-val="{{false}}">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="currentColor"></circle><path d="M7.5 12.5l3 3 6-6" stroke="#FFFFFF"></path></svg>
+            </sc-if>
+            <sc-if value="{{item.open}}" hint-placeholder-val="{{true}}">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>
+            </sc-if>
+          </button>
+          <div style="flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; min-width: 0">
+            <span style="font-size: 15px; color: #3A3A40; text-decoration: {{item.deco}}">{{item.title}}</span>
+            <sc-if value="{{item.hasNote}}" hint-placeholder-val="{{false}}">
+              <span style="font-size: 13px; font-weight: 600; color: {{accent}}">{{item.note}}</span>
+            </sc-if>
+          </div>
+          <div style="font-size: 14px; color: #5F5F66; font-variant-numeric: tabular-nums">{{item.time}}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="padding: 0 4px; font-size: 14px; color: #5F5F66">Next: <span style="color: #111114; font-weight: 600">Project meeting</span> · Sat 16:00</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 12px 0 44px">
+    <a href="Listening.dc.html" aria-label="Talk" style="width: 76px; height: 76px; border-radius: 38px; background: {{accent}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(67, 56, 202, 0.30)">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg>
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#4338CA","options":["#4338CA","#C2410C","#0F766E","#111114"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#4338CA';
+    const focus = [
+      { time: '9:00', title: 'Signals lecture', done: true },
+      { time: '11:30', title: 'Finish lab report' },
+      { time: '16:00', title: 'Reply to project group' }
+    ];
+    const also = [
+      { time: '14:00', title: 'Gym' },
+      { time: '', title: 'Wash clothes' },
+      { time: '18:00', title: 'Call home' }
+    ];
+    const row = (x, i, list) => ({
+      ...x,
+      done: !!x.done,
+      open: !x.done,
+      hasNote: !!x.note,
+      label: (x.done ? 'Mark not done: ' : 'Mark done: ') + x.title,
+      checkColor: x.done ? accent : '#A1A1A8',
+      titleColor: x.done ? '#5F5F66' : '#111114',
+      deco: x.done ? 'line-through' : 'none',
+      bg: x.hl ? '#EEF0FF' : (list === focus ? '#FFFFFF' : 'transparent'),
+      border: i < list.length - 1 ? '1px solid #E3E3E8' : 'none'
+    });
+    return {
+      accent,
+      focus: focus.map(row),
+      also: also.map(row)
+    };
+  }
+}
+</script>
+</body>
+</html>

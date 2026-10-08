@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Friday — Talking</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4338CA}a:hover{color:#312E81}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F2F2F7; position: relative; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #111114; overflow: hidden">
+  <div aria-hidden="true" style="display: flex; flex-direction: column; gap: 22px; padding: 64px 16px 0; opacity: 0.35">
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 4px">
+      <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: #5F5F66">Thursday, 8 October</div>
+      <div style="font-size: 34px; font-weight: 700; letter-spacing: 0.3px">Today</div>
+    </div>
+    <div style="background: #FFFFFF; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column">
+      <sc-for list="{{today}}" as="item" hint-placeholder-count="5">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 6px 16px; min-height: 56px; box-sizing: border-box; border-bottom: {{item.border}}">
+          <div style="width: 22px; height: 22px; border-radius: 11px; border: 2px solid #A1A1A8"></div>
+          <div style="flex: 1 1 auto; font-size: 16px">{{item.title}}</div>
+          <div style="font-size: 15px; color: #5F5F66">{{item.time}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 400px; box-sizing: border-box; background: #FFFFFF; border-radius: 28px 28px 0 0; box-shadow: 0 -8px 30px rgba(17, 17, 20, 0.12); padding: 12px 24px 44px; display: flex; flex-direction: column; gap: 20px">
+    <div style="align-self: center; width: 36px; height: 5px; border-radius: 3px; background: #D1D1D6"></div>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 4px; height: 48px">
+      <sc-for list="{{bars}}" as="bar" hint-placeholder-count="28">
+        <div style="width: 4px; border-radius: 2px; background: {{accent}}; height: {{bar.h}}; opacity: {{bar.o}}"></div>
+      </sc-for>
+    </div>
+    <p style="flex: 1 1 auto; margin: 0; font-size: 20px; line-height: 28px; font-weight: 500">Done with the lab report. Warden wants to see me at 3, push gym to five, laundry Sunday. Priority today: warden and the group reply<span style="color: #A1A1A8">…</span></p>
+    <div style="display: flex; align-items: center; justify-content: center">
+      <a href="Updated.dc.html" aria-label="Stop" style="width: 72px; height: 72px; border-radius: 36px; border: 4px solid #E3E3E8; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #FFFFFF">
+        <div style="width: 26px; height: 26px; border-radius: 6px; background: #D92D20"></div>
+      </a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#4338CA","options":["#4338CA","#C2410C","#0F766E","#111114"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const today = [
+      { time: '9:00', title: 'Signals lecture' },
+      { time: '11:30', title: 'Finish lab report' },
+      { time: '16:00', title: 'Reply to project group' },
+      { time: '14:00', title: 'Gym' },
+      { time: '', title: 'Wash clothes' }
+    ];
+    const hs = [8, 14, 24, 18, 34, 44, 30, 20, 38, 48, 34, 24, 16, 28, 42, 48, 36, 22, 14, 28, 40, 32, 18, 12, 18, 10, 6, 6];
+    return {
+      accent: this.props.accent ?? '#4338CA',
+      today: today.map((x, i) => ({ ...x, border: i < today.length - 1 ? '1px solid #E3E3E8' : 'none' })),
+      bars: hs.map((h, i) => ({ h: h + 'px', o: i > 21 ? 0.35 : 1 }))
+    };
+  }
+}
+</script>
+</body>
+</html>
