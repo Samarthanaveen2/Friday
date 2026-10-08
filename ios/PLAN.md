@@ -162,7 +162,8 @@ Keys live in the Keychain, shared with the keyboard via a keychain access group.
 ---
 
 ## 8. Dictation quality features
-- **Personal dictionary:** words and names Friday should spell right (auto-seeded from your contacts' names plus words you add). Sent as Whisper's `prompt` and as SpeechAnalyzer contextual strings.
+- **Personal dictionary:** words and names Friday must spell exactly (e.g. "Samartha"), plus your contacts' names. Added by hand only, in Settings (type the word once). Sent as Whisper's `prompt` and as SpeechAnalyzer contextual strings, which bias recognition toward those spellings. No voice training, no learned state.
+- **Fix rules:** hand-made "heard → write" pairs (e.g. `summer tha` → `Samartha`), applied deterministically after transcription, before cleanup. The safety net for anything the dictionary alone doesn't catch.
 - **Snippets:** "my email" → `you@…`, "my address" → full address. Replaced deterministically *before* the LLM cleanup.
 - **Spoken formatting:** "new line", "new paragraph", "question mark", "bullet point".
 - **Self-corrections:** "at 5, no wait, 6" → "at 6".
