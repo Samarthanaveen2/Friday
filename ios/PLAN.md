@@ -47,17 +47,14 @@ The two never mix. The keyboard writes text; the app makes decisions.
 | History, team sharing, dashboards | ❌ not needed |
 
 ### 2.2 Layout
-A compact voice bar with minimal keys. Not a full QWERTY (see RISKS A8).
+Voice only, like Wispr Flow. No letter keys, no autocorrect. To type, tap 🌐 to switch to Apple's keyboard.
 ```
-[ live transcript strip / status line                     ]
-[ 🌐 ]  [ 1?# ]   (  🎤 big  )   [ ⌫ ]  [ return ]
-[                 space                  ]
+[ live transcript strip / status line              ]
+[ 🌐 ]        (  🎤 big  )        [ ⌫ ]  [ return ]
 ```
-- **🎤** starts recording. While recording, it becomes **✓** (stop + insert), with a small **✕** (cancel) beside it.
-- **Live transcript strip:** shows words as you speak (on-device recognition), then the status: `Listening…`, `Done`, or a reason on failure (`No internet — used phone`, `Session ended — tap 🎤`).
-- **1?#**: one row of numbers and common punctuation.
-- **🌐**: switch keyboards (long-press for the list).
-- **Paste last:** if an insert was blocked (RISKS A7), a `Paste last` chip appears in the strip.
+- **🎤** starts recording; while recording it becomes **✓** (stop + insert) with a small **✕** (cancel).
+- **Strip:** live words while you speak, then a status (`Listening…`, `Done`, or the reason it failed). Shows `Paste last` if an insert was blocked.
+- **🌐** switches keyboards (long-press for the list). **⌫** and **return** for quick fixes.
 
 ### 2.3 Flow session (same as Wispr)
 1. The first 🎤 in a session opens the Friday app (`friday://session`). The app starts the mic in the foreground (iOS only allows starting it there), then you swipe back along the bottom edge. iOS 26.4+ gives no way to return automatically; Apple confirmed this.
