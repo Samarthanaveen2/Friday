@@ -119,7 +119,7 @@ Three screens, switched with a small segmented control under the title: **Today 
   - **Answer:** 1–3 lines (a web answer, an email summary).
   - **Ready to send:** a short preview plus one button (`Send on WhatsApp`, `Send email`, `Call Rahul`).
   - **Choice:** when a name is ambiguous ("Rahul S" / "Rahul K").
-- **Notes:** a plain list, newest first. Each note is the cleaned text plus the time. Tap to edit, swipe to delete, long-press to copy or share. Notes come from voice ("note: …", "remember this idea…"), from typing, or from a lecture recording (§3.4).
+- **Notes:** a plain list, newest first. Each note is the cleaned text plus the time. Tap to edit, swipe to delete, long-press to copy or share. Notes come from voice ("note: …", "remember this idea…") or from typing. Idea notes show who it came from and your own thoughts (§3.5).
 - **Money:** two short lists. **Owed:** one row per person with the net amount (`Rahul owes you ₹150` / `You owe Priya ₹80`); swipe to settle. **Spent:** entries newest first (`Lunch · ₹200 · Thu`). Tap to edit, swipe to delete. No charts. Totals only appear as an answer card when you ask.
 
 ### 3.1 Priority and rollover rules (you decide, the app never guesses)
@@ -155,20 +155,26 @@ One utterance can contain several of these; each becomes its own action.
 | **Open** | "open Instagram", "directions to the station" | URL schemes, Apple Maps URL |
 | **Screenshots** | share a screenshot of a notice → Friday | Share extension + Vision OCR → decision engine (can only *add* items or notes without a tap) |
 | **Money** | "spent 200 on lunch", "Rahul owes me 150 for the cab", "paid Priya back", "how much did I spend this week?" | Own store (§3.4). Totals and balances are computed in code, never by the model |
-| **Search my notes** | "what was that poster idea?", "when did the professor say the lab is due?" | Local keyword search over notes and lecture notes → top ~15 matches → one short call writes the answer, citing the note's date. Tap the card to open the note |
-| **Lecture notes** | tap Record in Notes, or "record the lecture" | §3.4 |
-
-### 3.4 Money and lecture notes
-**Money:** amounts in ₹. Each entry: amount, what, date, and optionally a person and direction. Owed balances are per person (net). "Paid Rahul back" / "Rahul paid me" settles the full balance unless an amount is said. Lives in the same store, backup and undo as items and notes.
-
-**Lecture notes (Granola-lite):** for long talks (lectures, meetings, rambling).
-- **Record** button at the top of Notes (or the voice command). A small red bar shows `Recording · 23:14` with **Stop**. Keeps going with the screen locked or in other apps (background audio). Live Activity shows it.
-- **Speech-to-text is on-device** (SpeechAnalyzer): free, no limits, works offline. Audio is saved to a temp file until the note is done, then deleted.
-- **On Stop:** the transcript goes to Groq 120b in pieces of ~2,500 words (summarise each piece, then join). If the cloud is out or over its limit, Apple Foundation Models does the same in pieces of ~2,500 words (its window is ~4k tokens).
-- **Result:** a note with a short title, key points (bullets), and **To-dos** found in it. To-dos and deadlines are shown as a choice card (`Add 3 to Today?`); nothing is added without that tap. The full transcript is kept inside the note (collapsed) and is searchable.
-- Interruptions (calls) pause and resume; the note keeps what was recorded. Max 3 h per recording.
+| **Ideas memory** | "Kunal said charge more early on, and I think that fits the club fest" … later: "where did the charge-more idea come from?" | §3.5 |
 
 **One-tap rule:** iOS never lets an app send a WhatsApp/iMessage or place a call by itself. Friday prepares it and you tap once. Email through the Gmail bridge could send silently, but still requires the `Send email` tap.
+
+### 3.4 Money
+**Money:** amounts in ₹. Each entry: amount, what, date, and optionally a person and direction. Owed balances are per person (net). "Paid Rahul back" / "Rahul paid me" settles the full balance unless an amount is said. Lives in the same store, backup and undo as items and notes.
+
+### 3.5 Ideas memory (never forget where an idea came from)
+For advice and ideas you hear (founders, friends, podcasts, books) mixed with your own thoughts. Spoken, never typed.
+- **Saving:** say it any way: "Kunal Shah said don't build for everyone, build for the obsessed few. My take: for the club, start with the 20 people who come every week." Friday saves one idea note with:
+  - **Idea:** their point, in their words, cleaned (not summarised).
+  - **From:** who or where (`Kunal Shah`, `Rahul`, `a podcast`, `Zero to One`), or none if it's your own.
+  - **My take:** your own thoughts, kept apart from theirs.
+  - **Topics:** 1–3 short tags (`club`, `pricing`), made by the model, used only for search.
+  - The date it was saved.
+- **Adding later:** "add to the Kunal idea: also works for the fest" adds to **My take** with the date. Ideas never get overwritten.
+- **Asking:** "where did the obsessed-few idea come from?", "what did Rahul tell me about startups?", "what have I saved about pricing?" → an answer card: the idea, `from Kunal Shah · 12 Oct`, and your take. Tap it to open the note. If several match, a short list.
+- **Finding it even with different words:** search uses on-device sentence embeddings (Apple NaturalLanguage, free, offline) plus keywords over idea, from, take and topics. Top ~15 matches go to one short call that writes the answer. It only quotes saved notes; if nothing matches it says `Nothing saved about that`.
+- **Kept forever:** same store as everything else, in the daily backup, auto-restored after a reinstall.
+- **Notes screen:** idea notes show the idea, then a grey line `from Kunal Shah · 12 Oct`, then your take in a lighter style.
 
 ---
 
@@ -248,6 +254,7 @@ NOW: 2026-10-08T08:14 Thu (Asia/Kolkata)
 ITEMS: [{"id":"a1","t":"Finish lab report","d":"2026-10-08","tm":"11:30","f":true,"x":false}, ...]
 PLACES: ["hostel","market"]
 PEOPLE_OWED: {"Rahul":150,"Priya":-80}
+IDEAS: [{"id":"i7","from":"Kunal Shah","idea":"build for the obsessed few"}, ...]   (only the ~20 closest to SAID)
 SAID: "<transcript>"
 ```
 System:
@@ -260,6 +267,8 @@ Schedule:
  {"a":"rename","id":s,"title":s} {"a":"focus","id":s,"on":b}
 Other:
  {"a":"note","text":s}
+ {"a":"idea","idea":s,"from":s|null,"take":s|null,"topics":[s]}
+ {"a":"idea_add","id":s,"take":s}
  {"a":"message","app":"whatsapp"|"sms","to":s,"text":s}
  {"a":"email","to":s,"subject":s,"body":s}
  {"a":"call","to":s}
@@ -273,14 +282,15 @@ Other:
  {"a":"spend","amount":n,"what":s,"date":"YYYY-MM-DD"}
  {"a":"owe","person":s,"amount":n,"dir":"they_owe"|"i_owe","what":s|null}
  {"a":"settle","person":s,"amount":n|null}
- {"a":"record_lecture"}
- {"a":"ask","kind":"web"|"email"|"health"|"contacts"|"notes"|"money","query":s}
+ {"a":"ask","kind":"web"|"email"|"health"|"contacts"|"notes"|"ideas"|"money","query":s}
 Rules:
 - One utterance can hold many actions; output all of them in order.
 - Match existing items by meaning; use their id; never invent ids.
 - delete only if the user clearly says delete/remove/cancel/drop.
 - focus=true ONLY if the user explicitly calls it priority/important/top/focus.
-- "note"/"remember this"/"idea" -> note with the user's words cleaned, not summarised.
+- "note"/"remember this" -> note with the user's words cleaned, not summarised.
+- Advice or an idea from someone or somewhere, or the user's own idea worth keeping -> "idea". Put the other person's point in idea, the user's own thoughts in take. Never merge them, never summarise.
+- Adding thoughts to a saved idea -> "idea_add" with its id (from IDEAS).
 - Messages and emails: write the text the user would send, in their voice.
 - Use "ask" only when an answer needs outside info, your notes, or money totals. Never do money maths yourself.
 - Titles short, no dates/times inside. Nothing actionable -> {"actions":[]}.
@@ -302,8 +312,8 @@ Friday (app, SwiftUI)
  ├─ Clean       deterministic pass (snippets, fix rules, fillers) + LLM cleanup + guard
  ├─ Decide      decision call, validation, apply, undo, rollover, time rules, ask → fetch → answer
  ├─ Abilities   Notes, Contacts, Messages, Mail (Gmail bridge), Calls, AlarmKit, Location (CLMonitor),
- │              Web (Gemini/Tavily), Music, HealthKit, Notion, Shortcuts, Open, Money, Notes search,
- │              Lecture (long on-device transcription + chunked summary)
+ │              Web (Gemini/Tavily), Music, HealthKit, Notion, Shortcuts, Open, Money,
+ │              Ideas memory (NaturalLanguage embeddings + keyword search)
  ├─ Store       items JSON in the App Group (app is the only writer), daily backup to a Files folder, auto-restore
  ├─ Mirror      EventKit calendar + reminders, read other calendars
  ├─ Notifier    timed Focus items; "refresh in SideStore" 2 days before signing expiry
@@ -314,7 +324,7 @@ FridayLive (widget extension)   Live Activity + Control Center control
 FridayShare (share extension)   screenshots/text → OCR → decision engine
 FridayCore (Swift package, no UIKit/SwiftUI)
  └─ deterministic cleanup, snippets/fix rules, guard, schedule ops, validation, apply, undo, rollover,
-    time rules, money balances/totals, notes keyword search, transcript chunking — `swift test` on Linux and in CI
+    time rules, money balances/totals, ideas/notes keyword search and ranking — `swift test` on Linux and in CI
 ```
 
 - **Keyboard ↔ app:** App Group `group.com.samarth.friday`. The keyboard writes a request (`start`, `stop_insert`, `cancel`) with a request ID plus `documentIdentifier` to a JSON file (atomic write) and posts a Darwin notification. The app replies the same way. The keyboard inserts only if the request ID and `documentIdentifier` still match; otherwise it shows `Paste last`.
@@ -364,7 +374,7 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 12. Web answers (Gemini grounding, Tavily), Gmail bridge script + client, result card.
 13. Share extension + OCR.
 14. Dictionary, snippets, fix rules, optional auto-add.
-15. Money screen + actions, notes search, lecture notes (record, on-device transcript, chunked summary, to-do card).
+15. Money screen + actions; ideas memory (save, add to, ask "where did this come from"), with evals.
 16. Tune on the phone: latency, VAD thresholds, prompts against real speech.
 
 ---

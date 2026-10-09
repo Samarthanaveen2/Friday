@@ -26,7 +26,6 @@ Companion to `PLAN.md`. Every row is a real problem for voice dictation, iOS key
 | A10 | **Reading the text in the box is limited.** iOS only gives text near the cursor, and some apps return nothing. | 🟢 | ✅ | Context is a bonus for continuing sentences; dictation works without it. |
 | A11 | **Orange mic dot always on** during a session, plus some battery use. | 🟢 | ✅ | Expected. Measure battery in the probe build; the session ends when the phone locks (A1 default). |
 | A12 | **Full Access** must be on for the keyboard (App Group + talking to the app). | 🟢 | ✅ | First-run checklist detects it (`hasFullAccess`) and shows the steps. |
-| A13 | **Long lecture recordings** (1–3 h): iOS may stop the app, a crash loses the talk, battery drain. | 🟠 | ➕ | Write the on-device transcript to disk every 30 s, so a crash or kill keeps everything up to that point and the note can be finished later. Background audio + Live Activity keep it alive. Max 3 h. Measure battery on the phone. |
 
 ## B. Speech recognition — *both voices*
 
