@@ -65,6 +65,7 @@ No letter keys, no autocorrect. For letters, tap 🌐 to switch to Apple's keybo
 **Recording (after tapping 🎤):** the whole pad disappears. In the middle, a live **voice-memo style waveform** only — no live words (like Wispr). The text appears all at once after ✓. **✕** (cancel) on the left, **✓** (done → insert) on the right. After insert, the pad comes back.
 
 - **Strip messages** (above the waveform or under the top bar): `Done`, or why it failed (`No internet — used phone`, `Session ended — tap 🎤`), or `Paste last` if an insert was blocked.
+- **Undo / Raw (after insert, ~4 s):** the strip shows `Undo · Raw`. **Undo** removes exactly the text Friday just typed (fixes: wrong box, bad result, and deleting a long dictation with ⌫ on a pad with no letters). **Raw** swaps the cleaned text for the plain transcript (fixes: cleanup changed a name or word, without speaking again). Both only act if the text just before the cursor still matches what was inserted; otherwise they do nothing and fade.
 
 ### 2.2.1 Look and feel (must match Wispr Flow's polish)
 The owner wants it as neat as Wispr Flow. It should look like part of iOS, not a custom app.
@@ -203,7 +204,7 @@ If Groq round trips from India are consistently slow (> ~1 s), switch ✓ to on-
 ## 6. Dictionary, snippets and fix rules
 - **Dictionary:** words that must be spelled exactly ("Samartha"), plus contacts' names. Added in Settings. Sent as Whisper's `prompt` (≤ ~30 relevant words) and as SpeechAnalyzer contextual strings. Optional **auto-add** (off by default): if you correct a just-dictated word in the box, the keyboard offers `Add "Samartha" to dictionary?`. One tap, never silent.
 - **Snippets:** cue → text ("my email" → `you@…`). Expanded deterministically before cleanup.
-- **Fix rules:** "heard → write" pairs (`summer tha` → `Samartha`). Applied deterministically after transcription. A guaranteed safety net.
+- **Fix rules:** "heard → write" pairs (`summer tha` → `Samartha`). Applied deterministically after transcription. A guaranteed safety net. **Whole words only**, ignoring case (a rule for `sam` must never change `same`). Same for snippet cues. Entries are trimmed and duplicates dropped.
 
 ---
 
