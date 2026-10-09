@@ -66,6 +66,18 @@ No letter keys, no autocorrect. For letters, tap 🌐 to switch to Apple's keybo
 
 - **Strip messages** (above the waveform or under the top bar): `Done`, or why it failed (`No internet — used phone`, `Session ended — tap 🎤`), or `Paste last` if an insert was blocked.
 
+### 2.2.1 Look and feel (must match Wispr Flow's polish)
+The owner wants it as neat as Wispr Flow. It should look like part of iOS, not a custom app.
+- **Keys look exactly like Apple's keyboard:** same key height, gaps, corner radius (~8 pt), key colours and shadow, in light and dark mode (follows the system). Digits 26 pt regular, symbols 22 pt, labels (`ABC`, `#+=`, space) 17 pt. SF system font only.
+- **Top bar:** ≡ is a plain SF Symbol (`line.3.horizontal`), no background. On the right, the mic is a **white pill** (black in light mode is fine if white looks wrong) like Wispr's `Start ▮▮▮` pill: rounded capsule, ~44 pt tall, icon `waveform` + `mic.fill`. **Tone** is a small quiet text label (13 pt, secondary colour) just left of the pill, not a button-looking box.
+- **Recording view:** same height as the pad, so the keyboard never jumps. Waveform in the middle: thin rounded bars, smooth, ~30 fps, following voice level. **✕** and **✓** are round 44 pt buttons: ✕ grey, ✓ the white pill style. A small timer (`0:12`) under the waveform.
+- **Motion:** pad ↔ waveform swap with a short fade + slight scale (~0.2 s). No bouncy or long animations.
+- **Haptics:** light tap on every key and on 🎤/✓/✕ (like Apple's keyboard haptics). Success haptic when text is inserted.
+- **Hold to repeat** on ⌫ (speeds up like Apple's), and a long-press on space moves the cursor like Apple's.
+- **Strip messages:** one line, 13 pt, secondary colour, fade out after 2 s. Never a pop-up or alert.
+- **No clutter:** no logos, no emoji, no extra colours. The only accent is the white pill.
+- **The app** follows the same rules: stock SwiftUI controls, SF Symbols, system spacing, smooth 0.2 s animations, haptics on taps. Match `ios/design/`.
+
 ### 2.3 Flow session (same as Wispr)
 1. The first 🎤 in a session opens the Friday app (`friday://session`). The app starts the mic in the foreground (iOS only allows starting it there), then you swipe back along the bottom edge. iOS 26.4+ gives no way to return automatically; Apple confirmed this.
 2. The app keeps the mic engine running in the background for the whole session (UIBackgroundModes: audio), discarding audio until you tap 🎤. A Live Activity in the Dynamic Island shows "Friday on".
