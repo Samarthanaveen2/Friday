@@ -163,18 +163,38 @@ One utterance can contain several of these; each becomes its own action.
 **Money:** amounts in ₹. Each entry: amount, what, date, and optionally a person and direction. Owed balances are per person (net). "Paid Rahul back" / "Rahul paid me" settles the full balance unless an amount is said. Lives in the same store, backup and undo as items and notes.
 
 ### 3.5 Ideas memory (never forget where an idea came from)
-For advice and ideas you hear (founders, friends, podcasts, books) mixed with your own thoughts. Spoken, never typed.
-- **Saving:** say it any way: "Kunal Shah said don't build for everyone, build for the obsessed few. My take: for the club, start with the 20 people who come every week." Friday saves one idea note with:
-  - **Idea:** their point, in their words, cleaned (not summarised).
-  - **From:** who or where (`Kunal Shah`, `Rahul`, `a podcast`, `Zero to One`), or none if it's your own.
-  - **My take:** your own thoughts, kept apart from theirs.
-  - **Topics:** 1–3 short tags (`club`, `pricing`), made by the model, used only for search.
-  - The date it was saved.
-- **Adding later:** "add to the Kunal idea: also works for the fest" adds to **My take** with the date. Ideas never get overwritten.
-- **Asking:** "where did the obsessed-few idea come from?", "what did Rahul tell me about startups?", "what have I saved about pricing?" → an answer card: the idea, `from Kunal Shah · 12 Oct`, and your take. Tap it to open the note. If several match, a short list.
-- **Finding it even with different words:** search uses on-device sentence embeddings (Apple NaturalLanguage, free, offline) plus keywords over idea, from, take and topics. Top ~15 matches go to one short call that writes the answer. It only quotes saved notes; if nothing matches it says `Nothing saved about that`.
-- **Kept forever:** same store as everything else, in the daily backup, auto-restored after a reinstall.
-- **Notes screen:** idea notes show the idea, then a grey line `from Kunal Shah · 12 Oct`, then your take in a lighter style.
+For advice and ideas you hear (founders, friends, podcasts, books) mixed with your own thoughts. Spoken, never typed. **Nothing is ever overwritten or lost.**
+
+**What one idea holds**
+- **Idea:** their point, in their words, cleaned (not summarised).
+- **From:** a person or source from the **People & sources** list (below), or none if it's your own idea.
+- **Takes:** a timeline of your own thoughts, each with its date. A take is `added` (more thoughts) or `changed` (you changed your mind). Old takes are never edited or removed; the newest is your current view.
+- **Topics:** 1–3 tags, picked from your existing topic list first, so `pricing` doesn't also become `price` and `charging`.
+- **Links:** related ideas ("this connects to the obsessed-few idea").
+- **Raw:** the exact transcript of every recording that touched it, kept as the source of truth.
+- Dates: created, and each take.
+
+**People & sources:** one list with aliases, so `Kunal`, `Kunal Shah` and `KS` are the same person. New names are added automatically; an unclear one ("Rahul" when there are two) shows a choice card. You can rename or merge them in Settings.
+
+**Saving (the logic)**
+1. You talk. The decision engine gets the ~20 closest existing ideas, your people list and topic list (§7.2).
+2. It decides: **new idea**, **add a take** to an existing one, or **changed my mind** on an existing one ("I don't agree with the Kunal thing anymore, now I think…").
+3. Before saving a *new* idea, code checks for a very close match (same person and similar meaning). If found, a choice card asks `Add to "obsessed few" (Kunal, 12 Oct)?` / `Save as new`.
+4. Everything is saved in one step with **Undo** in the pill (`Saved idea · Undo`, `Added to Kunal's idea · Undo`).
+
+**Asking (the logic)**
+1. The model turns your question into a search: words to look for, plus optional filters (person, topic, date range: "last month", "before the fest").
+2. Code finds matches: filters first, then a mix of keyword match + meaning match (embeddings) + a small boost for recent ideas. Top ~15.
+3. One short call writes the answer and must cite idea ids. Code checks every cited id exists; the card's **from**, **date** and **takes** come from the store, never from the model's text, so the source can't be made up.
+4. Answer card: the idea, `from Kunal Shah · 12 Oct`, your **current take**, and `You changed your mind on 3 Nov. Before: …` if there's history. Tap to open the full timeline. Several matches → a short list. Nothing → `Nothing saved about that`.
+
+Questions it handles: "where did this idea come from?", "what did Rahul tell me about startups?", "what have I saved about pricing?", "what did I think about X before?", "what ideas did I save last week?", "everything from Kunal".
+
+**Meaning search (embeddings):** Gemini embedding API (free) as the main one, Apple NaturalLanguage on-device as the offline fallback. Both are stored per idea, so search works offline too. Recomputed when an idea gets a new take.
+
+**Notes screen:** idea notes show the idea, a grey line `from Kunal Shah · 12 Oct`, then your current take. Open one to see the full take timeline (old takes greyed, `changed` ones marked), links and raw recordings. Typed edits create a new take, not an overwrite.
+
+**Kept forever:** append-only (every change is a new record), in the daily backup to iCloud Drive (survives losing the phone), auto-restored after a reinstall. Deleting an idea moves it to **Recently deleted** for 30 days.
 
 ---
 
@@ -254,7 +274,9 @@ NOW: 2026-10-08T08:14 Thu (Asia/Kolkata)
 ITEMS: [{"id":"a1","t":"Finish lab report","d":"2026-10-08","tm":"11:30","f":true,"x":false}, ...]
 PLACES: ["hostel","market"]
 PEOPLE_OWED: {"Rahul":150,"Priya":-80}
-IDEAS: [{"id":"i7","from":"Kunal Shah","idea":"build for the obsessed few"}, ...]   (only the ~20 closest to SAID)
+IDEAS: [{"id":"i7","from":"Kunal Shah","idea":"build for the obsessed few","take":"start with the 20 regulars"}, ...]   (only the ~20 closest to SAID)
+PEOPLE: [{"id":"p3","name":"Kunal Shah","aka":["Kunal","KS"]}, ...]
+TOPICS: ["club","pricing", ...]
 SAID: "<transcript>"
 ```
 System:
@@ -267,8 +289,8 @@ Schedule:
  {"a":"rename","id":s,"title":s} {"a":"focus","id":s,"on":b}
 Other:
  {"a":"note","text":s}
- {"a":"idea","idea":s,"from":s|null,"take":s|null,"topics":[s]}
- {"a":"idea_add","id":s,"take":s}
+ {"a":"idea","idea":s,"from":s|null,"take":s|null,"topics":[s],"links":[id]}
+ {"a":"take","id":s,"text":s,"kind":"added"|"changed"}
  {"a":"message","app":"whatsapp"|"sms","to":s,"text":s}
  {"a":"email","to":s,"subject":s,"body":s}
  {"a":"call","to":s}
@@ -282,7 +304,7 @@ Other:
  {"a":"spend","amount":n,"what":s,"date":"YYYY-MM-DD"}
  {"a":"owe","person":s,"amount":n,"dir":"they_owe"|"i_owe","what":s|null}
  {"a":"settle","person":s,"amount":n|null}
- {"a":"ask","kind":"web"|"email"|"health"|"contacts"|"notes"|"ideas"|"money","query":s}
+ {"a":"ask","kind":"web"|"email"|"health"|"contacts"|"notes"|"ideas"|"money","query":s,"from":s|null,"topic":s|null,"after":"YYYY-MM-DD"|null,"before":"YYYY-MM-DD"|null}
 Rules:
 - One utterance can hold many actions; output all of them in order.
 - Match existing items by meaning; use their id; never invent ids.
@@ -290,7 +312,8 @@ Rules:
 - focus=true ONLY if the user explicitly calls it priority/important/top/focus.
 - "note"/"remember this" -> note with the user's words cleaned, not summarised.
 - Advice or an idea from someone or somewhere, or the user's own idea worth keeping -> "idea". Put the other person's point in idea, the user's own thoughts in take. Never merge them, never summarise.
-- Adding thoughts to a saved idea -> "idea_add" with its id (from IDEAS).
+- More thoughts on a saved idea -> "take" kind "added"; the user disagreeing with their old view -> kind "changed". Use its id from IDEAS.
+- "from": use the name from PEOPLE when it matches an alias. Topics: reuse TOPICS when one fits.
 - Messages and emails: write the text the user would send, in their voice.
 - Use "ask" only when an answer needs outside info, your notes, or money totals. Never do money maths yourself.
 - Titles short, no dates/times inside. Nothing actionable -> {"actions":[]}.
@@ -313,8 +336,9 @@ Friday (app, SwiftUI)
  ├─ Decide      decision call, validation, apply, undo, rollover, time rules, ask → fetch → answer
  ├─ Abilities   Notes, Contacts, Messages, Mail (Gmail bridge), Calls, AlarmKit, Location (CLMonitor),
  │              Web (Gemini/Tavily), Music, HealthKit, Notion, Shortcuts, Open, Money,
- │              Ideas memory (NaturalLanguage embeddings + keyword search)
- ├─ Store       items JSON in the App Group (app is the only writer), daily backup to a Files folder, auto-restore
+ │              Ideas memory (people/aliases, take timeline, Gemini + NaturalLanguage embeddings, hybrid search)
+ ├─ Store       items JSON in the App Group (app is the only writer); ideas in SQLite (append-only, embeddings as blobs);
+ │              daily zipped backup to a Files/iCloud Drive folder (keep last 7), auto-restore
  ├─ Mirror      EventKit calendar + reminders, read other calendars
  ├─ Notifier    timed Focus items; "refresh in SideStore" 2 days before signing expiry
  └─ Intents     Start Friday (AudioRecordingIntent + Live Activity), Control Center control, App Shortcut
@@ -324,7 +348,7 @@ FridayLive (widget extension)   Live Activity + Control Center control
 FridayShare (share extension)   screenshots/text → OCR → decision engine
 FridayCore (Swift package, no UIKit/SwiftUI)
  └─ deterministic cleanup, snippets/fix rules, guard, schedule ops, validation, apply, undo, rollover,
-    time rules, money balances/totals, ideas/notes keyword search and ranking — `swift test` on Linux and in CI
+    time rules, money balances/totals, ideas: take timeline, alias matching, duplicate check, hybrid ranking, citation check — `swift test` on Linux and in CI
 ```
 
 - **Keyboard ↔ app:** App Group `group.com.samarth.friday`. The keyboard writes a request (`start`, `stop_insert`, `cancel`) with a request ID plus `documentIdentifier` to a JSON file (atomic write) and posts a Darwin notification. The app replies the same way. The keyboard inserts only if the request ID and `documentIdentifier` still match; otherwise it shows `Paste last`.
@@ -344,6 +368,12 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 **Settings:** keys and integrations; saved places; session length; dictionary, snippets, fix rules; dictionary auto-add (off); "Use AirPods mic" (off); accent colour; export; timing overlay.
 
 ---
+
+## 9.1 Storage
+- **App:** ~15–30 MB (app + 3 extensions, no AI models inside). Apple's speech and AI models are part of iOS and shared, not counted against Friday.
+- **Data per idea:** ~1 KB text + ~1 KB raw transcript + ~5 KB embeddings ≈ **7 KB**. 5 ideas a day for 5 years ≈ 9,000 ideas ≈ **65 MB**. Items, notes and money are tiny (a few MB over years). No audio is kept.
+- **Backups:** last 7 days, zipped: roughly the same again.
+- **Total:** under ~150 MB even after years of daily use.
 
 ## 10. Build and install without a Mac
 1. **Project:** XcodeGen `ios/project.yml`. Never commit a hand-edited `.xcodeproj`.
@@ -374,7 +404,7 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 12. Web answers (Gemini grounding, Tavily), Gmail bridge script + client, result card.
 13. Share extension + OCR.
 14. Dictionary, snippets, fix rules, optional auto-add.
-15. Money screen + actions; ideas memory (save, add to, ask "where did this come from"), with evals.
+15. Money screen + actions; ideas memory (people, takes timeline, duplicate check, hybrid search, cited answers), with ≥30 ideas eval cases.
 16. Tune on the phone: latency, VAD thresholds, prompts against real speech.
 
 ---
