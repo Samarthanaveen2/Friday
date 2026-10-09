@@ -103,7 +103,7 @@ The owner wants it as neat as Wispr Flow. It should look like part of iOS, not a
 
 ## 3. Friday app: the decision engine
 
-Two screens, switched with a small segmented control under the title: **Today | Notes**. Native SwiftUI, stock iOS look (Today matches `ios/design/`).
+Three screens, switched with a small segmented control under the title: **Today | Notes | Money**. Native SwiftUI, stock iOS look (Today matches `ios/design/`).
 
 - **Header:** date in small grey caps, large title **Today**, small gear (Settings) top-right.
 - **Focus:** only items you named as priority today. Big rows (18 pt semibold) in a white card. If none named today: `Say what matters today.`
@@ -119,7 +119,8 @@ Two screens, switched with a small segmented control under the title: **Today | 
   - **Answer:** 1–3 lines (a web answer, an email summary).
   - **Ready to send:** a short preview plus one button (`Send on WhatsApp`, `Send email`, `Call Rahul`).
   - **Choice:** when a name is ambiguous ("Rahul S" / "Rahul K").
-- **Notes:** a plain list, newest first. Each note is the cleaned text plus the time. Tap to edit, swipe to delete, long-press to copy or share. Notes come from voice ("note: …", "remember this idea…") or from typing.
+- **Notes:** a plain list, newest first. Each note is the cleaned text plus the time. Tap to edit, swipe to delete, long-press to copy or share. Notes come from voice ("note: …", "remember this idea…"), from typing, or from a lecture recording (§3.4).
+- **Money:** two short lists. **Owed:** one row per person with the net amount (`Rahul owes you ₹150` / `You owe Priya ₹80`); swipe to settle. **Spent:** entries newest first (`Lunch · ₹200 · Thu`). Tap to edit, swipe to delete. No charts. Totals only appear as an answer card when you ask.
 
 ### 3.1 Priority and rollover rules (you decide, the app never guesses)
 - You say priorities explicitly, in the same breath or later: "priority today is the warden and the group reply", "make gym top priority", "laundry isn't important".
@@ -153,6 +154,19 @@ One utterance can contain several of these; each becomes its own action.
 | **Your Shortcuts** | "run study mode" | `shortcuts://run-shortcut?name=…&input=…` |
 | **Open** | "open Instagram", "directions to the station" | URL schemes, Apple Maps URL |
 | **Screenshots** | share a screenshot of a notice → Friday | Share extension + Vision OCR → decision engine (can only *add* items or notes without a tap) |
+| **Money** | "spent 200 on lunch", "Rahul owes me 150 for the cab", "paid Priya back", "how much did I spend this week?" | Own store (§3.4). Totals and balances are computed in code, never by the model |
+| **Search my notes** | "what was that poster idea?", "when did the professor say the lab is due?" | Local keyword search over notes and lecture notes → top ~15 matches → one short call writes the answer, citing the note's date. Tap the card to open the note |
+| **Lecture notes** | tap Record in Notes, or "record the lecture" | §3.4 |
+
+### 3.4 Money and lecture notes
+**Money:** amounts in ₹. Each entry: amount, what, date, and optionally a person and direction. Owed balances are per person (net). "Paid Rahul back" / "Rahul paid me" settles the full balance unless an amount is said. Lives in the same store, backup and undo as items and notes.
+
+**Lecture notes (Granola-lite):** for long talks (lectures, meetings, rambling).
+- **Record** button at the top of Notes (or the voice command). A small red bar shows `Recording · 23:14` with **Stop**. Keeps going with the screen locked or in other apps (background audio). Live Activity shows it.
+- **Speech-to-text is on-device** (SpeechAnalyzer): free, no limits, works offline. Audio is saved to a temp file until the note is done, then deleted.
+- **On Stop:** the transcript goes to Groq 120b in pieces of ~2,500 words (summarise each piece, then join). If the cloud is out or over its limit, Apple Foundation Models does the same in pieces of ~2,500 words (its window is ~4k tokens).
+- **Result:** a note with a short title, key points (bullets), and **To-dos** found in it. To-dos and deadlines are shown as a choice card (`Add 3 to Today?`); nothing is added without that tap. The full transcript is kept inside the note (collapsed) and is searchable.
+- Interruptions (calls) pause and resume; the note keeps what was recorded. Max 3 h per recording.
 
 **One-tap rule:** iOS never lets an app send a WhatsApp/iMessage or place a call by itself. Friday prepares it and you tap once. Email through the Gmail bridge could send silently, but still requires the `Send email` tap.
 
@@ -233,6 +247,7 @@ Input:
 NOW: 2026-10-08T08:14 Thu (Asia/Kolkata)
 ITEMS: [{"id":"a1","t":"Finish lab report","d":"2026-10-08","tm":"11:30","f":true,"x":false}, ...]
 PLACES: ["hostel","market"]
+PEOPLE_OWED: {"Rahul":150,"Priya":-80}
 SAID: "<transcript>"
 ```
 System:
@@ -255,7 +270,11 @@ Other:
  {"a":"notion","text":s}
  {"a":"shortcut","name":s,"input":s|null}
  {"a":"open","target":s}
- {"a":"ask","kind":"web"|"email"|"health"|"contacts","query":s}
+ {"a":"spend","amount":n,"what":s,"date":"YYYY-MM-DD"}
+ {"a":"owe","person":s,"amount":n,"dir":"they_owe"|"i_owe","what":s|null}
+ {"a":"settle","person":s,"amount":n|null}
+ {"a":"record_lecture"}
+ {"a":"ask","kind":"web"|"email"|"health"|"contacts"|"notes"|"money","query":s}
 Rules:
 - One utterance can hold many actions; output all of them in order.
 - Match existing items by meaning; use their id; never invent ids.
@@ -263,10 +282,10 @@ Rules:
 - focus=true ONLY if the user explicitly calls it priority/important/top/focus.
 - "note"/"remember this"/"idea" -> note with the user's words cleaned, not summarised.
 - Messages and emails: write the text the user would send, in their voice.
-- Use "ask" only when an answer needs outside info.
+- Use "ask" only when an answer needs outside info, your notes, or money totals. Never do money maths yourself.
 - Titles short, no dates/times inside. Nothing actionable -> {"actions":[]}.
 ```
-**In code, not the model:** time rules (bare hours 1–7 → PM, 8–11 → AM; between 00:00 and 04:00 "tomorrow" = today's date), validation (unknown id or contact → choice card; bad date → drop), one transaction and one undo entry for all schedule/note actions. Each `ask` runs its fetch (web/Gmail/HealthKit/Contacts), then one short call writes a 1–3 line answer and any follow-up actions ("add it"). Everything else finishes in one call.
+**In code, not the model:** time rules (bare hours 1–7 → PM, 8–11 → AM; between 00:00 and 04:00 "tomorrow" = today's date), validation (unknown id or contact → choice card; bad date → drop), one transaction and one undo entry for all schedule/note/money actions. Each `ask` runs its fetch (web/Gmail/HealthKit/Contacts/notes search/money totals computed in code), then one short call writes a 1–3 line answer and any follow-up actions ("add it"). Everything else finishes in one call.
 
 ### 7.3 Evals
 `ios/evals/dictation.jsonl` (≥60 cases: fillers, backtracks, questions that must not be answered, lists, numbers, emails, names, mid-sentence continuation) and `ios/evals/decisions.jsonl` (≥60 cases across all abilities). `ios/evals/run.sh` runs them against the configured models with a local key and prints pass/fail. Every real miss on the phone becomes a new case.
@@ -283,7 +302,8 @@ Friday (app, SwiftUI)
  ├─ Clean       deterministic pass (snippets, fix rules, fillers) + LLM cleanup + guard
  ├─ Decide      decision call, validation, apply, undo, rollover, time rules, ask → fetch → answer
  ├─ Abilities   Notes, Contacts, Messages, Mail (Gmail bridge), Calls, AlarmKit, Location (CLMonitor),
- │              Web (Gemini/Tavily), Music, HealthKit, Notion, Shortcuts, Open
+ │              Web (Gemini/Tavily), Music, HealthKit, Notion, Shortcuts, Open, Money, Notes search,
+ │              Lecture (long on-device transcription + chunked summary)
  ├─ Store       items JSON in the App Group (app is the only writer), daily backup to a Files folder, auto-restore
  ├─ Mirror      EventKit calendar + reminders, read other calendars
  ├─ Notifier    timed Focus items; "refresh in SideStore" 2 days before signing expiry
@@ -294,7 +314,7 @@ FridayLive (widget extension)   Live Activity + Control Center control
 FridayShare (share extension)   screenshots/text → OCR → decision engine
 FridayCore (Swift package, no UIKit/SwiftUI)
  └─ deterministic cleanup, snippets/fix rules, guard, schedule ops, validation, apply, undo, rollover,
-    time rules — `swift test` on Linux and in CI
+    time rules, money balances/totals, notes keyword search, transcript chunking — `swift test` on Linux and in CI
 ```
 
 - **Keyboard ↔ app:** App Group `group.com.samarth.friday`. The keyboard writes a request (`start`, `stop_insert`, `cancel`) with a request ID plus `documentIdentifier` to a JSON file (atomic write) and posts a Darwin notification. The app replies the same way. The keyboard inserts only if the request ID and `documentIdentifier` still match; otherwise it shows `Paste last`.
@@ -344,7 +364,8 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 12. Web answers (Gemini grounding, Tavily), Gmail bridge script + client, result card.
 13. Share extension + OCR.
 14. Dictionary, snippets, fix rules, optional auto-add.
-15. Tune on the phone: latency, VAD thresholds, prompts against real speech.
+15. Money screen + actions, notes search, lecture notes (record, on-device transcript, chunked summary, to-do card).
+16. Tune on the phone: latency, VAD thresholds, prompts against real speech.
 
 ---
 
