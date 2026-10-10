@@ -46,6 +46,7 @@ jobs:
         working-directory: ios
         run: |
           set -e
+          exec > >(tee sign.log) 2>&1
           APP=build/Build/Products/Release-iphoneos/Friday.app
           ENT="$PWD/Entitlements/Friday.entitlements"
           # Ad-hoc sign (no certificate needed): this writes the entitlements into each binary's
@@ -63,6 +64,16 @@ jobs:
           cp -R "$APP" out/Payload/
           (cd out && zip -qry ../Friday.ipa Payload)
           ls -l Friday.ipa
+
+      - name: Upload sign log (debug)
+        if: always()
+        working-directory: ios
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f sign.log ] || echo "no sign.log" > sign.log
+          ls -R build/Build/Products/Release-iphoneos/Friday.app | head -40 >> sign.log
+          gh release view latest >/dev/null 2>&1 && gh release upload latest sign.log --clobber || true
 
       - name: Make the SideStore source file
         working-directory: ios
