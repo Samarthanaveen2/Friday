@@ -77,7 +77,7 @@ jobs:
                 "version": "0.1.${{ github.run_number }}",
                 "versionDate": "$DATE",
                 "size": $SIZE,
-                "downloadURL": "https://github.com/${{ github.repository }}/releases/download/latest/Friday.ipa"
+                "downloadURL": "https://github.com/${{ github.repository }}/releases/download/latest/Friday.ipa?build=${{ github.run_number }}"
               }
             ]
           }
