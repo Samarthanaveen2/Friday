@@ -28,6 +28,8 @@ targets:
       path: Friday/Info.plist
       properties:
         CFBundleDisplayName: Friday
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: Friday listens to what you say so it can type it for you.
         NSSupportsLiveActivities: true
@@ -59,6 +61,8 @@ targets:
       path: FridayKeyboard/Info.plist
       properties:
         CFBundleDisplayName: Friday
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.keyboard-service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
@@ -84,6 +88,8 @@ targets:
       path: FridayLive/Info.plist
       properties:
         CFBundleDisplayName: Friday
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
