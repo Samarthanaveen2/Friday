@@ -20,7 +20,7 @@ jobs:
           xcode-version: latest-stable
 
       - name: Install tools
-        run: brew install xcodegen ldid
+        run: brew install xcodegen
 
       - name: Generate Xcode project
         working-directory: ios
@@ -45,11 +45,20 @@ jobs:
       - name: Sign with entitlements (so SideStore sees the App Group) and make the .ipa
         working-directory: ios
         run: |
+          set -e
           APP=build/Build/Products/Release-iphoneos/Friday.app
-          ENT=Entitlements/Friday.entitlements
-          exe() { /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$1/Info.plist"; }
-          for x in "$APP"/PlugIns/*.appex; do ldid -S"$ENT" "$x/$(exe "$x")"; done
-          ldid -S"$ENT" "$APP/$(exe "$APP")"
+          ENT="$PWD/Entitlements/Friday.entitlements"
+          # Ad-hoc sign (no certificate needed): this writes the entitlements into each binary's
+          # signature, which is where SideStore reads them. Inner bundles first, app last.
+          for x in "$APP"/PlugIns/*.appex; do
+            codesign --force --sign - --entitlements "$ENT" "$x"
+          done
+          codesign --force --sign - --entitlements "$ENT" "$APP"
+          # Fail the build if the App Group did not make it in.
+          for x in "$APP"/PlugIns/*.appex "$APP"; do
+            codesign -d --entitlements - "$x" 2>&1 | tee /tmp/ent.txt
+            grep -q "group.com.samarth.friday" /tmp/ent.txt || { echo "MISSING App Group in $x"; exit 1; }
+          done
           rm -rf out && mkdir -p out/Payload
           cp -R "$APP" out/Payload/
           (cd out && zip -qry ../Friday.ipa Payload)
