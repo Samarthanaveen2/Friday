@@ -1,1 +1,7 @@
 node_modules/
+ios/Friday.xcodeproj/
+ios/*/Info.plist
+ios/build/
+ios/out/
+ios/*.ipa
+ios/build.log

@@ -1,0 +1,91 @@
+name: iOS build
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install tools
+        run: brew install xcodegen ldid
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build (unsigned)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Friday.xcodeproj \
+            -scheme Friday \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            build 2>&1 | tee build.log | grep -E "error:|warning: unre|BUILD|\*\*" || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Sign with entitlements (so SideStore sees the App Group) and make the .ipa
+        working-directory: ios
+        run: |
+          APP=build/Build/Products/Release-iphoneos/Friday.app
+          ENT=Entitlements/Friday.entitlements
+          exe() { /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$1/Info.plist"; }
+          for x in "$APP"/PlugIns/*.appex; do ldid -S"$ENT" "$x/$(exe "$x")"; done
+          ldid -S"$ENT" "$APP/$(exe "$APP")"
+          rm -rf out && mkdir -p out/Payload
+          cp -R "$APP" out/Payload/
+          (cd out && zip -qry ../Friday.ipa Payload)
+          ls -l Friday.ipa
+
+      - name: Make the SideStore source file
+        working-directory: ios
+        run: |
+          SIZE=$(stat -f%z Friday.ipa)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          cat > sidestore-source.json <<EOF
+          {
+            "name": "Friday",
+            "identifier": "com.samarth.friday.source",
+            "apps": [
+              {
+                "name": "Friday",
+                "bundleIdentifier": "com.samarth.friday",
+                "developerName": "Samartha",
+                "subtitle": "Voice keyboard and voice schedule",
+                "localizedDescription": "Friday for iPhone.",
+                "version": "0.1.${{ github.run_number }}",
+                "versionDate": "$DATE",
+                "size": $SIZE,
+                "downloadURL": "https://github.com/${{ github.repository }}/releases/download/latest/Friday.ipa"
+              }
+            ]
+          }
+          EOF
+          cat sidestore-source.json
+
+      - name: Publish to the "latest" release
+        working-directory: ios
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest >/dev/null 2>&1 || gh release create latest \
+            --title "Friday (latest build)" --notes "Auto-built." --target "${{ github.sha }}"
+          gh release edit latest --notes "Build ${{ github.run_number }} from ${{ github.ref_name }} (${{ github.sha }})"
+          gh release upload latest Friday.ipa sidestore-source.json --clobber

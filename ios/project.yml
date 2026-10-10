@@ -1,0 +1,91 @@
+name: Friday
+
+options:
+  bundleIdPrefix: com.samarth
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    # Swift 6 compiler, Swift 5 language mode for the install probe (tighten to 6 once the code is stable).
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+
+targets:
+  Friday:
+    type: application
+    platform: iOS
+    sources:
+      - Friday
+      - Shared
+    entitlements:
+      path: Entitlements/Friday.entitlements
+    info:
+      path: Friday/Info.plist
+      properties:
+        CFBundleDisplayName: Friday
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: Friday listens to what you say so it can type it for you.
+        NSSupportsLiveActivities: true
+        ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - audio
+        CFBundleURLTypes:
+          - CFBundleURLName: com.samarth.friday
+            CFBundleURLSchemes:
+              - friday
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.samarth.friday
+    dependencies:
+      - target: FridayKeyboard
+      - target: FridayLive
+
+  FridayKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - FridayKeyboard
+      - path: Shared
+        includes:
+          - AppGroup.swift
+    entitlements:
+      path: Entitlements/Friday.entitlements
+    info:
+      path: FridayKeyboard/Info.plist
+      properties:
+        CFBundleDisplayName: Friday
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: en-US
+            RequestsOpenAccess: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.samarth.friday.keyboard
+        APPLICATION_EXTENSION_API_ONLY: YES
+
+  FridayLive:
+    type: app-extension
+    platform: iOS
+    sources:
+      - FridayLive
+      - Shared
+    entitlements:
+      path: Entitlements/Friday.entitlements
+    info:
+      path: FridayLive/Info.plist
+      properties:
+        CFBundleDisplayName: Friday
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.samarth.friday.live
