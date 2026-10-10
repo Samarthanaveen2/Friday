@@ -70,6 +70,9 @@ jobs:
                 "developerName": "Samartha",
                 "subtitle": "Voice keyboard and voice schedule",
                 "localizedDescription": "Friday for iPhone.",
+                "tintColor": "4338CA",
+                "iconURL": "https://github.com/${{ github.repository }}/releases/download/latest/icon.png",
+                "screenshotURLs": [],
                 "version": "0.1.${{ github.run_number }}",
                 "versionDate": "$DATE",
                 "size": $SIZE,
@@ -88,4 +91,4 @@ jobs:
           gh release view latest >/dev/null 2>&1 || gh release create latest \
             --title "Friday (latest build)" --notes "Auto-built." --target "${{ github.sha }}"
           gh release edit latest --notes "Build ${{ github.run_number }} from ${{ github.ref_name }} (${{ github.sha }})"
-          gh release upload latest Friday.ipa sidestore-source.json --clobber
+          gh release upload latest Friday.ipa sidestore-source.json icon.png --clobber
