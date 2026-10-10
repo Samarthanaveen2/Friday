@@ -29,6 +29,7 @@ struct ContentView: View {
         Section("1 · App Group (app ↔ keyboard)") {
             row("Group name", AppGroup.identifier)
             row("Shared folder", AppGroup.containerURL == nil ? "❌ missing" : "✅ found")
+            row("Names tried", AppGroup.diagnostics)
         }
     }
 
@@ -96,6 +97,7 @@ struct ContentView: View {
         return """
         Friday probe
         group: \(AppGroup.identifier) · folder: \(AppGroup.containerURL == nil ? "MISSING" : "ok")
+        names tried: \(AppGroup.diagnostics.replacingOccurrences(of: "\n", with: " | "))
         keyboard seen: \(AppGroup.ageText(kb?["t"])) · full access: \(kb?["fullAccess"] == 1 ? "yes" : "no")
         keyboard opened app: \(Int(opened?["count"] ?? 0))×
         session running: \(session.running) · beats: \(session.beats) · max gap: \(String(format: "%.1f", session.maxGap)) s · restarts: \(session.restarts) · interruptions: \(session.interruptions)

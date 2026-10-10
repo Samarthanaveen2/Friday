@@ -31,7 +31,7 @@ final class KeyboardViewController: UIInputViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
 
-        let height = view.heightAnchor.constraint(equalToConstant: 240)
+        let height = view.heightAnchor.constraint(equalToConstant: 320)
         height.priority = .defaultHigh
         NSLayoutConstraint.activate([
             height,
@@ -74,6 +74,7 @@ final class KeyboardViewController: UIInputViewController {
         Shared folder: \(folder)
         Full Access:   \(access)
         Friday app:    \(app)
+        \(AppGroup.diagnostics)
         """
     }
 

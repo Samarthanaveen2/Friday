@@ -5,18 +5,45 @@ import Foundation
 enum AppGroup {
     static let base = "group.com.samarth.friday"
 
-    /// SideStore re-signs the app on a free Apple ID and may rename the group.
-    /// It lists the real names in Info.plist under "ALTAppGroups"; use the first one if present.
-    static var identifier: String {
-        if let ids = Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String],
-           let first = ids.first {
-            return first
-        }
-        return base
+    /// The signing profile SideStore embeds in this app or extension (nil if missing).
+    static let profile: [String: Any]? = {
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              let start = data.range(of: Data("<?xml".utf8)),
+              let end = data.range(of: Data("</plist>".utf8)) else { return nil }
+        let plistData = data.subdata(in: start.lowerBound..<end.upperBound)
+        return try? PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any]
+    }()
+
+    /// SideStore re-signs on a free Apple ID and may rename the group (for example by adding the
+    /// team ID). Every name it could have used, most likely first.
+    static var candidates: [String] {
+        var out: [String] = []
+        if let ids = Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] { out += ids }
+        if let ents = profile?["Entitlements"] as? [String: Any],
+           let groups = ents["com.apple.security.application-groups"] as? [String] { out += groups }
+        if let team = (profile?["TeamIdentifier"] as? [String])?.first { out.append("\(base).\(team)") }
+        out.append(base)
+        var seen = Set<String>()
+        return out.filter { seen.insert($0).inserted }
     }
 
-    static var containerURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier)
+    private static func container(for id: String) -> URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id)
+    }
+
+    /// First candidate that really has a folder on this phone.
+    static var identifier: String {
+        candidates.first(where: { container(for: $0) != nil }) ?? candidates.first ?? base
+    }
+
+    static var containerURL: URL? { container(for: identifier) }
+
+    /// One line per name tried, for the report screens.
+    static var diagnostics: String {
+        let tried = candidates.map { (container(for: $0) != nil ? "✅ " : "❌ ") + $0 }.joined(separator: "\n")
+        let hasProfile = profile != nil ? "profile found" : "no profile"
+        return "\(hasProfile)\n\(tried)"
     }
 
     static func write(_ values: [String: Double], to name: String) {
