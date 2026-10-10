@@ -24,6 +24,9 @@ targets:
       - Shared
     entitlements:
       path: Entitlements/Friday.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.samarth.friday
     info:
       path: Friday/Info.plist
       properties:
@@ -57,6 +60,9 @@ targets:
           - AppGroup.swift
     entitlements:
       path: Entitlements/Friday.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.samarth.friday
     info:
       path: FridayKeyboard/Info.plist
       properties:
@@ -84,6 +90,9 @@ targets:
       - Shared
     entitlements:
       path: Entitlements/Friday.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.samarth.friday
     info:
       path: FridayLive/Info.plist
       properties:
