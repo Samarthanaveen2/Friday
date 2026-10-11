@@ -2,7 +2,9 @@ name: Release probe
 
 # One-off check of what the Actions token may publish (release creation started failing with 403).
 on:
-  workflow_dispatch:
+  push:
+    branches: [claude/affectionate-fermat-scvp7y]
+    paths: [".github/workflows/release-probe.yml"]
 
 permissions:
   contents: write
