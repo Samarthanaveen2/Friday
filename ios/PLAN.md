@@ -2,7 +2,7 @@
 
 Single source of truth for the Friday iOS app. Read `RISKS.md` alongside it: its 🔴 items are part of the build. Build all of it; there is no v1/v2. Section 12 is the build order.
 
-- **Device:** iPhone 16 Pro, iOS 26. English only.
+- **Device:** iPhone 16 Pro, iOS 27.2 (deployment target stays 26.0). English only.
 - **Constraints:** no paid Apple Developer account, no usable Mac. Built by GitHub Actions, installed with SideStore on a free Apple ID (re-signed every 7 days).
 - **Priorities:** fast, accurate, free. Privacy is not a goal: cloud is fine.
 - **Style:** low noise. The keyboard never talks back. The app only shows short results when you asked for something (e.g. a web answer). No chat, no assistant voice, no stats.
@@ -390,7 +390,7 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 ---
 
 ## 12. Build order (everything ships; this is just the order)
-1. **Install probe:** minimal app + keyboard + widget, App Group, keychain sharing, background audio, AudioRecordingIntent + Live Activity. It shows a report screen (App Group round trip with the keyboard, keyboard → app open, background mic survives 2 min in another app, intent can start the mic). CI → SideStore install → owner sends a screenshot. Adjust the plan to whatever free signing blocks before going further.
+1. **Install probe:** minimal app + keyboard + widget, App Group, keychain sharing, background audio, AudioRecordingIntent + Live Activity. It shows a report screen (App Group round trip with the keyboard, keyboard → app open, background mic survives 2 min in another app, intent can start the mic). CI → SideStore install → owner sends a screenshot. Adjust the plan to whatever free signing blocks before going further. **Done (build 0.1.13, Oct 11):** App Group works but SideStore renames it to `group.com.samarth.friday.<TEAMID>` (found at run time from the signing profile); keychain ✓; keyboard + Full Access ✓; keyboard opens Friday ✓; mic stayed live 2m 54s in another app ✓; Action button → **Shortcut → Start Friday** starts the mic without opening Friday ✓; on-device speech has Indian English ✓; Apple Intelligence model ready ✓. **Open:** Live Activity fails when started from the background ("Target is not foreground") — fix in step 3 (reuse a running activity; start it from the foreground session start).
 2. FridayCore + tests: deterministic cleanup, guard, schedule ops, validation, undo, rollover, time rules.
 3. Session engine: audio session, pre-roll, VAD, interruptions, heartbeat, Live Activity.
 4. Speech: SpeechAnalyzer live, Groq Whisper (whole + chunked), race, phantom-text guards.
