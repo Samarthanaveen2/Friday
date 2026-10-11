@@ -52,8 +52,10 @@ final class Cleaner {
                     notes.append("\(name): bad reply (\(reply.prefix(40)))")
                     return nil
                 }
+                let asks = Dictation.asksFriday(prepared)
                 let verdict = CleanupGuard.check(output: text, transcript: prepared,
-                                                 relaxed: tone != .asSaid || Dictation.hasCommand(prepared))
+                                                 relaxed: tone != .asSaid || Dictation.hasCommand(prepared) || asks,
+                                                 allowNewNumbers: asks)
                 guard verdict.accepted else {
                     notes.append("\(name): rejected (\(text.prefix(40)))")
                     return nil

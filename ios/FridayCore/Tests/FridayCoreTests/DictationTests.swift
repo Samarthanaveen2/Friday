@@ -275,3 +275,21 @@ final class VoiceCommandTests: XCTestCase {
         XCTAssertFalse(Dictation.hasCommand("Friday works for me."))
     }
 }
+
+final class AskFridayTests: XCTestCase {
+    func testQuestionsToFriday() {
+        XCTAssertTrue(Dictation.asksFriday("Sam owes you 1000 rupees. Friday, how much do we total owe each other?"))
+        XCTAssertTrue(Dictation.asksFriday("friday, what's the total"))
+        XCTAssertTrue(Dictation.asksFriday("Pizza is 400, drinks 150. Friday, is that under 600?"))
+        XCTAssertFalse(Dictation.asksFriday("Friday is the last day to submit."))
+        XCTAssertFalse(Dictation.asksFriday("Are you free on Friday, how about 5?"))
+        XCTAssertFalse(Dictation.asksFriday("How much do we owe each other?"))
+    }
+
+    func testGuardLetsTheAnswerAddANumber() {
+        let said = "I owe you 100 rupees, John owes you 1000 rupees. Friday, how much do we total owe each other?"
+        let out = "I owe you ₹100, John owes you ₹1,000. In total, John and I owe you ₹1,100."
+        XCTAssertTrue(CleanupGuard.check(output: out, transcript: said, relaxed: true, allowNewNumbers: true).accepted)
+        XCTAssertEqual(Dictation(dictionary: []).finish(prepared: said, aiOutput: "<out>\(out)</out>", context: ""), out)
+    }
+}

@@ -10,7 +10,9 @@ public enum CleanupGuard {
     }
 
     /// `relaxed` is for the Casual/Formal tones, which are allowed to reword more.
-    public static func check(output: String, transcript: String, relaxed: Bool = false) -> Verdict {
+    /// `allowNewNumbers` is for "Friday, how much…?", whose answer is a number nobody said.
+    public static func check(output: String, transcript: String, relaxed: Bool = false,
+                             allowNewNumbers: Bool = false) -> Verdict {
         let o = normalized(output)
         let t = normalized(transcript)
         guard !o.isEmpty else {
@@ -27,7 +29,7 @@ public enum CleanupGuard {
         // the job (fillers, false starts, "no wait, actually…"), so how much was removed doesn't count.
         let overlap = Double(matched) / Double(o.count)
         // Never add facts: no new numbers.
-        let addsNumbers = o.filter { $0 == "#" }.count > t.filter { $0 == "#" }.count
+        let addsNumbers = !allowNewNumbers && o.filter { $0 == "#" }.count > t.filter { $0 == "#" }.count
         let outChars = Double(output.trimmingCharacters(in: .whitespacesAndNewlines).count)
         let inChars = Double(max(1, transcript.trimmingCharacters(in: .whitespacesAndNewlines).count))
         let ratio = outChars / inChars
@@ -38,9 +40,10 @@ public enum CleanupGuard {
     }
 
     /// The text to insert: the AI's version if it passes, otherwise the rule-based one.
-    public static func choose(aiOutput: String?, transcript: String, fallback: String, relaxed: Bool = false) -> String {
+    public static func choose(aiOutput: String?, transcript: String, fallback: String, relaxed: Bool = false,
+                              allowNewNumbers: Bool = false) -> String {
         guard let raw = aiOutput, let text = extractOut(raw),
-              check(output: text, transcript: transcript, relaxed: relaxed).accepted
+              check(output: text, transcript: transcript, relaxed: relaxed, allowNewNumbers: allowNewNumbers).accepted
         else { return fallback }
         return text
     }

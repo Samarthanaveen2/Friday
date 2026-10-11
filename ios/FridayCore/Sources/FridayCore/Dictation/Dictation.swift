@@ -40,8 +40,10 @@ public struct Dictation: Sendable {
     /// then fit it to the text before the cursor.
     public func finish(prepared: String, aiOutput: String?, context: String, tone: Tone = .asSaid) -> String {
         let ruleBased = Cleanup.run(prepared)
+        let asks = Dictation.asksFriday(prepared)
         let chosen = CleanupGuard.choose(aiOutput: aiOutput, transcript: prepared, fallback: ruleBased,
-                                         relaxed: tone != .asSaid || Dictation.hasCommand(prepared))
+                                         relaxed: tone != .asSaid || Dictation.hasCommand(prepared) || asks,
+                                         allowNewNumbers: asks)
         // Same final touches whichever text was chosen: rupee amounts, then misspelled names.
         let polished = DictionaryFix(dictionary).apply(Spoken.phoneNumbers(Money.format(fixRules.apply(chosen))))
         let keep = Set(dictionary.flatMap { [$0, $0.lowercased()] })
@@ -54,6 +56,13 @@ public struct Dictation: Sendable {
     public static func hasCommand(_ text: String) -> Bool {
         Rx.contains(text, "(?:^|[.!?,;]\\s*|\\b(?:hey|okay|ok)\\s+)friday[,.]?\\s+(?:please\\s+)?"
             + "(?:change|delete|remove|scratch|cut|make|replace|add|turn|put|move|undo|fix|rewrite|capitali[sz]e|bold|drop)\\b")
+    }
+
+    /// "Friday, how much do we owe each other?": a question for Friday to answer from what was
+    /// dictated, typed in its place. Needs "Friday," with a comma, then a question word or a "?".
+    public static func asksFriday(_ text: String) -> Bool {
+        Rx.contains(text, "(?:^|[.!?;]\\s*|\\b(?:hey|okay|ok)\\s+)friday,\\s+(?:(?:how|what|what's|whats|who|when|where|which|why|"
+            + "calculate|work out|add up|sum up|total|tell me|give me)\\b|[^.!?]*\\?)")
     }
 
     /// The user message for the cleanup model (PLAN §7.1).

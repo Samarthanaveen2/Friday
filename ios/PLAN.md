@@ -248,6 +248,7 @@ User: `<context>…≤300 chars before cursor…</context>\n<dictionary>…</dic
 - **Level 1 (done):** inside one dictation, "Friday, <action>" ("change that to 6 PM", "delete the last line", "make that a list") is applied to what came before it and left out of the typed text.
   - It counts only when "Friday" starts the phrase and an action word follows; "on Friday" stays plain text (`Dictation.hasCommand`).
   - The guard is relaxed for these.
+- **Questions to Friday (done):** "Friday, how much do we owe each other?" is answered briefly from what was dictated, typed in its place (`Dictation.asksFriday`; the guard allows the new number). Other questions are still typed as said.
 - **Level 2 (next):** edit text already in the box. Tap the mic, say "Friday, make this more polite". The keyboard sends the text before the cursor, the app rewrites it, and the keyboard swaps it in, with Undo.
 
 ### 7.2 Decision engine (app only, system, JSON mode)
