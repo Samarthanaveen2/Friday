@@ -66,19 +66,19 @@ final class Cleaner {
         }
 
         if let key = Keys.get(.groq) {
-            // Main model, then Groq's other model (separate daily allowance).
-            for (model, quota, name) in [(Models.groqCleanup, "groq.chat", "Groq"),
-                                         (Models.groqCleanupBackup, "groq.chat.backup", "Groq backup")] {
-                guard QuotaBook.shared.available(quota) else {
-                    notes.append("\(name): resting (limit)")
+            // Main model, then Groq's other models (each has its own daily allowance).
+            // A model resting after a limit (429) is skipped without a call.
+            for step in Models.groqCleanupChain {
+                guard QuotaBook.shared.available(step.quota) else {
+                    notes.append("\(step.name): resting (limit)")
                     continue
                 }
-                QuotaBook.shared.record(quota)
-                let body = CloudRequests.chatBody(model: model, system: Dictation.systemPrompt, user: message,
-                                                  maxTokens: CloudRequests.cleanupMaxTokens(for: prepared, model: model),
-                                                  reasoningEffort: Models.reasoningEffort(for: model))
-                let reply = await cloud(base: Models.groqBase, key: key, body: body, quota: quota)
-                if let good = accepted(reply, name) { return done(good, .groq) }
+                QuotaBook.shared.record(step.quota)
+                let body = CloudRequests.chatBody(model: step.model, system: Dictation.systemPrompt, user: message,
+                                                  maxTokens: CloudRequests.cleanupMaxTokens(for: prepared, model: step.model),
+                                                  reasoningEffort: Models.reasoningEffort(for: step.model))
+                let reply = await cloud(base: Models.groqBase, key: key, body: body, quota: step.quota)
+                if let good = accepted(reply, step.name) { return done(good, .groq) }
             }
         } else {
             notes.append("Groq: no key")

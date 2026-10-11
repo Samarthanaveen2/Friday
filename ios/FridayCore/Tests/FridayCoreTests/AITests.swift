@@ -59,10 +59,45 @@ final class RequestTests: XCTestCase {
         XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: "", model: "openai/gpt-oss-120b"), 1_024)
     }
 
+    func testCleanupChain() throws {
+        let chain = Models.groqCleanupChain
+        XCTAssertEqual(chain.map(\.model), ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"])
+        XCTAssertEqual(chain.map(\.quota), ["groq.chat", "groq.chat.backup", "groq.chat.backup2"])
+        XCTAssertEqual(Set(chain.map(\.quota)).count, chain.count, "each model needs its own counter")
+        XCTAssertEqual(Set(chain.map(\.name)).count, chain.count)
+        for step in chain {
+            XCTAssertNotNil(Quota.limits[step.quota], step.quota)
+        }
+
+        // Backup 2 (gpt-oss-20b): low thinking, thinking hidden, room to think.
+        let model = Models.groqCleanupBackup2
+        XCTAssertEqual(Models.reasoningEffort(for: model), "low")
+        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: "", model: model), 1_024)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: CloudRequests.chatBody(
+            model: model, system: "S", user: "U", maxTokens: 9,
+            reasoningEffort: Models.reasoningEffort(for: model))) as? [String: Any])
+        XCTAssertEqual(body["model"] as? String, "openai/gpt-oss-20b")
+        XCTAssertEqual(body["reasoning_effort"] as? String, "low")
+        XCTAssertEqual(body["include_reasoning"] as? Bool, false)
+
+        // gpt-oss rejects "none"; qwen gets it; unknown models get no reasoning field at all.
+        XCTAssertEqual(Models.reasoningEffort(for: Models.groqCleanup), "none")
+        XCTAssertNil(Models.reasoningEffort(for: "llama-3.3-70b-versatile"))
+        let qwen = try XCTUnwrap(JSONSerialization.jsonObject(with: CloudRequests.chatBody(
+            model: Models.groqCleanup, system: "S", user: "U", maxTokens: 9,
+            reasoningEffort: Models.reasoningEffort(for: Models.groqCleanup))) as? [String: Any])
+        XCTAssertNil(qwen["include_reasoning"])
+    }
+
     func testOutcomes() {
         XCTAssertEqual(CallOutcome.from(status: 200), .ok)
         XCTAssertEqual(CallOutcome.from(status: 429), .useBackup(coolDown: 60))
         XCTAssertEqual(CallOutcome.from(status: 429, body: "Rate limit reached ... on tokens per day (TPD)"), .useBackup(coolDown: 3_600))
+        XCTAssertEqual(CallOutcome.from(status: 429, body: """
+            {"error":{"message":"Rate limit reached for model `openai/gpt-oss-20b` in organization `org_x` service tier \
+            `on_demand` on requests per day (RPD): Limit 1000, Used 1000, Requested 1.","type":"requests","code":"rate_limit_exceeded"}}
+            """), .useBackup(coolDown: 3_600))
+        XCTAssertEqual(CallOutcome.from(status: 429, body: "Rate limit reached ... on tokens per minute (TPM)"), .useBackup(coolDown: 60))
         XCTAssertEqual(CallOutcome.from(status: 503), .useBackup(coolDown: 20))
         XCTAssertEqual(CallOutcome.from(status: 401), .badKey)
         XCTAssertEqual(CallOutcome.from(status: 400), .failed)
@@ -87,6 +122,26 @@ final class QuotaTests: XCTestCase {
         q.coolDown("groq.chat", for: 60, now: t)
         XCTAssertFalse(q.available("groq.chat", now: t.addingTimeInterval(30)))
         XCTAssertTrue(q.available("groq.chat", now: t.addingTimeInterval(61)))
+    }
+
+    func testDailyLimitRestsOnlyThatModel() {
+        // A "per day" 429 on the main model rests it for an hour; the backups stay usable.
+        var q = Quota()
+        let t = Date(timeIntervalSince1970: 1_000_000)
+        guard case .useBackup(let seconds) = CallOutcome.from(status: 429, body: "on tokens per day (TPD)") else {
+            return XCTFail("expected useBackup")
+        }
+        q.coolDown("groq.chat", for: seconds, now: t)
+        XCTAssertFalse(q.available("groq.chat", now: t.addingTimeInterval(1_800)))
+        XCTAssertTrue(q.available("groq.chat.backup", now: t.addingTimeInterval(1_800)))
+        XCTAssertTrue(q.available("groq.chat.backup2", now: t.addingTimeInterval(1_800)))
+        q.coolDown("groq.chat.backup2", for: seconds, now: t)
+        XCTAssertFalse(q.available("groq.chat.backup2", now: t.addingTimeInterval(1_800)))
+        XCTAssertTrue(q.available("groq.chat", now: t.addingTimeInterval(3_601)))
+        // Backup 2 has its own request count too.
+        for i in 0..<27 { q.record("groq.chat.backup", now: t.addingTimeInterval(4_000 + Double(i))) }
+        XCTAssertFalse(q.available("groq.chat.backup", now: t.addingTimeInterval(4_030)))
+        XCTAssertTrue(q.available("groq.chat.backup2", now: t.addingTimeInterval(4_030)))
     }
 
     func testDailyResets() throws {
