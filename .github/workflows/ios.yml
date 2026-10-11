@@ -89,3 +89,47 @@ jobs:
         with:
           name: build-log
           path: build.log
+
+  screens:
+    name: Screenshots
+    needs: core
+    runs-on: macos-26
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pick newest Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: Render screens on the simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          names=[x['name'] for k,v in d.items() if 'iOS' in k for x in v]
+          pro=[n for n in names if n.endswith(' Pro')]
+          print(sorted(pro)[-1] if pro else names[0])")
+          echo "Using $DEVICE"
+          mkdir -p screens
+          TEST_RUNNER_SNAPSHOT_DIR="$PWD/screens" xcodebuild test \
+            -project ios/Friday.xcodeproj -scheme Friday \
+            -destination "platform=iOS Simulator,name=$DEVICE" \
+            -only-testing:FridaySnapshots -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO > test.log 2>&1 \
+            || { grep -E -A3 "error:|failed" test.log | head -60; tail -30 test.log; exit 1; }
+          ls screens
+
+      - name: Publish release "screens"
+        run: |
+          gh release delete screens --yes --cleanup-tag || true
+          gh release create screens screens/*.png \
+            --title "Friday screens" --notes "Screens from ${GITHUB_SHA::7}" \
+            --target "$GITHUB_SHA" --prerelease --latest=false

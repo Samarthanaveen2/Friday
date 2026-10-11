@@ -29,6 +29,7 @@ targets:
     platform: iOS
     sources:
       - Friday
+      - FridayUI
       - Shared/Group
       - Shared/Live
     dependencies:
@@ -61,13 +62,15 @@ targets:
       path: Friday/Friday.entitlements
       properties:
         com.apple.security.application-groups: [group.com.samarth.friday]
-    scheme: {}
+    scheme:
+      testTargets: [FridaySnapshots]
 
   FridayKeyboard:
     type: app-extension
     platform: iOS
     sources:
       - FridayKeyboard
+      - FridayUI
       - Shared/Group
     dependencies:
       - package: FridayCore
@@ -119,3 +122,16 @@ targets:
       path: FridayLive/FridayLive.entitlements
       properties:
         com.apple.security.application-groups: [group.com.samarth.friday]
+
+  # Renders every screen to PNG on the simulator (CI "screens" job). Not shipped.
+  FridaySnapshots:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Snapshots
+    dependencies:
+      - target: Friday
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.samarth.friday.snapshots
+        GENERATE_INFOPLIST_FILE: YES
