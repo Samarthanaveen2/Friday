@@ -42,8 +42,10 @@ public struct Dictation: Sendable {
         let ruleBased = Cleanup.run(prepared)
         let chosen = CleanupGuard.choose(aiOutput: aiOutput, transcript: prepared, fallback: ruleBased,
                                          relaxed: tone != .asSaid)
+        // Same final touches whichever text was chosen: rupee amounts, then misspelled names.
+        let polished = DictionaryFix(dictionary).apply(Money.format(fixRules.apply(chosen)))
         let keep = Set(dictionary.flatMap { [$0, $0.lowercased()] })
-        return Continuation.apply(fixRules.apply(chosen), after: context, keepCase: keep)
+        return Continuation.apply(polished, after: context, keepCase: keep)
     }
 
     /// The user message for the cleanup model (PLAN §7.1).
