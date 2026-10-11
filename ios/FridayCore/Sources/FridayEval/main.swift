@@ -13,6 +13,9 @@ struct Case: Decodable {
     let context: String
     let say: String
     let expect: [String]
+    /// Long free-form cases: pass if every `must` phrase is kept and no `mustNot` phrase is left.
+    var must: [String]? = nil
+    var mustNot: [String]? = nil
 }
 
 func norm(_ text: String) -> String {
@@ -139,7 +142,11 @@ for c in cases {
     else { why = "" }
     if accepted { usedAI += 1 }
 
-    let ok = Set(c.expect.map(norm)).contains(norm(final))
+    let lower = final.lowercased()
+    let ok = c.must != nil || c.mustNot != nil
+        ? (c.must ?? []).allSatisfy { lower.contains($0.lowercased()) }
+            && !(c.mustNot ?? []).contains { lower.contains($0.lowercased()) }
+        : Set(c.expect.map(norm)).contains(norm(final))
     if ok { passed += 1 }
     print("\(ok ? "PASS" : "FAIL") #\(c.id) [\(accepted ? "AI" : "rules")] \(c.say.debugDescription)")
     if !ok || !accepted {
