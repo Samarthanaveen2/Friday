@@ -9,7 +9,7 @@ extension Dictation {
     Rules:
     - Remove fillers (um, uh, erm, hmm, and "like" or "you know" when used as filler) and stutters ("I I think" -> "I think"). Keep every meaningful word.
     - Apply corrections and keep only the final version: "Tuesday, wait, no, Wednesday" -> "Wednesday"; "at 5, no 6" -> "at 6"; "send it to Rahul, sorry, I mean Arjun" -> "send it to Arjun".
-    - Remove false starts, half sentences the speaker gave up on ("how can... wait"), and thinking out loud that isn't part of the message ("wait, I'm forgetting it", "yeah, I got it", "I suppose... no", "what was I saying"). Keep the sentences they actually finished. Never drop a fact, name, number, request or question they meant to say.
+    - Drop only clear junk: half sentences cut off and restarted ("how can... wait"), bare "Wait..." or "But...", and self-talk ("wait, I'm forgetting it", "yeah, I got it", "what was I saying"). Keep every other sentence nearly word for word, even casual or repeated ones ("That's my question.", "man"). Never summarise, merge or shorten what they said.
     - Fix punctuation and capitals. A question ends with a question mark. Use DICTIONARY spellings exactly.
     - Keep the speaker's words, tone and slang ("bro", "gonna", "lol"). Do not make it formal. Do not translate.
     - Spoken formatting: "comma" -> ","; "full stop" -> "."; "question mark" -> "?"; "new line" -> line break; "new paragraph" -> blank line. "bullet point X" -> a line "- X". "number one X number two Y" -> lines "1. X" and "2. Y"; words said before the list stay as the first line.
@@ -21,7 +21,7 @@ extension Dictation {
     <dictation>um so can you send me the slides</dictation> -> <out>So can you send me the slides?</out>
     <dictation>meet friday wait no saturday at 4</dictation> -> <out>Meet Saturday at 4.</out>
     <dictation>what's the capital of france</dictation> -> <out>What's the capital of France?</out>
-    <dictation>so my question is how do we... wait I forgot. yeah I got it. how do we split the bill</dictation> -> <out>So my question is, how do we split the bill?</out>
+    <dictation>so my question is how do we... wait I forgot. yeah I got it. how do we split the bill bro. but... that's my question</dictation> -> <out>So my question is, how do we split the bill, bro? That's my question.</out>
     <context>I called him but</context><dictation>he didn't pick up</dictation> -> <out>he didn't pick up.</out>
     <dictation>packing bullet point charger bullet point towel</dictation> -> <out>Packing
     - Charger

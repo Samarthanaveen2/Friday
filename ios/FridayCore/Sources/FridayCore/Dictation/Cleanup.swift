@@ -7,6 +7,7 @@ public enum Cleanup {
     public static func run(_ text: String) -> String {
         var t = text.replacingOccurrences(of: "\r", with: "")
         t = Rx.replace(t, "[ \\t]+", with: " ")
+        t = dropThinkingAloud(t)
         t = removeFillers(t)
         t = applyBacktracks(t)
         t = collapseStutters(t)
@@ -24,6 +25,86 @@ public enum Cleanup {
     static func removeFillers(_ text: String) -> String {
         let fillers = "(?:u+m+|u+h+|uhm|erm|er|a+h+|h+m+|mm+|mhm)"
         return Rx.replace(text, Rx.wordStart + fillers + Rx.wordEnd + "[,.]?", with: "")
+    }
+
+    // MARK: Thinking out loud ("how can... Wait, I'm forgetting it. Yeah, I got it.")
+
+    /// Words that carry nothing on their own when the speaker trails off: "But...", "Wait...", "So...".
+    private static let trailingOff: Set<String> = [
+        "wait", "but", "so", "and", "or", "because", "well", "like", "hmm", "um", "umm", "uh", "erm",
+        "anyway", "then", "also", "actually", "oh", "i", "mean",
+    ]
+    /// Openers stripped before looking for self-talk: "Wait, …", "Oh yeah, …".
+    private static let openers: Set<String> = [
+        "wait", "oh", "okay", "ok", "yeah", "yes", "no", "so", "hmm", "um", "umm", "uh", "sorry", "well", "anyway",
+        "but", "and", "hold", "on",
+    ]
+    /// Always self-talk, wherever they are.
+    private static let sureSelfTalk = [
+        "what was i (saying|going to say|talking about|trying to say)",
+        "i forgot what i was (saying|going to say|trying to say)",
+        "i('ve| have)? lost my train of thought",
+    ]
+    /// Self-talk only next to a given-up sentence, another dropped bit, or after "wait":
+    /// on its own, "I forgot." or "Got it." can be the message.
+    private static let maybeSelfTalk = [
+        "i'm forgetting( it)?", "i am forgetting( it)?", "i forgot( it)?", "i got it", "got it",
+        "i remember( now)?", "where was i", "let me think", "how do i (say|put) (this|it)", "never ?mind",
+    ]
+
+    /// Drops given-up half sentences and thinking out loud. Only whole pieces go: a piece that
+    /// isn't clearly one of these stays, word for word.
+    static func dropThinkingAloud(_ text: String) -> String {
+        text.components(separatedBy: "\n").map(dropThinkingAloud(line:)).joined(separator: "\n")
+    }
+
+    private static func dropThinkingAloud(line: String) -> String {
+        let pieces = splitPieces(line)
+        guard pieces.count > 1 else { return line }
+        var keep = Array(repeating: true, count: pieces.count)
+        for (i, piece) in pieces.enumerated() {
+            let trailsOff = Rx.contains(piece, "(\\.{2,}|…)$")
+            var words = Words.split(piece.replacingOccurrences(of: "’", with: "'"))
+            guard !words.isEmpty else { continue }
+            if trailsOff, words.allSatisfy(trailingOff.contains) {
+                keep[i] = false
+            } else {
+                var saidWait = false
+                while let first = words.first, openers.contains(first), words.count > 1 {
+                    if first == "wait" || first == "hold" { saidWait = true }
+                    words.removeFirst()
+                }
+                let core = words.joined(separator: " ")
+                let previousGaveUp = i > 0 && (!keep[i - 1] || Rx.contains(pieces[i - 1], "(\\.{2,}|…)$"))
+                let asked = piece.hasSuffix("?") && core.hasSuffix("got it") // "Got it?" asks someone
+                if sureSelfTalk.contains(where: { Rx.contains(core, "^(?:" + $0 + ")$") })
+                    || ((saidWait || previousGaveUp) && !asked
+                        && maybeSelfTalk.contains(where: { Rx.contains(core, "^(?:" + $0 + ")$") })) {
+                    keep[i] = false
+                }
+            }
+            // A short half sentence right before dropped bits was given up on: "how can... Wait, I forgot."
+            if !keep[i], i > 0, keep[i - 1], Rx.contains(pieces[i - 1], "(\\.{2,}|…)$"),
+               Words.split(pieces[i - 1]).count <= 10 {
+                keep[i - 1] = false
+            }
+        }
+        let kept = zip(pieces, keep).filter(\.1).map(\.0)
+        return kept.count == pieces.count ? line : kept.joined(separator: " ")
+    }
+
+    /// Splits a line after each ".", "?", "!", ".." or "…" that ends a word ("5.30" stays whole).
+    private static func splitPieces(_ line: String) -> [String] {
+        let ns = line as NSString
+        var pieces: [String] = []
+        var start = 0
+        for match in Rx.make("(?:\\.{2,}|…|[.?!]+)(?=\\s|$)").matches(in: line, range: NSRange(location: 0, length: ns.length)) {
+            let end = match.range.location + match.range.length
+            pieces.append(ns.substring(with: NSRange(location: start, length: end - start)))
+            start = end
+        }
+        if start < ns.length { pieces.append(ns.substring(from: start)) }
+        return pieces.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
     // MARK: Backtracking ("Tuesday, wait, Wednesday" → "Wednesday")
@@ -184,7 +265,7 @@ public enum Cleanup {
         t = Rx.replace(t, "([.?!]),", with: "$1")
         t = Rx.replace(t, "\\.([?!])", with: "$1")
         t = Rx.replace(t, "([?!])\\.", with: "$1")
-        t = Rx.replace(t, "\\.{2}(?!\\.)", with: ".")
+        t = Rx.replace(t, "(?<!\\.)\\.{2}(?!\\.)", with: ".") // ".." -> ".", "..." stays
         t = Rx.replace(t, "([,;!?])(?=\\p{L})", with: "$1 ")
         t = Rx.replace(t, "\\.(?=\\p{Lu})", with: ". ", caseInsensitive: false)
         t = Rx.replace(t, "[ \\t]*\\n[ \\t]*", with: "\n")
@@ -200,6 +281,7 @@ public enum Cleanup {
         var out = ""
         var needCapital = true
         var previous: Character = " "
+        var beforePrevious: Character = " "
         for char in t {
             if needCapital, char.isLetter {
                 out += char.uppercased()
@@ -209,7 +291,10 @@ public enum Cleanup {
                 if char.isNumber { needCapital = false }
             }
             if char == "\n" { needCapital = true }
-            if " \n".contains(char), ".?!".contains(previous) { needCapital = true }
+            // After "..." the speaker may carry on the same sentence: leave its case as said.
+            let trailedOff = previous == "…" || (previous == "." && beforePrevious == ".")
+            if " \n".contains(char), ".?!".contains(previous), !trailedOff { needCapital = true }
+            beforePrevious = previous
             previous = char
         }
         t = out
