@@ -108,7 +108,17 @@ final class KeyboardViewController: UIInputViewController {
         }
         if let beat = store.read(AppBeat.self, from: ProbeFile.app) {
             let age = ageLabel(Date.now.timeIntervalSince(beat.at))
-            let mic = beat.micRunning ? "mic live \(meter(beat.level))" : "mic off"
+            let stale = Date.now.timeIntervalSince(beat.at) > 3
+            let mic: String
+            if stale {
+                mic = "session ended — tap 🎤"
+            } else if beat.state == "dictating" {
+                mic = "recording \(meter(beat.level))"
+            } else if beat.micRunning {
+                mic = "session on \(meter(beat.level))"
+            } else {
+                mic = beat.state == "needsRestart" ? "session stopped" : "session off"
+            }
             lines.append("App: \(mic) · \(age)")
             if ping > 0, beat.lastPingSeen == ping, !roundTrip {
                 roundTrip = true

@@ -22,14 +22,18 @@ public struct AppBeat: Codable, Equatable, Sendable {
     public var bestBackgroundSeconds: Int
     /// Last keyboard ping the app saw (echoed back so the keyboard can prove a round trip).
     public var lastPingSeen: Int
+    /// The session state ("off", "holding", "dictating", "needsRestart").
+    public var state: String?
 
-    public init(at: Date, micRunning: Bool, level: Float, inBackground: Bool, bestBackgroundSeconds: Int, lastPingSeen: Int) {
+    public init(at: Date, micRunning: Bool, level: Float, inBackground: Bool, bestBackgroundSeconds: Int,
+                lastPingSeen: Int, state: String? = nil) {
         self.at = at
         self.micRunning = micRunning
         self.level = level
         self.inBackground = inBackground
         self.bestBackgroundSeconds = bestBackgroundSeconds
         self.lastPingSeen = lastPingSeen
+        self.state = state
     }
 }
 

@@ -8,74 +8,102 @@ enum SessionSource: String, Sendable {
     case app, intent, keyboard
 }
 
-/// Thread-safe level value written from the audio thread, read on main.
-final class LevelMeter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: Float = 0
+/// How long a Flow session stays on (PLAN §2.3).
+enum SessionLength: String, CaseIterable, Identifiable, Sendable {
+    case untilLock, fifteenMinutes, oneHour, never
 
-    func set(_ new: Float) { lock.lock(); value = new; lock.unlock() }
-    func get() -> Float { lock.lock(); defer { lock.unlock() }; return value }
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .untilLock: "Until the phone locks"
+        case .fifteenMinutes: "15 minutes"
+        case .oneHour: "1 hour"
+        case .never: "Never"
+        }
+    }
+
+    var seconds: TimeInterval? {
+        switch self {
+        case .fifteenMinutes: 15 * 60
+        case .oneHour: 60 * 60
+        case .untilLock, .never: nil
+        }
+    }
 }
 
-/// The Flow session: keeps the mic engine running (in the background too) and
-/// publishes a heartbeat to the App Group every second.
+/// The Flow session: the mic engine stays on (in the background too), keeps a 1 s pre-roll,
+/// records dictations on request and publishes a heartbeat to the App Group every second.
 @MainActor
 @Observable
 final class Session {
+    enum State: String, Sendable {
+        case off, holding, dictating, needsRestart
+    }
+
     static let shared = Session()
 
-    private(set) var running = false
+    private(set) var state: State = .off
     private(set) var level: Float = 0
+    private(set) var levels: [Float] = []
+    private(set) var recordedSeconds = 0.0
     private(set) var lastError: String?
     private(set) var activityNote: String?
     private(set) var activityRunning = false
     private(set) var inBackground = false
-    private(set) var backgroundSeconds = 0
     private(set) var bestBackgroundSeconds: Int
     private(set) var lastPingSeen = 0
+    /// Times the engine came back by itself after a call, Siri or a route change.
+    private(set) var recoveries = 0
+    private(set) var lastRecording: Recording?
+    private(set) var lastPreRollSeconds = 0.0
 
-    private let engine = AVAudioEngine()
-    private let meter = LevelMeter()
+    var running: Bool { state != .off }
+
+    var length: SessionLength {
+        didSet { defaults.set(length.rawValue, forKey: "session.length") }
+    }
+
+    private let engine = AudioEngine()
     private var timer: Timer?
     private var backgroundSince: Date?
+    private var endsAt: Date?
+    /// Between an interruption's "began" and "ended": don't fight the call for the mic.
+    private var interruptedNow = false
     private var activity: Activity<FridayActivityAttributes>?
     private let defaults = UserDefaults.standard
 
     private init() {
         bestBackgroundSeconds = defaults.integer(forKey: "probe.bestBackgroundSeconds")
-        let center = NotificationCenter.default
-        center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated { Session.shared.enteredBackground() }
+        length = SessionLength(rawValue: defaults.string(forKey: "session.length") ?? "") ?? .untilLock
+        engine.onFailure = { message in
+            MainActor.assumeIsolated { Session.shared.failed(message) }
         }
-        center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated { Session.shared.enteredForeground() }
+        observe()
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            MainActor.assumeIsolated { Session.shared.tick() }
         }
-        center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { note in
-            let ended = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt)
-                .flatMap { AVAudioSession.InterruptionType(rawValue: $0) } == .ended
-            MainActor.assumeIsolated { if ended { Session.shared.resumeAfterInterruption() } }
-        }
-        DarwinNotice.observe(ProbeNotice.keyboardPing)
-        center.addObserver(forName: Notification.Name(ProbeNotice.keyboardPing), object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated { Session.shared.keyboardPinged() }
-        }
-        startTimer()
     }
+
+    // MARK: Session
 
     func start(source: SessionSource) async {
         let appWasActive = UIApplication.shared.applicationState == .active
-        if !running {
+        ensureActivity(source: source)
+        if state == .off || state == .needsRestart {
             do {
-                try startEngine()
-                running = true
+                if state == .needsRestart { try engine.rebuild() } else { try engine.start() }
+                state = .holding
                 lastError = nil
-                startActivity(source: source)
+                endsAt = length.seconds.map { Date.now.addingTimeInterval($0) }
             } catch {
+                state = .needsRestart
                 lastError = error.localizedDescription
             }
         }
         if source == .intent {
-            GroupStore.shared.write(IntentRun(at: .now, ranIn: .app, micStarted: running, appWasActive: appWasActive),
+            GroupStore.shared.write(IntentRun(at: .now, ranIn: .app, micStarted: running && state != .needsRestart,
+                                              appWasActive: appWasActive),
                                     to: ProbeFile.intent)
         }
         publish()
@@ -83,54 +111,136 @@ final class Session {
 
     func stop() {
         engine.stop()
-        engine.inputNode.removeTap(onBus: 0)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        running = false
+        state = .off
         level = 0
-        meter.set(0)
+        levels = []
+        endsAt = nil
         endActivity()
         publish()
     }
 
-    // MARK: Audio
+    // MARK: Dictation
 
-    private func startEngine() throws {
-        let audio = AVAudioSession.sharedInstance()
-        // Mix with music, keep AirPods in full quality, prefer the iPhone mic (RISKS A3/A4).
-        try audio.setCategory(.playAndRecord, mode: .default,
-                              options: [.mixWithOthers, .allowBluetoothA2DP, .defaultToSpeaker])
-        if let builtIn = audio.availableInputs?.first(where: { $0.portType == .builtInMic }) {
-            try? audio.setPreferredInput(builtIn)
-        }
-        try audio.setActive(true)
-        let input = engine.inputNode
-        Session.installTap(on: input, format: input.outputFormat(forBus: 0), meter: meter)
-        engine.prepare()
-        try engine.start()
+    /// Starts recording, with the last second already included. False if no session is running.
+    @discardableResult
+    func startDictation() -> Bool {
+        guard state == .holding else { return false }
+        engine.sink.begin()
+        state = .dictating
+        recordedSeconds = 0
+        publish()
+        return true
     }
 
-    /// Kept nonisolated so the tap closure doesn't inherit main-actor isolation
-    /// (it runs on the audio thread).
-    nonisolated private static func installTap(on node: AVAudioInputNode, format: AVAudioFormat, meter: LevelMeter) {
-        node.removeTap(onBus: 0)
-        node.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
-            guard let samples = buffer.floatChannelData?[0] else { return }
-            let count = Int(buffer.frameLength)
-            guard count > 0 else { return }
-            var sum: Float = 0
-            for i in 0..<count { sum += samples[i] * samples[i] }
-            meter.set(min(1, (sum / Float(count)).squareRoot() * 10))
+    /// Stops recording and returns the audio (pre-roll included).
+    func finishDictation() -> Recording? {
+        guard state == .dictating else { return nil }
+        let (samples, preRoll) = engine.sink.end()
+        state = .holding
+        let recording = Recording(samples: samples)
+        lastRecording = recording
+        lastPreRollSeconds = Double(preRoll) / Double(AudioFormat.sampleRate)
+        publish()
+        return recording
+    }
+
+    func cancelDictation() {
+        guard state == .dictating else { return }
+        engine.sink.cancel()
+        state = .holding
+        publish()
+    }
+
+    // MARK: Recovery
+
+    private func observe() {
+        let center = NotificationCenter.default
+        center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { Session.shared.enteredBackground() }
+        }
+        center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { Session.shared.enteredForeground() }
+        }
+        // Fires when the phone locks (with a passcode): the default session length.
+        center.addObserver(forName: UIApplication.protectedDataWillBecomeUnavailableNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated {
+                if Session.shared.length == .untilLock, Session.shared.running { Session.shared.stop() }
+            }
+        }
+        center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { note in
+            let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt).flatMap { AVAudioSession.InterruptionType(rawValue: $0) }
+            MainActor.assumeIsolated {
+                if type == .began { Session.shared.interrupted() }
+                if type == .ended { Session.shared.recover() }
+            }
+        }
+        center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { Session.shared.routeChanged() }
+        }
+        center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { Session.shared.mediaServicesReset() }
+        }
+        DarwinNotice.observe(ProbeNotice.keyboardPing)
+        center.addObserver(forName: Notification.Name(ProbeNotice.keyboardPing), object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { Session.shared.keyboardPinged() }
         }
     }
 
-    private func resumeAfterInterruption() {
+    private func interrupted() {
+        // iOS has stopped the engine; a dictation in progress can't continue.
+        interruptedNow = true
+        if state == .dictating { engine.sink.cancel(); state = .holding }
+        publish()
+    }
+
+    private func recover() {
+        interruptedNow = false
         guard running, !engine.isRunning else { return }
-        do { try startEngine() } catch { lastError = "Mic stopped: \(error.localizedDescription)" }
+        do {
+            try engine.restart()
+            state = .holding
+            recoveries += 1
+            lastError = nil
+        } catch {
+            failed("Mic stopped: \(error.localizedDescription)")
+        }
+        publish()
+    }
+
+    private func routeChanged() {
+        guard running else { return }
+        engine.preferBuiltInMic()
+        if !engine.isRunning { recover() }
+    }
+
+    private func mediaServicesReset() {
+        guard running else { return }
+        do {
+            try engine.rebuild()
+            state = .holding
+            recoveries += 1
+        } catch {
+            failed("Mic stopped: \(error.localizedDescription)")
+        }
+        publish()
+    }
+
+    private func failed(_ message: String) {
+        state = .needsRestart
+        lastError = message
+        publish()
     }
 
     // MARK: Live Activity
 
-    private func startActivity(source: SessionSource) {
+    /// Reuses a running "Friday on" activity, otherwise starts one.
+    func ensureActivity(source: SessionSource) {
+        if let existing = Activity<FridayActivityAttributes>.activities.first {
+            activity = existing
+            activityRunning = true
+            activityNote = nil
+            return
+        }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             activityNote = "Live Activities are off in Settings"
             return
@@ -160,19 +270,18 @@ final class Session {
 
     // MARK: Heartbeat
 
-    private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            MainActor.assumeIsolated { Session.shared.tick() }
-        }
-    }
-
     private func tick() {
-        level = running ? meter.get() : 0
+        if let endsAt, Date.now >= endsAt, state == .holding { stop(); return }
+        level = running ? engine.sink.currentLevel : 0
+        levels = running ? engine.sink.levels : []
+        if state == .dictating { recordedSeconds = engine.sink.recordedSeconds }
+        // The engine can die without telling us (e.g. a call that never sends "ended").
+        if state == .holding || state == .dictating, !engine.isRunning, !interruptedNow { recover() }
         if inBackground, running, let since = backgroundSince {
-            backgroundSeconds = Int(Date.now.timeIntervalSince(since))
-            if backgroundSeconds > bestBackgroundSeconds {
-                bestBackgroundSeconds = backgroundSeconds
-                defaults.set(bestBackgroundSeconds, forKey: "probe.bestBackgroundSeconds")
+            let seconds = Int(Date.now.timeIntervalSince(since))
+            if seconds > bestBackgroundSeconds {
+                bestBackgroundSeconds = seconds
+                defaults.set(seconds, forKey: "probe.bestBackgroundSeconds")
             }
         }
         publish()
@@ -181,7 +290,6 @@ final class Session {
     private func enteredBackground() {
         inBackground = true
         backgroundSince = .now
-        backgroundSeconds = 0
         publish()
     }
 
@@ -201,7 +309,7 @@ final class Session {
     private func publish() {
         let beat = AppBeat(at: .now, micRunning: running && engine.isRunning, level: level,
                            inBackground: inBackground, bestBackgroundSeconds: bestBackgroundSeconds,
-                           lastPingSeen: lastPingSeen)
+                           lastPingSeen: lastPingSeen, state: state.rawValue)
         GroupStore.shared.write(beat, to: ProbeFile.app)
         DarwinNotice.post(ProbeNotice.appBeat)
     }

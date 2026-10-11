@@ -92,7 +92,8 @@ final class ProbeModel {
         return [
             CheckSection(id: "Signing", checks: [signingCheck, groupCheck, keychainCheck]),
             CheckSection(id: "Keyboard", checks: [keyboardSeenCheck, fullAccessCheck, roundTripCheck, openAppCheck]),
-            CheckSection(id: "Mic", checks: [micCheck(session), backgroundCheck(session)]),
+            CheckSection(id: "Mic", checks: [micCheck(session), backgroundCheck(session), sessionTestCheck(session),
+                                             recoveryCheck(session)]),
             CheckSection(id: "Start without opening Friday", checks: [intentCheck, activityCheck(session)]),
             CheckSection(id: "On-device AI", checks: [speechCheck, appleAICheck]),
         ]
@@ -177,6 +178,23 @@ final class ProbeModel {
         }
         return Check(id: "mic", title: "Mic", status: session.running ? .pass : .waiting,
                      detail: session.running ? "Listening" : "Off — tap the mic above")
+    }
+
+    private func sessionTestCheck(_ session: Session) -> Check {
+        guard let recording = session.lastRecording else {
+            return Check(id: "test", title: "Dictation test", status: .waiting, detail: "Not tested",
+                         hint: "Use the Session test card above.")
+        }
+        let detail = String(format: "%.1f s, pre-roll %.1f s, %@", recording.duration, session.lastPreRollSeconds,
+                            recording.hasSpeech ? "speech heard" : "no speech heard")
+        return Check(id: "test", title: "Dictation test", status: recording.hasSpeech ? .pass : .fail, detail: detail)
+    }
+
+    private func recoveryCheck(_ session: Session) -> Check {
+        let n = session.recoveries
+        return Check(id: "recover", title: "Came back after a call", status: n > 0 ? .pass : .waiting,
+                     detail: n > 0 ? "\(n) time\(n == 1 ? "" : "s")" : "Not tested",
+                     hint: n > 0 ? nil : "With a session on, take or make a call, then hang up.")
     }
 
     private func backgroundCheck(_ session: Session) -> Check {

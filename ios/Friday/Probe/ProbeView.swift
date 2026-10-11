@@ -14,6 +14,7 @@ struct ProbeView: View {
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
+                SessionTestSection(session: session)
                 ForEach(model.sections) { section in
                     Section(section.id) {
                         ForEach(section.checks) { CheckRow(check: $0) }
