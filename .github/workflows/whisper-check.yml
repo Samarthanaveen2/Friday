@@ -1,0 +1,30 @@
+name: Whisper check
+
+# Speech-to-text settings against real Groq Whisper. Manual, or when this check changes.
+on:
+  push:
+    branches: [claude/affectionate-fermat-scvp7y]
+    paths: ["ios/tools/whisper_check.py", ".github/workflows/whisper-check.yml"]
+  workflow_dispatch:
+
+jobs:
+  whisper:
+    runs-on: ubuntu-latest
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng ffmpeg > /dev/null
+      - name: Make spoken test clips (16 kHz mono, like the app)
+        run: |
+          mkdir clips
+          say() { espeak-ng -s 145 -w raw.wav "$2"; ffmpeg -loglevel error -y -i raw.wav -ar 16000 -ac 1 "clips/$1.wav"; }
+          say short-hi "Hi."
+          say short-yes "Yes."
+          say short-send "Send it to Rahul."
+          say correction "Tomorrow I will eat eggs, chicken and beans. Cancel beans. Yeah, chana. Then I will go to the gym at eight. No, at one pm. And walk ten thousand steps."
+          say money "The laptop costs fifty thousand rupees, wait, no, fifty five thousand, and the bag is two thousand."
+          ffmpeg -loglevel error -y -i clips/correction.wav -c:a aac -b:a 32k clips/correction-aac.m4a
+          ffmpeg -loglevel error -y -i clips/money.wav -c:a aac -b:a 32k clips/money-aac.m4a
+          ls -la clips
+      - run: python3 -I ios/tools/whisper_check.py clips
