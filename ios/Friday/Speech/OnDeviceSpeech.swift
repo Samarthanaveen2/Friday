@@ -19,6 +19,8 @@ actor OnDeviceSpeech {
         let fallback = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US"))
         guard let locale = wanted ?? fallback else { return false }
         let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [], attributeOptions: [])
+        // Models are reserved per app; reserve English before asking for it.
+        _ = try? await AssetInventory.reserve(locale: locale)
         do {
             if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
                 try await request.downloadAndInstall()

@@ -104,18 +104,13 @@ final class Transcriber {
         lastUpload = nil
 
         if let cloud, case .cloud(let text) = SpeechRace.pick(cloud: cloud, device: nil, heardSpeech: heard) {
-            // Second ear: the iPhone has been transcribing live the whole time, so its text is nearly
-            // ready. Whisper sometimes skips a stretch; put back anything only the iPhone heard.
-            let device = await withTimeout(0.4) { await deviceText.value }
-            var final = text
-            var notes = detail.map { [$0] } ?? []
-            if let device {
-                let filled = Coverage.fill(primary: text, backup: device)
-                if !filled.added.isEmpty {
-                    final = filled.text
-                    notes.append("added " + filled.added.map { "‘\($0)’" }.joined(separator: ", ") + " from iPhone")
-                }
-            }
+            // The iPhone's text is only kept for the step-by-step report. Gap-filling Whisper with it
+            // (Coverage.fill) is off: on the speech bench (30 real one-minute dictations) Whisper
+            // whole-file lost 0.9% of words and one 3-word repeat, while the iPhone's false starts
+            // made the gap-fill type a phrase twice on the phone. Wrong words are worse than a lost repeat.
+            let device = await withTimeout(0.2) { await deviceText.value }
+            let final = text
+            let notes = detail.map { [$0] } ?? []
             return SpeechResult(choice: .cloud(final), cloudText: cloud, deviceText: device,
                                 ms: Int(Date.now.timeIntervalSince(started) * 1000), by: .groq,
                                 detail: notes.isEmpty ? nil : notes.joined(separator: " · "))

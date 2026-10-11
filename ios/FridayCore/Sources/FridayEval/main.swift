@@ -86,7 +86,8 @@ if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "clean" {
         let accepted = reply.flatMap(extractOut).map { CleanupGuard.check(output: $0, transcript: prepared).accepted } ?? false
         typed[id] = dictation.finish(prepared: prepared, aiOutput: reply, context: "")
         FileHandle.standardError.write(Data("\(id): \(status) \(accepted ? "AI" : "rules")\n".utf8))
-        try await Task.sleep(nanoseconds: 2_500_000_000)
+        // Long transcripts are ~1.5k tokens each; stay under Groq's free per-minute token limit.
+        try await Task.sleep(nanoseconds: 12_000_000_000)
     }
     try printJSON(typed)
     exit(0)
