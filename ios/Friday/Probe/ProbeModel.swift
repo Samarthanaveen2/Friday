@@ -93,7 +93,7 @@ final class ProbeModel {
             CheckSection(id: "Signing", checks: [signingCheck, groupCheck, keychainCheck]),
             CheckSection(id: "Keyboard", checks: [keyboardSeenCheck, fullAccessCheck, roundTripCheck, openAppCheck]),
             CheckSection(id: "Mic", checks: [micCheck(session), backgroundCheck(session), sessionTestCheck(session),
-                                             recoveryCheck(session)]),
+                                             recoveryCheck(session), speechToTextCheck]),
             CheckSection(id: "Start without opening Friday", checks: [intentCheck, activityCheck(session)]),
             CheckSection(id: "On-device AI", checks: [speechCheck, appleAICheck]),
         ]
@@ -188,6 +188,17 @@ final class ProbeModel {
         let detail = String(format: "%.1f s, pre-roll %.1f s, %@", recording.duration, session.lastPreRollSeconds,
                             recording.hasSpeech ? "speech heard" : "no speech heard")
         return Check(id: "test", title: "Dictation test", status: recording.hasSpeech ? .pass : .fail, detail: detail)
+    }
+
+    private var speechToTextCheck: Check {
+        let hasKey = Keys.get(.groq) != nil
+        guard let outcome = DictationPipeline.shared.last else {
+            return Check(id: "stt", title: "Speech to text", status: .waiting,
+                         detail: hasKey ? "Groq key saved · not tested" : "No Groq key · phone only",
+                         hint: "Dictate in the Session test card.")
+        }
+        return Check(id: "stt", title: "Speech to text", status: outcome.nothing ? .fail : .pass,
+                     detail: outcome.nothing ? "Didn't catch that · \(outcome.timings.line)" : outcome.timings.line)
     }
 
     private func recoveryCheck(_ session: Session) -> Check {

@@ -34,6 +34,12 @@ struct ProbeView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Setup check")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Settings")
+                }
+            }
             .animation(Motion.spring, value: session.running)
         }
         .task {

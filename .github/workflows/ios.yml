@@ -133,3 +133,12 @@ jobs:
           gh release create screens screens/*.png \
             --title "Friday screens" --notes "Screens from ${GITHUB_SHA::7}" \
             --target "$GITHUB_SHA" --prerelease --latest=false
+
+  evals:
+    name: Dictation evals (runs only with a GROQ_API_KEY secret)
+    runs-on: ubuntu-latest
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 ios/evals/run.py

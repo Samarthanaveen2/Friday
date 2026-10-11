@@ -60,6 +60,9 @@ final class Session {
 
     var running: Bool { state != .off }
 
+    /// The live audio, for the transcriber.
+    var sink: AudioSink { engine.sink }
+
     var length: SessionLength {
         didSet { defaults.set(length.rawValue, forKey: "session.length") }
     }
@@ -96,6 +99,7 @@ final class Session {
                 state = .holding
                 lastError = nil
                 endsAt = length.seconds.map { Date.now.addingTimeInterval($0) }
+                DictationPipeline.warm()
             } catch {
                 state = .needsRestart
                 lastError = error.localizedDescription

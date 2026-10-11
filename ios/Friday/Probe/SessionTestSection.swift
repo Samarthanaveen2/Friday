@@ -6,6 +6,7 @@ import SwiftUI
 /// Proves the pre-roll keeps the first word and that music and AirPods are left alone.
 struct SessionTestSection: View {
     let session: Session
+    @State private var pipeline = DictationPipeline.shared
     @State private var player: AVAudioPlayer?
     @State private var playing = false
 
@@ -33,16 +34,37 @@ struct SessionTestSection: View {
                 Button(session.state == .dictating ? "Stop" : "Dictate") {
                     Haptics.tap()
                     if session.state == .dictating {
-                        _ = session.finishDictation()
+                        Task {
+                            _ = await pipeline.finish()
+                            Haptics.success()
+                        }
                     } else {
-                        session.startDictation()
+                        _ = pipeline.begin()
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(session.state == .dictating ? Palette.stop : Palette.accent)
-                .disabled(!(session.state == .holding || session.state == .dictating))
+                .disabled(!(session.state == .holding || session.state == .dictating) || pipeline.working)
             }
             .frame(maxWidth: .infinity)
+
+            if pipeline.working {
+                HStack(spacing: 10) {
+                    WorkingDots()
+                    Text("Writing…").foregroundStyle(.secondary)
+                }
+            } else if let outcome = pipeline.last {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(outcome.nothing ? "Didn't catch that" : outcome.text)
+                        .font(.body)
+                        .textSelection(.enabled)
+                    if !outcome.nothing, outcome.raw != outcome.text {
+                        Text("Heard: \(outcome.raw)").font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Text(outcome.timings.line).font(.caption.monospacedDigit()).foregroundStyle(Palette.accent)
+                }
+                .padding(.vertical, 2)
+            }
 
             if let recording = session.lastRecording {
                 HStack {
@@ -71,7 +93,7 @@ struct SessionTestSection: View {
         } footer: {
             Text("""
             1. Play music in Spotify, then Start session. Music should keep playing at full volume.
-            2. Tap Dictate and start talking at once. Stop, then play it back: your first word should be there.
+            2. Tap Dictate and start talking at once. Stop: the typed text and a timing line appear. Play it back to check your first word is there.
             3. Try again with AirPods in: music should stay full quality.
             4. Take or make a call, hang up: the session should come back by itself.
             """)

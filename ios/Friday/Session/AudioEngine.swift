@@ -10,6 +10,8 @@ final class AudioSink: @unchecked Sendable {
     private var preRollCount = 0
     private var level: Float = 0
     private var history: [Float] = []
+    /// While dictating, every new block of samples also goes here (on-device speech).
+    private var live: (@Sendable ([Float]) -> Void)?
 
     func push(_ samples: [Float]) {
         let rms = SpeechFrames.rms(samples[...])
@@ -17,6 +19,7 @@ final class AudioSink: @unchecked Sendable {
         defer { lock.unlock() }
         if recording != nil {
             recording!.append(contentsOf: samples)
+            live?(samples)
         } else {
             ring.append(contentsOf: samples)
         }
@@ -42,6 +45,19 @@ final class AudioSink: @unchecked Sendable {
         let samples = recording ?? []
         recording = nil
         return (samples, preRollCount)
+    }
+
+    func setLive(_ handler: (@Sendable ([Float]) -> Void)?) {
+        lock.lock()
+        live = handler
+        lock.unlock()
+    }
+
+    /// A copy of what's been recorded so far, pre-roll included (for chunked uploads).
+    func snapshot() -> [Float] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recording ?? []
     }
 
     func cancel() {
