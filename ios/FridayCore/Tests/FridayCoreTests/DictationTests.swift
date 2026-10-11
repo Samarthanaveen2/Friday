@@ -259,3 +259,19 @@ final class PiecePromptTests: XCTestCase {
         XCTAssertEqual(Dictation.piecePrompt(base: "", previous: nil), "")
     }
 }
+
+final class VoiceCommandTests: XCTestCase {
+    func testFridayCommandIsSpotted() {
+        XCTAssertTrue(Dictation.hasCommand("Meet at 5. Friday, change that to 6 PM. And bring notes."))
+        XCTAssertTrue(Dictation.hasCommand("friday delete the last line"))
+        XCTAssertTrue(Dictation.hasCommand("we need milk and eggs, hey Friday make that a list"))
+        XCTAssertTrue(Dictation.hasCommand("The plan is set. Friday, please replace Arjun with Priya."))
+    }
+
+    func testFridayTheDayIsJustText() {
+        XCTAssertFalse(Dictation.hasCommand("Let's catch up on Friday at the canteen."))
+        XCTAssertFalse(Dictation.hasCommand("Friday is the last day to submit the form."))
+        XCTAssertFalse(Dictation.hasCommand("See you Friday, make sure you bring the cake."))
+        XCTAssertFalse(Dictation.hasCommand("Friday works for me."))
+    }
+}

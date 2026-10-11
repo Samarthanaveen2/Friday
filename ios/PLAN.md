@@ -244,6 +244,12 @@ User: `<context>…≤300 chars before cursor…</context>\n<dictionary>…</dic
 
 **Guard (in code):** if the output shares under ~70% of its words with the transcript, or is more than 1.3× longer, insert the deterministic-cleaned transcript instead (RISKS C1).
 
+### 7.1b Voice commands ("Friday, …")
+- **Level 1 (done):** inside one dictation, "Friday, <action>" ("change that to 6 PM", "delete the last line", "make that a list") is applied to what came before it and left out of the typed text.
+  - It counts only when "Friday" starts the phrase and an action word follows; "on Friday" stays plain text (`Dictation.hasCommand`).
+  - The guard is relaxed for these.
+- **Level 2 (next):** edit text already in the box. Tap the mic, say "Friday, make this more polite". The keyboard sends the text before the cursor, the app rewrites it, and the keyboard swaps it in, with Undo.
+
 ### 7.2 Decision engine (app only, system, JSON mode)
 Input:
 ```

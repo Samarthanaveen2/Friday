@@ -41,11 +41,19 @@ public struct Dictation: Sendable {
     public func finish(prepared: String, aiOutput: String?, context: String, tone: Tone = .asSaid) -> String {
         let ruleBased = Cleanup.run(prepared)
         let chosen = CleanupGuard.choose(aiOutput: aiOutput, transcript: prepared, fallback: ruleBased,
-                                         relaxed: tone != .asSaid)
+                                         relaxed: tone != .asSaid || Dictation.hasCommand(prepared))
         // Same final touches whichever text was chosen: rupee amounts, then misspelled names.
         let polished = DictionaryFix(dictionary).apply(Money.format(fixRules.apply(chosen)))
         let keep = Set(dictionary.flatMap { [$0, $0.lowercased()] })
         return Continuation.apply(polished, after: context, keepCase: keep)
+    }
+
+    /// "Friday, <action> …" said mid-dictation: an edit for the AI to apply, not words to type.
+    /// Only counts when "Friday" starts a phrase and an action word follows, so "see you Friday"
+    /// or "on Friday we…" stay plain text. Edits reword more, so the guard is relaxed for them.
+    public static func hasCommand(_ text: String) -> Bool {
+        Rx.contains(text, "(?:^|[.!?,;]\\s*|\\b(?:hey|okay|ok)\\s+)friday[,.]?\\s+(?:please\\s+)?"
+            + "(?:change|delete|remove|scratch|cut|make|replace|add|turn|put|move|undo|fix|rewrite|capitali[sz]e|bold|drop)\\b")
     }
 
     /// The user message for the cleanup model (PLAN §7.1).
