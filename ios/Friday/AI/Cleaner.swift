@@ -65,14 +65,23 @@ final class Cleaner {
             return Result(text: text, by: by, ms: Int(Date.now.timeIntervalSince(started) * 1000), notes: notes)
         }
 
-        if let key = Keys.get(.groq), QuotaBook.shared.available("groq.chat") {
-            QuotaBook.shared.record("groq.chat")
-            let body = CloudRequests.chatBody(model: Models.groqCleanup, system: Dictation.systemPrompt, user: message,
-                                              maxTokens: maxTokens, reasoningEffort: Models.reasoningEffort(for: Models.groqCleanup))
-            let reply = await cloud(base: Models.groqBase, key: key, body: body, quota: "groq.chat")
-            if let good = accepted(reply, "Groq") { return done(good, .groq) }
+        if let key = Keys.get(.groq) {
+            // Main model, then Groq's other model (separate daily allowance).
+            for (model, quota, name) in [(Models.groqCleanup, "groq.chat", "Groq"),
+                                         (Models.groqCleanupBackup, "groq.chat.backup", "Groq backup")] {
+                guard QuotaBook.shared.available(quota) else {
+                    notes.append("\(name): resting (limit)")
+                    continue
+                }
+                QuotaBook.shared.record(quota)
+                let body = CloudRequests.chatBody(model: model, system: Dictation.systemPrompt, user: message,
+                                                  maxTokens: CloudRequests.cleanupMaxTokens(for: prepared, model: model),
+                                                  reasoningEffort: Models.reasoningEffort(for: model))
+                let reply = await cloud(base: Models.groqBase, key: key, body: body, quota: quota)
+                if let good = accepted(reply, name) { return done(good, .groq) }
+            }
         } else {
-            notes.append(Keys.get(.groq) == nil ? "Groq: no key" : "Groq: resting (limit)")
+            notes.append("Groq: no key")
         }
         if let key = Keys.get(.gemini), QuotaBook.shared.available("gemini.chat") {
             QuotaBook.shared.record("gemini.chat")

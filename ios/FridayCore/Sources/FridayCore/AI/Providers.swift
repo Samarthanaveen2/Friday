@@ -8,6 +8,8 @@ public enum Models {
 
     public static let whisper = "whisper-large-v3-turbo"
     public static let groqCleanup = "qwen/qwen3.8-27b"
+    /// Each Groq model has its own daily allowance, so when the main one runs out, try this.
+    public static let groqCleanupBackup = "openai/gpt-oss-120b"
     public static let groqDecision = "openai/gpt-oss-120b"
     public static let geminiCleanup = "gemini-flash-lite-latest"
     public static let geminiDecision = "gemini-flash-latest"
@@ -45,9 +47,11 @@ public enum CallOutcome: Equatable, Sendable {
     case badKey
     case failed
 
-    public static func from(status: Int) -> CallOutcome {
+    public static func from(status: Int, body: String = "") -> CallOutcome {
         switch status {
         case 200..<300: .ok
+        // A daily cap won't lift in a minute: rest this model for an hour, then check again.
+        case 429 where body.contains("per day"): .useBackup(coolDown: 3_600)
         case 429: .useBackup(coolDown: 60)
         case 408, 500..<600: .useBackup(coolDown: 20)
         case 401, 403: .badKey

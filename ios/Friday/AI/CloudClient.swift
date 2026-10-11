@@ -60,7 +60,7 @@ final class CloudClient: Sendable {
             throw CloudError(kind: .network)
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        switch CallOutcome.from(status: status) {
+        switch CallOutcome.from(status: status, body: String(decoding: data.prefix(400), as: UTF8.self)) {
         case .ok: return data
         case .useBackup(let seconds): throw CloudError(kind: .useBackup(seconds))
         case .badKey: throw CloudError(kind: .badKey)

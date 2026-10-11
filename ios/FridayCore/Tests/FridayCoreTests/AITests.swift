@@ -54,6 +54,7 @@ final class RequestTests: XCTestCase {
     func testOutcomes() {
         XCTAssertEqual(CallOutcome.from(status: 200), .ok)
         XCTAssertEqual(CallOutcome.from(status: 429), .useBackup(coolDown: 60))
+        XCTAssertEqual(CallOutcome.from(status: 429, body: "Rate limit reached ... on tokens per day (TPD)"), .useBackup(coolDown: 3_600))
         XCTAssertEqual(CallOutcome.from(status: 503), .useBackup(coolDown: 20))
         XCTAssertEqual(CallOutcome.from(status: 401), .badKey)
         XCTAssertEqual(CallOutcome.from(status: 400), .failed)

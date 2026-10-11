@@ -3,7 +3,8 @@ name: Evals
 on:
   push:
     branches: [claude/affectionate-fermat-scvp7y]
-    paths: ["ios/evals/**", "ios/FridayCore/**", ".github/workflows/evals.yml"]
+    # Only when the prompt or test cases change: each run spends part of Groq's free daily allowance.
+    paths: ["ios/evals/**", "ios/FridayCore/Sources/FridayCore/Dictation/Dictation.swift"]
   workflow_dispatch:
 
 concurrency:
