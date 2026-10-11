@@ -75,8 +75,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.samarth.friday.keyboard
         PRODUCT_NAME: FridayKeyboard
-        # Lets the keyboard reach UIApplication.open through the responder chain (opens Friday).
-        APPLICATION_EXTENSION_API_ONLY: NO
     info:
       path: FridayKeyboard/Info.plist
       properties:

@@ -142,11 +142,15 @@ final class KeyboardViewController: UIInputViewController {
 
     @objc private func openFriday() {
         guard let url = URL(string: "friday://probe?from=keyboard") else { return }
-        // Keyboards can't call UIApplication.shared; walk the responder chain to the app object.
+        // Keyboards can't call UIApplication.open directly. Walk the responder chain to the
+        // app object and call the method through the Objective-C runtime.
+        let selector = NSSelectorFromString("openURL:options:completionHandler:")
         var responder: UIResponder? = self
         while let current = responder {
-            if let app = current as? UIApplication {
-                app.open(url, options: [:], completionHandler: nil)
+            if let app = current as? UIApplication, app.responds(to: selector) {
+                typealias OpenURL = @convention(c) (AnyObject, Selector, NSURL, NSDictionary, AnyObject?) -> Void
+                let open = unsafeBitCast(app.method(for: selector), to: OpenURL.self)
+                open(app, selector, url as NSURL, NSDictionary(), nil)
                 return
             }
             responder = current.next
