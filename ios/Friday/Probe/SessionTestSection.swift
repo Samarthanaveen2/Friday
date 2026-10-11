@@ -62,6 +62,9 @@ struct SessionTestSection: View {
                         Text("Heard: \(outcome.raw)").font(.footnote).foregroundStyle(.secondary)
                     }
                     Text(outcome.timings.line).font(.caption.monospacedDigit()).foregroundStyle(Palette.accent)
+                    if !outcome.notes.isEmpty {
+                        Text(outcome.notes.joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.vertical, 2)
             }

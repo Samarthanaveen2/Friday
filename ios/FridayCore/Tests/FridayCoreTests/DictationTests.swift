@@ -37,6 +37,8 @@ final class CleanupTests: XCTestCase {
         XCTAssertEqual(clean("let's do it at 5, no 6"), "Let's do it at 6.")
         XCTAssertEqual(clean("call him tomorrow sorry today"), "Call him today")
         XCTAssertEqual(clean("see you at 4 I mean 5 ok"), "See you at 5 ok.")
+        XCTAssertEqual(clean("My birthday is on Tuesday. No wait, it's actually on Wednesday."), "My birthday is on Wednesday.")
+        XCTAssertEqual(clean("call me at 5 no make it 6"), "Call me at 6.")
     }
 
     func testBacktrackLeavesNormalNoAlone() {

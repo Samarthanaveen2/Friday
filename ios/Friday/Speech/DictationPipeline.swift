@@ -11,6 +11,7 @@ final class DictationPipeline {
         var raw: String
         var timings: Timings
         var nothing: Bool
+        var notes: [String] = []
     }
 
     static let shared = DictationPipeline()
@@ -59,7 +60,7 @@ final class DictationPipeline {
                               timings: Timings(speechMs: speech.by == .device ? nil : speech.ms, cleanupMs: cleaned.ms,
                                                totalMs: Int(Date.now.timeIntervalSince(started) * 1000),
                                                speechBy: speech.by, cleanupBy: cleaned.by),
-                              nothing: false)
+                              nothing: false, notes: cleaned.notes)
         last = outcome
         return outcome
     }

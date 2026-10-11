@@ -34,7 +34,7 @@ public enum CleanupGuard {
         let ratio = outChars / inChars
         let minOverlap = relaxed ? 0.5 : 0.7
         let maxLength = (relaxed ? 1.5 : 1.3) * inChars + 12
-        let accepted = overlap >= minOverlap && recall >= (relaxed ? 0.35 : 0.45) && outChars <= maxLength
+        let accepted = overlap >= minOverlap && recall >= (relaxed ? 0.3 : 0.4) && outChars <= maxLength
             && !addsNumbers && (relaxed || !dropsQuestion)
         return Verdict(accepted: accepted, overlap: overlap, lengthRatio: ratio)
     }

@@ -198,7 +198,8 @@ final class ProbeModel {
                          hint: "Dictate in the Session test card.")
         }
         return Check(id: "stt", title: "Speech to text", status: outcome.nothing ? .fail : .pass,
-                     detail: outcome.nothing ? "Didn't catch that · \(outcome.timings.line)" : outcome.timings.line)
+                     detail: (outcome.nothing ? "Didn't catch that · " : "") + outcome.timings.line
+                        + (outcome.notes.isEmpty ? "" : " [" + outcome.notes.joined(separator: "; ") + "]"))
     }
 
     private func recoveryCheck(_ session: Session) -> Check {

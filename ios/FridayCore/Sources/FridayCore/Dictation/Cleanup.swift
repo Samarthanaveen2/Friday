@@ -39,6 +39,10 @@ public enum Cleanup {
     ]
     private static let relativeDays: Set<String> = ["today", "tomorrow", "tonight", "yesterday"]
     private static let markers: Set<String> = ["wait", "no", "sorry", "actually"]
+    private static let glue: Set<String> = [
+        "it's", "it", "is", "its", "actually", "on", "at", "the", "make", "that", "i", "mean", "sorry", "no", "wait",
+        "rather", "like", "um", "uh",
+    ]
 
     private static func core(_ token: String) -> String {
         token.lowercased().trimmingCharacters(in: CharacterSet.letters.union(.decimalDigits).union(CharacterSet(charactersIn: ":'")).inverted)
@@ -72,7 +76,13 @@ public enum Cleanup {
                         break
                     }
                 }
-                guard markerEnd > i, markerEnd < tokens.count, let newKind = kind(tokens[markerEnd]) else {
+                // Allow a few glue words before the correction: "no wait, it's actually on Wednesday".
+                var target = markerEnd
+                while target < tokens.count, target - markerEnd < 4, kind(tokens[target]) == nil,
+                      glue.contains(core(tokens[target])) {
+                    target += 1
+                }
+                guard markerEnd > i, target < tokens.count, let newKind = kind(tokens[target]) else {
                     i += 1
                     continue
                 }
@@ -84,7 +94,7 @@ public enum Cleanup {
                     j -= 1
                 }
                 if let replaced {
-                    tokens.removeSubrange(replaced..<markerEnd)
+                    tokens.removeSubrange(replaced..<target)
                     i = replaced + 1
                 } else {
                     i += 1
