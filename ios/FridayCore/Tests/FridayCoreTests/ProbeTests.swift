@@ -56,6 +56,8 @@ final class ProbeTests: XCTestCase {
         let kb = KeyboardBeat(at: Date(timeIntervalSince1970: 2_000), fullAccess: true, ping: 3, roundTrip: true)
         XCTAssertEqual(ProbeCodec.decode(KeyboardBeat.self, from: try ProbeCodec.encode(kb)), kb)
         XCTAssertNil(ProbeCodec.decode(AppBeat.self, from: Data("{}".utf8)))
+        let run = IntentRun(at: Date(timeIntervalSince1970: 3_000), ranIn: .widget, micStarted: false, appWasActive: false)
+        XCTAssertEqual(ProbeCodec.decode(IntentRun.self, from: try ProbeCodec.encode(run)), run)
     }
 
     func testAgeLabel() {

@@ -24,13 +24,6 @@ final class LevelMeter: @unchecked Sendable {
 final class Session {
     static let shared = Session()
 
-    struct StartInfo: Sendable {
-        let source: SessionSource
-        let at: Date
-        let appWasActive: Bool
-        let micStarted: Bool
-    }
-
     private(set) var running = false
     private(set) var level: Float = 0
     private(set) var lastError: String?
@@ -39,7 +32,6 @@ final class Session {
     private(set) var inBackground = false
     private(set) var backgroundSeconds = 0
     private(set) var bestBackgroundSeconds: Int
-    private(set) var lastIntentStart: StartInfo?
     private(set) var lastPingSeen = 0
 
     private let engine = AVAudioEngine()
@@ -51,11 +43,6 @@ final class Session {
 
     private init() {
         bestBackgroundSeconds = defaults.integer(forKey: "probe.bestBackgroundSeconds")
-        if let at = defaults.object(forKey: "probe.intent.at") as? Date {
-            lastIntentStart = StartInfo(source: .intent, at: at,
-                                        appWasActive: defaults.bool(forKey: "probe.intent.active"),
-                                        micStarted: defaults.bool(forKey: "probe.intent.mic"))
-        }
         let center = NotificationCenter.default
         center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { Session.shared.enteredBackground() }
@@ -88,11 +75,8 @@ final class Session {
             }
         }
         if source == .intent {
-            let info = StartInfo(source: source, at: .now, appWasActive: appWasActive, micStarted: running)
-            lastIntentStart = info
-            defaults.set(info.at, forKey: "probe.intent.at")
-            defaults.set(info.appWasActive, forKey: "probe.intent.active")
-            defaults.set(info.micStarted, forKey: "probe.intent.mic")
+            GroupStore.shared.write(IntentRun(at: .now, ranIn: .app, micStarted: running, appWasActive: appWasActive),
+                                    to: ProbeFile.intent)
         }
         publish()
     }

@@ -27,6 +27,7 @@ struct CheckSection: Identifiable, Sendable {
 @Observable
 final class ProbeModel {
     private(set) var keyboard: KeyboardBeat?
+    private(set) var intentRun: IntentRun?
     private(set) var openedFromKeyboardAt: Date?
     private(set) var speechNote = "Checking…"
     private(set) var speechOK: Bool?
@@ -44,6 +45,7 @@ final class ProbeModel {
     func refresh() {
         now = .now
         keyboard = group.read(KeyboardBeat.self, from: ProbeFile.keyboard)
+        intentRun = group.read(IntentRun.self, from: ProbeFile.intent)
     }
 
     func handle(_ url: URL) {
@@ -56,7 +58,15 @@ final class ProbeModel {
             Haptics.success()
         }
         if url.host == "session" {
-            Task { await Session.shared.start(source: .keyboard) }
+            Task {
+                await Session.shared.start(source: from == "intent" ? .app : .keyboard)
+                if from == "intent" {
+                    // Opened by the widget-extension fallback: record that the mic did start.
+                    self.group.write(IntentRun(at: .now, ranIn: .widget, micStarted: Session.shared.running, appWasActive: true),
+                                to: ProbeFile.intent)
+                    self.refresh()
+                }
+            }
         }
     }
 
@@ -83,7 +93,7 @@ final class ProbeModel {
             CheckSection(id: "Signing", checks: [signingCheck, groupCheck, keychainCheck]),
             CheckSection(id: "Keyboard", checks: [keyboardSeenCheck, fullAccessCheck, roundTripCheck, openAppCheck]),
             CheckSection(id: "Mic", checks: [micCheck(session), backgroundCheck(session)]),
-            CheckSection(id: "Start without opening Friday", checks: [intentCheck(session), activityCheck(session)]),
+            CheckSection(id: "Start without opening Friday", checks: [intentCheck, activityCheck(session)]),
             CheckSection(id: "On-device AI", checks: [speechCheck, appleAICheck]),
         ]
     }
@@ -177,17 +187,29 @@ final class ProbeModel {
                      hint: ok ? nil : "Turn the mic on, use another app for 2 minutes, then come back.")
     }
 
-    private func intentCheck(_ session: Session) -> Check {
-        guard let start = session.lastIntentStart else {
-            return Check(id: "intent", title: "Action button / Control Center", status: .waiting, detail: "Not tested",
-                         hint: "Add “Start Friday” to Control Center or the Action button. Close Friday, then tap it.")
+    private var intentCheck: Check {
+        let title = "Action button / Control Center"
+        guard let run = intentRun else {
+            return Check(id: "intent", title: title, status: .waiting, detail: "Not tested",
+                         hint: "Action button → Controls → Start Friday (or Shortcut → Start Friday). Close Friday, then press it.")
         }
-        let ok = start.micStarted && !start.appWasActive
-        let detail = start.micStarted
-            ? (start.appWasActive ? "Mic started, but Friday was open" : "Mic started without opening Friday")
-            : "Ran, but the mic didn't start"
-        return Check(id: "intent", title: "Action button / Control Center", status: ok ? .pass : .fail,
-                     detail: "\(detail) · \(ageLabel(now.timeIntervalSince(start.at)))")
+        let age = ageLabel(now.timeIntervalSince(run.at))
+        switch run.ranIn {
+        case .app where run.micStarted && !run.appWasActive:
+            return Check(id: "intent", title: title, status: .pass,
+                         detail: "Mic started without opening Friday · \(age)")
+        case .app where run.appWasActive:
+            return Check(id: "intent", title: title, status: .waiting,
+                         detail: "Ran while Friday was open · \(age)",
+                         hint: "Swipe Friday away from the app switcher, then press it again.")
+        case .app:
+            return Check(id: "intent", title: title, status: .fail, detail: "Ran, but the mic didn't start · \(age)")
+        case .widget:
+            return Check(id: "intent", title: title, status: .fail,
+                         detail: run.micStarted ? "Had to open Friday to start the mic · \(age)"
+                                                : "Ran in the widget; Friday didn't open · \(age)",
+                         hint: "Try the other setup: Action button → Shortcut → Start Friday.")
+        }
     }
 
     private func activityCheck(_ session: Session) -> Check {

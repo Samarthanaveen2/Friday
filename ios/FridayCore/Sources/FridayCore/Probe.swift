@@ -4,6 +4,7 @@ import Foundation
 public enum ProbeFile {
     public static let app = "probe-app.json"
     public static let keyboard = "probe-keyboard.json"
+    public static let intent = "probe-intent.json"
 }
 
 public enum ProbeNotice {
@@ -29,6 +30,28 @@ public struct AppBeat: Codable, Equatable, Sendable {
         self.inBackground = inBackground
         self.bestBackgroundSeconds = bestBackgroundSeconds
         self.lastPingSeen = lastPingSeen
+    }
+}
+
+/// Written by "Start Friday" wherever it runs (app or widget extension).
+public struct IntentRun: Codable, Equatable, Sendable {
+    public enum Place: String, Codable, Sendable {
+        /// Ran in the app process: can start the mic without opening Friday.
+        case app
+        /// Ran in the widget extension: had to open Friday to start the mic.
+        case widget
+    }
+
+    public var at: Date
+    public var ranIn: Place
+    public var micStarted: Bool
+    public var appWasActive: Bool
+
+    public init(at: Date, ranIn: Place, micStarted: Bool, appWasActive: Bool) {
+        self.at = at
+        self.ranIn = ranIn
+        self.micStarted = micStarted
+        self.appWasActive = appWasActive
     }
 }
 

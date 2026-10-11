@@ -99,7 +99,10 @@ targets:
     platform: iOS
     sources:
       - FridayLive
+      - Shared/Group
       - Shared/Live
+    dependencies:
+      - package: FridayCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.samarth.friday.live
