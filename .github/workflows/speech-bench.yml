@@ -1,0 +1,25 @@
+name: Speech bench
+
+# How many words each speech-to-text setup loses on 30 real, long Indian-English dictations.
+# Manual, or when the bench itself changes. Uses part of Groq's free hourly audio allowance.
+on:
+  push:
+    branches: [claude/affectionate-fermat-scvp7y]
+    paths: ["ios/tools/speech_bench.py", "ios/speechbench/**", ".github/workflows/speech-bench.yml"]
+  workflow_dispatch:
+    inputs:
+      setups:
+        description: "Setups to compare (model[+prompt], space separated)"
+        default: "whisper-large-v3-turbo+prompt whisper-large-v3+prompt"
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+      - run: python3 -I ios/tools/speech_bench.py ios/speechbench ${{ github.event.inputs.setups || 'whisper-large-v3-turbo+prompt whisper-large-v3+prompt' }} | tee bench.txt
+      - run: sed -n '/^| setup/,$p' bench.txt >> "$GITHUB_STEP_SUMMARY"
