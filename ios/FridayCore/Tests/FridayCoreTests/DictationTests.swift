@@ -128,6 +128,11 @@ final class GuardTests: XCTestCase {
                                           transcript: "email the professor asking for an extension").accepted)
     }
 
+    func testAcceptsHeavySelfCorrection() {
+        let said = "I know what I need to do this weekend. I need to hang out with my friends. No, no. No wait. I need to study. No, that's not it. What do I need to do? I think I need.. I think.. Yeah, I think I need to go to the swimming pool."
+        XCTAssertTrue(CleanupGuard.check(output: "I know what I need to do this weekend. I need to go to the swimming pool.", transcript: said).accepted)
+    }
+
     func testRejectsLongerOutput() {
         XCTAssertFalse(CleanupGuard.check(output: "ok ok ok ok ok ok ok ok ok ok ok ok ok ok", transcript: "ok").accepted)
     }

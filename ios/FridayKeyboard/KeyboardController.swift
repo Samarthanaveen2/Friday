@@ -20,6 +20,8 @@ final class KeyboardController {
     @ObservationIgnored private var watchdog: Task<Void, Never>?
     @ObservationIgnored private var stripTask: Task<Void, Never>?
     @ObservationIgnored private var tone: Tone
+    /// Replies already acted on (request id + kind), so a repeat delivery does nothing.
+    @ObservationIgnored private var seenReplies: Set<String> = []
     /// Set when 🎤 opened Friday to start the session: once it's live, start dictating by itself.
     @ObservationIgnored private var autoStartUntil: Date?
     @ObservationIgnored private var autoStartTimer: Timer?
@@ -190,8 +192,12 @@ final class KeyboardController {
 
     private func handleReply() {
         guard let reply = store.read(AppReply.self, from: BridgeFile.reply) else { return }
+        let key = "\(reply.requestID)-\(reply.kind.rawValue)"
+        guard !seenReplies.contains(key) else { return }
+        seenReplies.insert(key)
         guard let pending, reply.requestID == pending.id else {
-            if reply.kind == .result { model.strip = .pasteLast }
+            // A fresh result nobody was waiting for (e.g. the keyboard was reloaded mid-dictation).
+            if reply.kind == .result, Date.now.timeIntervalSince(reply.at) < 30 { model.strip = .pasteLast }
             return
         }
         switch reply.kind {

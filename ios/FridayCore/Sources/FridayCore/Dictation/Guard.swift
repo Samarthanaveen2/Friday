@@ -23,19 +23,17 @@ public enum CleanupGuard {
             pool[word]! -= 1
             matched += 1
         }
+        // Precision only: the output's words must come from what was said. Dropping words is
+        // the job (fillers, false starts, "no wait, actually…"), so how much was removed doesn't count.
         let overlap = Double(matched) / Double(o.count)
-        let recall = t.isEmpty ? 1 : Double(matched) / Double(t.count)
-        // Never add facts: no new numbers, and a question keeps its question word.
+        // Never add facts: no new numbers.
         let addsNumbers = o.filter { $0 == "#" }.count > t.filter { $0 == "#" }.count
-        let questionWords: Set<String> = ["what", "when", "where", "why", "who", "how", "which"]
-        let dropsQuestion = t.contains(where: questionWords.contains) && !o.contains(where: questionWords.contains)
         let outChars = Double(output.trimmingCharacters(in: .whitespacesAndNewlines).count)
         let inChars = Double(max(1, transcript.trimmingCharacters(in: .whitespacesAndNewlines).count))
         let ratio = outChars / inChars
         let minOverlap = relaxed ? 0.5 : 0.7
         let maxLength = (relaxed ? 1.5 : 1.3) * inChars + 12
-        let accepted = overlap >= minOverlap && recall >= (relaxed ? 0.3 : 0.4) && outChars <= maxLength
-            && !addsNumbers && (relaxed || !dropsQuestion)
+        let accepted = overlap >= minOverlap && outChars <= maxLength && !addsNumbers
         return Verdict(accepted: accepted, overlap: overlap, lengthRatio: ratio)
     }
 

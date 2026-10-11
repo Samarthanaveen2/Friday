@@ -80,7 +80,16 @@ enum DarwinNotice {
             CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName(name as CFString), nil, nil, true)
     }
 
+    nonisolated(unsafe) private static var observed: Set<String> = []
+    private static let lock = NSLock()
+
+    /// Registers once per process, however many times it's called (each keyboard load
+    /// calls it; registering twice would deliver every message twice).
     static func observe(_ name: String) {
+        lock.lock()
+        let isNew = observed.insert(name).inserted
+        lock.unlock()
+        guard isNew else { return }
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(), nil,
             { _, _, cfName, _, _ in
