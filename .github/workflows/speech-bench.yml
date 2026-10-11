@@ -2,11 +2,8 @@ name: Speech bench
 
 # How many words each speech-to-text setup loses on 30 real, long Indian-English dictations.
 # Manual, or when the bench itself changes. Uses part of Groq's free hourly audio allowance.
+# Manual only: each run spends Groq's free daily allowance, which the phone shares.
 on:
-  push:
-    branches: [claude/affectionate-fermat-scvp7y]
-    paths: ["ios/tools/speech_bench.py", "ios/speechbench/**",
-            "ios/FridayCore/Sources/FridayEval/**", ".github/workflows/speech-bench.yml"]
   workflow_dispatch:
     inputs:
       setups:
