@@ -28,13 +28,16 @@ final class CloudClient: Sendable {
         Task.detached { _ = try? await session.data(for: request) }
     }
 
-    func transcribe(wav: Data, prompt: String, key: String) async throws -> String {
+    /// `m4a`: the audio is compressed AAC instead of WAV.
+    func transcribe(wav: Data, prompt: String, key: String, m4a: Bool = false) async throws -> String {
         let boundary = "friday-\(UUID().uuidString)"
         var request = URLRequest(url: Models.groqBase.appendingPathComponent("audio/transcriptions"))
         request.httpMethod = "POST"
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = CloudRequests.whisperBody(wav: wav, prompt: prompt, boundary: boundary)
+        request.httpBody = m4a
+            ? CloudRequests.whisperBody(wav: wav, prompt: prompt, boundary: boundary, filename: "audio.m4a", contentType: "audio/mp4")
+            : CloudRequests.whisperBody(wav: wav, prompt: prompt, boundary: boundary)
         let data = try await send(request)
         guard let text = CloudRequests.whisperText(data) else { throw CloudError(kind: .empty) }
         return text

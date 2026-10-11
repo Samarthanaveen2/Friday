@@ -8,6 +8,8 @@ struct SpeechResult: Sendable {
     var deviceText: String?
     var ms: Int?
     var by: Provider
+    /// How long dictations were sent ("whole 50 s" or "4 pieces"), shown under the result.
+    var detail: String? = nil
 }
 
 /// Runs cloud and on-device speech side by side for one dictation (PLAN §5).
@@ -57,6 +59,7 @@ final class Transcriber {
         let heard = recording.hasSpeech
 
         var cloud: String?
+        var detail: String?
         if heard, let key = Keys.get(.groq), QuotaBook.shared.available("groq.whisper") {
             // Back-to-back ranges from the first sample to the last: nothing can be skipped.
             var ranges = chunker.finalRanges(total: recording.samples.count)
@@ -71,13 +74,28 @@ final class Transcriber {
                     ?? upload(Array(recording.samples[range]), key: key, trim: ranges.count == 1, after: pending.last))
             }
             let tasks = pending
-            cloud = await withTimeout(ranges.count > 1 ? 2.5 : SpeechRace.cloudBudget) {
+            let joined = Task { () -> String? in
                 var parts: [String] = []
                 for task in tasks {
                     guard let text = await task.value else { return nil }
                     parts.append(text)
                 }
                 return parts.reduce("") { joinChunks($0, $1) }
+            }
+            if tasks.count == 1 {
+                cloud = await withTimeout(SpeechRace.cloudBudget) { await joined.value }
+            } else {
+                // Long dictation: also send the whole recording in one go. Whisper then keeps its own
+                // context across all of it, so nothing can drop out where pieces meet.
+                // The pieces sent while you talked are the backup if this is slow.
+                let whole = uploadWhole(recording.samples, key: key)
+                cloud = await withTimeout(3.0) { await whole.value }
+                if cloud != nil {
+                    detail = "whole \(Int(recording.duration.rounded())) s"
+                } else {
+                    cloud = await withTimeout(0.7) { await joined.value }
+                    if cloud != nil { detail = "\(tasks.count) pieces" }
+                }
             }
         }
         uploads = [:]
@@ -86,7 +104,7 @@ final class Transcriber {
         let cloudMs = Int(Date.now.timeIntervalSince(started) * 1000)
         if let cloud, case .cloud(let text) = SpeechRace.pick(cloud: cloud, device: nil, heardSpeech: heard) {
             Task { _ = await OnDeviceSpeech.shared.finish() }
-            return SpeechResult(choice: .cloud(text), cloudText: cloud, deviceText: nil, ms: cloudMs, by: .groq)
+            return SpeechResult(choice: .cloud(text), cloudText: cloud, deviceText: nil, ms: cloudMs, by: .groq, detail: detail)
         }
         let device = await withTimeout(2.0) { await OnDeviceSpeech.shared.finish() }
         let choice = SpeechRace.pick(cloud: cloud, device: device, heardSpeech: heard)
@@ -116,6 +134,23 @@ final class Transcriber {
 
     /// Sends one piece. With `after`, it first waits (up to 3 s) for the previous piece's text and
     /// passes its last words to Whisper, so a sentence split at a pause reads as one.
+    /// The full recording as one compressed file (WAV if compressing fails).
+    private func uploadWhole(_ samples: [Float], key: String) -> Task<String?, Never> {
+        let prompt = prompt
+        QuotaBook.shared.record("groq.whisper")
+        return Task.detached {
+            let audio = Recording(samples: samples).trimmed().samples
+            let m4a = M4A.encode(audio)
+            do {
+                return try await CloudClient.shared.transcribe(wav: m4a ?? WAV.encode(audio), prompt: prompt,
+                                                               key: key, m4a: m4a != nil)
+            } catch {
+                await MainActor.run { QuotaBook.shared.failed("groq.whisper", error) }
+                return nil
+            }
+        }
+    }
+
     private func upload(_ samples: [Float], key: String, trim: Bool,
                         after previous: Task<String?, Never>? = nil) -> Task<String?, Never> {
         let audio = trim ? Recording(samples: samples).trimmed().samples : samples

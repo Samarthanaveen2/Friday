@@ -15,6 +15,14 @@ final class RequestTests: XCTestCase {
         XCTAssertTrue(text.hasSuffix("\r\n--XYZ--\r\n"))
         XCTAssertFalse(String(decoding: CloudRequests.whisperBody(wav: Data(), prompt: "", boundary: "B"), as: UTF8.self)
             .contains("name=\"prompt\""))
+        let m4a = String(decoding: CloudRequests.whisperBody(wav: Data(), prompt: "", boundary: "B",
+                                                             filename: "audio.m4a", contentType: "audio/mp4"), as: UTF8.self)
+        XCTAssertTrue(m4a.contains("filename=\"audio.m4a\"\r\nContent-Type: audio/mp4\r\n\r\n"))
+    }
+
+    func testWhisperPromptAsksForEveryWord() {
+        XCTAssertEqual(Dictation(dictionary: []).whisperPrompt(), Dictation.verbatimStyle)
+        XCTAssertEqual(Dictation(dictionary: ["Samarth", "Groq"]).whisperPrompt(), Dictation.verbatimStyle + " Samarth, Groq")
     }
 
     func testChatBody() throws {

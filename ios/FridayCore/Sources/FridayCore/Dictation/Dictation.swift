@@ -57,8 +57,14 @@ public struct Dictation: Sendable {
     }
 
     /// Whisper's `prompt`: the dictionary words most likely to come up (≤ ~30, RISKS B6).
+    /// Whisper copies the style of its prompt. A loose, spoken-style prompt makes it write down
+    /// everything said, word for word (false starts, "no wait", repeats), instead of quietly
+    /// tidying it and dropping parts; the cleanup AI then does the tidying with full context.
+    public static let verbatimStyle = "Umm, let me think like, hmm... Okay, here's what I'm, like, thinking."
+
     public func whisperPrompt() -> String {
-        dictionary.prefix(30).joined(separator: ", ")
+        let words = dictionary.prefix(30).joined(separator: ", ")
+        return words.isEmpty ? Dictation.verbatimStyle : Dictation.verbatimStyle + " " + words
     }
 
     /// Prompt for one piece of a long dictation: the dictionary, then the last words of the

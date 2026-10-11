@@ -3,7 +3,9 @@ import Foundation
 /// Request bodies and reply parsing for the OpenAI-compatible endpoints (Groq, Gemini).
 public enum CloudRequests {
     /// Multipart body for /audio/transcriptions (PLAN §4: language en, temperature 0, dictionary as prompt).
-    public static func whisperBody(wav: Data, prompt: String, boundary: String, model: String = Models.whisper) -> Data {
+    /// The audio is WAV by default; long dictations go as compressed `audio.m4a` (`audio/mp4`).
+    public static func whisperBody(wav: Data, prompt: String, boundary: String, model: String = Models.whisper,
+                                   filename: String = "audio.wav", contentType: String = "audio/wav") -> Data {
         var body = Data()
         func field(_ name: String, _ value: String) {
             body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
@@ -13,7 +15,7 @@ public enum CloudRequests {
         field("temperature", "0")
         field("response_format", "json")
         if !prompt.isEmpty { field("prompt", prompt) }
-        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\n".utf8))
+        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\nContent-Type: \(contentType)\r\n\r\n".utf8))
         body.append(wav)
         body.append(Data("\r\n--\(boundary)--\r\n".utf8))
         return body
