@@ -65,11 +65,12 @@ final class Transcriber {
                 ranges.removeLast()
             }
             // Each piece not sent yet (normally just the tail) hears the text of the piece before it.
-            var tasks: [Task<String?, Never>] = []
+            var pending: [Task<String?, Never>] = []
             for range in ranges {
-                tasks.append(uploads[range.lowerBound]
-                    ?? upload(Array(recording.samples[range]), key: key, trim: ranges.count == 1, after: tasks.last))
+                pending.append(uploads[range.lowerBound]
+                    ?? upload(Array(recording.samples[range]), key: key, trim: ranges.count == 1, after: pending.last))
             }
+            let tasks = pending
             cloud = await withTimeout(ranges.count > 1 ? 2.5 : SpeechRace.cloudBudget) {
                 var parts: [String] = []
                 for task in tasks {
