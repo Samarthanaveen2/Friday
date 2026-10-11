@@ -9,17 +9,24 @@ import Speech
 struct AppleSpeech {
     static func main() async throws {
         let folder = URL(fileURLWithPath: CommandLine.arguments[1])
+        let installed = await SpeechTranscriber.installedLocales
+        FileHandle.standardError.write(Data("installed \(installed.map(\.identifier))\n".utf8))
         let wanted = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-IN"))
         let fallback = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US"))
-        guard let locale = wanted ?? fallback else { fatalError("SpeechTranscriber has no English model here") }
+        let ready = installed.first { $0.language.languageCode?.identifier == "en" }
+        guard let locale = ready ?? wanted ?? fallback else { fatalError("SpeechTranscriber has no English model here") }
         FileHandle.standardError.write(Data("locale \(locale.identifier)\n".utf8))
         // Models are per-app "reservations"; reserve English before checking the download.
         if let reserved = try? await AssetInventory.reserve(locale: locale) {
             FileHandle.standardError.write(Data("reserved \(reserved)\n".utf8))
         }
         let probe = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [], attributeOptions: [])
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [probe]) {
-            try await request.downloadAndInstall()
+        do {
+            if let request = try await AssetInventory.assetInstallationRequest(supporting: [probe]) {
+                try await request.downloadAndInstall()
+            }
+        } catch {
+            FileHandle.standardError.write(Data("model download: \(error.localizedDescription) (trying anyway)\n".utf8))
         }
 
         let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
