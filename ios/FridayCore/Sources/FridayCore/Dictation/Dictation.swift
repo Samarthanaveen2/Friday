@@ -33,7 +33,7 @@ public struct Dictation: Sendable {
 
     /// Step 1, before any AI: fix rules, then snippets. This is what the AI sees.
     public func prepare(_ transcript: String) -> String {
-        snippets.apply(fixRules.apply(transcript))
+        Spoken.symbols(snippets.apply(fixRules.apply(transcript)))
     }
 
     /// Step 2: pick the AI result if the guard accepts it, else the rule-based cleanup,
@@ -43,7 +43,7 @@ public struct Dictation: Sendable {
         let chosen = CleanupGuard.choose(aiOutput: aiOutput, transcript: prepared, fallback: ruleBased,
                                          relaxed: tone != .asSaid || Dictation.hasCommand(prepared))
         // Same final touches whichever text was chosen: rupee amounts, then misspelled names.
-        let polished = DictionaryFix(dictionary).apply(Money.format(fixRules.apply(chosen)))
+        let polished = DictionaryFix(dictionary).apply(Spoken.phoneNumbers(Money.format(fixRules.apply(chosen))))
         let keep = Set(dictionary.flatMap { [$0, $0.lowercased()] })
         return Continuation.apply(polished, after: context, keepCase: keep)
     }
@@ -71,10 +71,13 @@ public struct Dictation: Sendable {
     /// everything said, word for word (false starts, "no wait", repeats), instead of quietly
     /// tidying it and dropping parts; the cleanup AI then does the tidying with full context.
     public static let verbatimStyle = "Umm, let me think like, hmm... Okay, here's what I'm, like, thinking."
+    /// Indian words Whisper often misspells ("ATA" for atta), so it sees the right spelling.
+    public static let indianWords = "Atta, paneer, dal, chana, ghee, roti, sabzi, chai, yaar, lakh, crore, UPI."
 
     public func whisperPrompt() -> String {
         let words = dictionary.prefix(30).joined(separator: ", ")
-        return words.isEmpty ? Dictation.verbatimStyle : Dictation.verbatimStyle + " " + words
+        let base = Dictation.verbatimStyle + " " + Dictation.indianWords
+        return words.isEmpty ? base : base + " " + words
     }
 
     /// Prompt for one piece of a long dictation: the dictionary, then the last words of the

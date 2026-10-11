@@ -6,8 +6,11 @@ import Foundation
 /// percentages, "$" amounts and plain numbers stay as they are.
 public enum Money {
     public static func format(_ text: String) -> String {
-        guard Rx.contains(text, "₹|rs|inr|rupee") else { return text }
-        var t = Rx.replace(text, prefixed) { rewrite($0) }
+        // "the 2500 lab fee", "owes me 850": money words that mean rupees without saying so.
+        var t = Rx.replace(text, feeAfter, with: "₹$1$2")
+        t = Rx.replace(t, owedBefore, with: "$1₹$2")
+        guard Rx.contains(t, "₹|rs|inr|rupee") else { return t }
+        t = Rx.replace(t, prefixed) { rewrite($0) }
         t = Rx.replace(t, suffixed) { rewrite($0) }
         return t
     }
@@ -24,6 +27,11 @@ public enum Money {
     private static let suffixed = Rx.make("(?<![\\p{L}\\p{N}:.,₹])" + amount + scale + "\\s*" + after)
 
     private static let parts = Rx.make(amount + scale)
+
+    /// A bare amount (≥ 2 digits) followed within two words by fee/rent/deposit/fine/bill.
+    private static let feeAfter = ("(?<![\\p{L}\\p{N}:.,₹$])(\\d{2,}(?:,\\d{2,3})*)((?:\\s+[a-z]+){0,2}\\s+(?:fees?|rent|deposit|fine|bill)" + Rx.wordEnd + ")")
+    /// "owes me 850", "paid 2000", "costs 1200" (not followed by a unit like pages or km).
+    private static let owedBefore = (Rx.wordStart + "((?:owes?|owed)(?:\\s+(?:me|you|us|him|her))?\\s+|paid\\s+|costs?\\s+|spent\\s+)(\\d{2,}(?:,\\d{2,3})*)(?![\\p{N}:.%])(?!\\s*(?:%|pages?|km|kms|kg|kgs|g|gb|mb|hours?|hrs?|minutes?|mins?|people|times|marks|points|steps|days?|weeks?|months?|years?|dollars|usd|\\$))")
 
     private static func rewrite(_ match: String) -> String {
         let ns = match as NSString

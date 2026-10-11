@@ -110,3 +110,28 @@ final class FinishPolishTests: XCTestCase {
                        " Priya still owes ₹1,50,000.")
     }
 }
+
+final class SpokenTests: XCTestCase {
+    func testEmailLinkAndPhone() {
+        let raw = "Mail it to samarth underscore n07 at gmail dot com, and the form is at forms dot gle slash friday"
+        XCTAssertEqual(Spoken.symbols(raw), "Mail it to samarth_n07@gmail.com, and the form is at forms.gle/friday")
+        XCTAssertEqual(Spoken.symbols("the form is at forms.gle slash friday"), "the form is at forms.gle/friday")
+        XCTAssertEqual(Spoken.symbols("write to priya at iitkgp dot ac dot in"), "write to priya@iitkgp.ac.in")
+        XCTAssertEqual(Spoken.phoneNumbers("my number is 984-50-12346 and"), "my number is 9845012346 and")
+        XCTAssertEqual(Spoken.phoneNumbers("call 98450 12346 now"), "call 9845012346 now")
+    }
+
+    func testLeavesOrdinaryTextAlone() {
+        XCTAssertEqual(Spoken.symbols("meet at the cafe at 5"), "meet at the cafe at 5")
+        XCTAssertEqual(Spoken.symbols("connect the dot to the line"), "connect the dot to the line")
+        XCTAssertEqual(Spoken.phoneNumbers("on 12-05-2026 at 5:30"), "on 12-05-2026 at 5:30")
+        XCTAssertEqual(Spoken.phoneNumbers("pages 10-20 and 7 people"), "pages 10-20 and 7 people")
+    }
+
+    func testMoneyWordsWithoutRupees() {
+        XCTAssertEqual(Money.format("Remind me to pay the 2500 lab fee by Thursday."), "Remind me to pay the ₹2,500 lab fee by Thursday.")
+        XCTAssertEqual(Money.format("Priya owes me 850 and Arjun paid 2000 for the hotel."), "Priya owes me ₹850 and Arjun paid ₹2,000 for the hotel.")
+        XCTAssertEqual(Money.format("The report is 38 pages and I paid 3 visits."), "The report is 38 pages and I paid 3 visits.")
+        XCTAssertEqual(Money.format("He spent 40 minutes there."), "He spent 40 minutes there.")
+    }
+}

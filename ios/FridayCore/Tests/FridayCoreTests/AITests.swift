@@ -21,8 +21,9 @@ final class RequestTests: XCTestCase {
     }
 
     func testWhisperPromptAsksForEveryWord() {
-        XCTAssertEqual(Dictation(dictionary: []).whisperPrompt(), Dictation.verbatimStyle)
-        XCTAssertEqual(Dictation(dictionary: ["Samarth", "Groq"]).whisperPrompt(), Dictation.verbatimStyle + " Samarth, Groq")
+        let base = Dictation.verbatimStyle + " " + Dictation.indianWords
+        XCTAssertEqual(Dictation(dictionary: []).whisperPrompt(), base)
+        XCTAssertEqual(Dictation(dictionary: ["Samarth", "Groq"]).whisperPrompt(), base + " Samarth, Groq")
     }
 
     func testChatBody() throws {
