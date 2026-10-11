@@ -26,6 +26,7 @@ final class DictationPipeline {
         let session = Session.shared
         guard session.startDictation() else { return false }
         Transcriber.shared.begin(sink: session.sink, prompt: dictation.whisperPrompt())
+        Cleaner.shared.prewarm()
         return true
     }
 
@@ -74,5 +75,6 @@ final class DictationPipeline {
     static func warm() {
         if let key = Keys.get(.groq) { CloudClient.shared.warm(key: key) }
         Task { _ = await OnDeviceSpeech.shared.prepare() }
+        Cleaner.shared.prewarm()
     }
 }

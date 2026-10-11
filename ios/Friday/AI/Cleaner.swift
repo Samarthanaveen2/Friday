@@ -16,6 +16,18 @@ final class Cleaner {
         var notes: [String] = []
     }
 
+    /// Kept alive so Apple's model stays loaded between dictations.
+    private var warmSession: LanguageModelSession?
+
+    /// Loads Apple's on-device model ahead of time (called when a dictation starts), so it
+    /// answers in time instead of spending the budget loading.
+    func prewarm() {
+        guard case .available = SystemLanguageModel.default.availability else { return }
+        let session = LanguageModelSession(instructions: Dictation.systemPrompt)
+        session.prewarm()
+        warmSession = session
+    }
+
     private enum Attempt: Sendable {
         case reply(String)
         case error(String)
@@ -70,7 +82,9 @@ final class Cleaner {
             if let good = accepted(reply, "Gemini") { return done(good, .gemini) }
         }
         if case .available = SystemLanguageModel.default.availability {
-            let reply = await withTimeout(2.5) { () async -> Attempt? in
+            // With no cloud answer it's the main AI, so it gets more time.
+            let cloudTried = Keys.get(.groq) != nil || Keys.get(.gemini) != nil
+            let reply = await withTimeout(cloudTried ? 3.0 : 6.0) { () async -> Attempt? in
                 let session = LanguageModelSession(instructions: Dictation.systemPrompt)
                 do {
                     return .reply(try await session.respond(to: message).content)
