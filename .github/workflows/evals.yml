@@ -1,0 +1,21 @@
+name: Evals
+
+on:
+  push:
+    branches: [claude/affectionate-fermat-scvp7y]
+    paths: ["ios/evals/**", "ios/FridayCore/Sources/FridayCore/Dictation/**", ".github/workflows/evals.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: evals
+  cancel-in-progress: true
+
+jobs:
+  dictation:
+    name: Dictation evals (real Groq)
+    runs-on: ubuntu-latest
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 ios/evals/run.py
