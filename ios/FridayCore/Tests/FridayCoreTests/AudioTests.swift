@@ -91,6 +91,54 @@ final class ChunkPlannerTests: XCTestCase {
     }
 }
 
+final class LiveChunkerTests: XCTestCase {
+    /// Feeds the audio as it would arrive, in 1.5 s steps, like the app's timer.
+    private func runLive(_ samples: [Float]) -> (LiveChunker, [Range<Int>]) {
+        var chunker = LiveChunker()
+        var uploaded: [Range<Int>] = []
+        var n = 0
+        while n < samples.count {
+            n = min(samples.count, n + Int(1.5 * Double(rate)))
+            let sofar = Array(samples[0..<n])
+            while let range = chunker.update(samples: sofar) { uploaded.append(range) }
+        }
+        return (chunker, uploaded)
+    }
+
+    func testCoversEverySampleWithNoGaps() {
+        // 40 s with pauses at 9–10, 18–19, 27–28 s and loud and quiet stretches.
+        let samples = audio(seconds: 40, speech: [0.5...9, 10...18, 19...27, 28...39.5])
+        let (chunker, uploaded) = runLive(samples)
+        let ranges = chunker.finalRanges(total: samples.count)
+        XCTAssertGreaterThanOrEqual(ranges.count, 2)
+        XCTAssertEqual(ranges.first?.lowerBound, 0)
+        XCTAssertEqual(ranges.last?.upperBound, samples.count)
+        for (a, b) in zip(ranges, ranges.dropFirst()) { XCTAssertEqual(a.upperBound, b.lowerBound) }
+        // Everything uploaded live is exactly one of the final ranges (reused as-is).
+        for range in uploaded { XCTAssertTrue(ranges.contains(range)) }
+    }
+
+    func testCutsOnlyInPausesAndNeverMove() {
+        let samples = audio(seconds: 40, speech: [0.5...9, 10...18, 19...27, 28...39.5])
+        let (chunker, _) = runLive(samples)
+        for cut in chunker.cuts {
+            let t = Double(cut) / Double(rate)
+            XCTAssertTrue([9.0...10.0, 18.0...19.0, 27.0...28.0].contains { $0.contains(t) }, "cut at \(t)")
+        }
+        var again = chunker
+        XCTAssertNil(again.update(samples: samples))
+        XCTAssertEqual(again.cuts, chunker.cuts)
+    }
+
+    func testShortRecordingsStayWhole() {
+        let samples = audio(seconds: 12, speech: [0.5...5, 6...11])
+        let (chunker, uploaded) = runLive(samples)
+        XCTAssertEqual(uploaded, [])
+        XCTAssertEqual(chunker.finalRanges(total: samples.count), [0..<samples.count])
+        XCTAssertEqual(LiveChunker().finalRanges(total: 0), [])
+    }
+}
+
 final class WAVTests: XCTestCase {
     func testHeaderAndSamples() {
         let data = WAV.encode([0, 1, -1, 2])

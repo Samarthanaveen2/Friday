@@ -174,6 +174,63 @@ public enum ChunkPlanner {
     }
 }
 
+/// Cuts a long dictation at pauses *while you're talking*, so finished parts upload early.
+/// A cut never moves once made, and the final ranges cover every sample exactly once:
+/// no audio can fall between two chunks (RISKS B3).
+public struct LiveChunker: Sendable {
+    /// Recordings shorter than this are never cut.
+    public static let startAfter: Double = 15
+    public static let minPause: Double = 0.6
+    public static let minChunk: Double = 6
+    /// Leave the newest audio alone: the pause there may still be growing into speech.
+    public static let keepClearOfEnd: Double = 1
+
+    public private(set) var cuts: [Int] = []
+
+    public init() {}
+
+    /// Looks only at the audio after the last cut. If it holds a qualifying pause, commits a cut
+    /// in its middle and returns the finished chunk to upload. Call repeatedly until nil.
+    public mutating func update(samples: [Float]) -> Range<Int>? {
+        let rate = Double(AudioFormat.sampleRate)
+        guard Double(samples.count) / rate > LiveChunker.startAfter else { return nil }
+        let start = cuts.last ?? 0
+        let end = samples.count - Int(LiveChunker.keepClearOfEnd * rate)
+        guard end - start > Int(LiveChunker.minChunk * rate) else { return nil }
+
+        let flags = SpeechFrames.detect(Array(samples[start..<end]))
+        let pauseFrames = Int(LiveChunker.minPause / AudioFormat.frameSeconds)
+        let minFrames = Int(LiveChunker.minChunk / AudioFormat.frameSeconds)
+        var i = 0
+        while i < flags.count {
+            guard !flags[i] else { i += 1; continue }
+            var j = i
+            while j < flags.count, !flags[j] { j += 1 }
+            let middle = (i + j) / 2
+            // Long enough, far enough from the last cut, and speech came back after it.
+            if j - i >= pauseFrames, middle >= minFrames, j < flags.count {
+                let cut = start + middle * AudioFormat.frameSize
+                cuts.append(cut)
+                return start..<cut
+            }
+            i = j
+        }
+        return nil
+    }
+
+    /// Every chunk in order, back to back from the first sample to the last.
+    public func finalRanges(total: Int) -> [Range<Int>] {
+        var ranges: [Range<Int>] = []
+        var start = 0
+        for cut in cuts where cut > start && cut < total {
+            ranges.append(start..<cut)
+            start = cut
+        }
+        if start < total { ranges.append(start..<total) }
+        return ranges
+    }
+}
+
 /// 16-bit PCM WAV, the upload format for Groq Whisper.
 public enum WAV {
     public static func encode(_ samples: ArraySlice<Float>, sampleRate: Int = AudioFormat.sampleRate) -> Data {

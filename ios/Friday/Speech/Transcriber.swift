@@ -20,11 +20,14 @@ final class Transcriber {
     private var chunkTimer: Timer?
     /// Uploads already running, keyed by the chunk's first sample.
     private var uploads: [Int: Task<String?, Never>] = [:]
+    /// Decides the cut points; they never move, so live uploads always line up with the end result.
+    private var chunker = LiveChunker()
     private var prompt = ""
 
     func begin(sink: AudioSink, prompt: String) {
         self.prompt = prompt
         uploads = [:]
+        chunker = LiveChunker()
         let (stream, continuation) = AsyncStream.makeStream(of: [Float].self)
         feed = continuation
         sink.setLive { samples in continuation.yield(samples) }
@@ -51,13 +54,16 @@ final class Transcriber {
 
         var cloud: String?
         if heard, let key = Keys.get(.groq), QuotaBook.shared.available("groq.whisper") {
-            let ranges = recording.duration > ChunkPlanner.wholeUpTo
-                ? ChunkPlanner.chunks(recording)
-                : [0..<recording.samples.count]
+            // Back-to-back ranges from the first sample to the last: nothing can be skipped.
+            var ranges = chunker.finalRanges(total: recording.samples.count)
+            // Only a final tail with no speech is left out (Whisper invents text on silence).
+            if ranges.count > 1, let tail = ranges.last, !Recording(samples: Array(recording.samples[tail])).hasSpeech {
+                ranges.removeLast()
+            }
             let tasks = ranges.map { range in
                 uploads[range.lowerBound] ?? upload(Array(recording.samples[range]), key: key, trim: ranges.count == 1)
             }
-            cloud = await withTimeout(SpeechRace.cloudBudget) {
+            cloud = await withTimeout(ranges.count > 1 ? 2.5 : SpeechRace.cloudBudget) {
                 var parts: [String] = []
                 for task in tasks {
                     guard let text = await task.value else { return nil }
@@ -88,14 +94,12 @@ final class Transcriber {
         feed = nil
     }
 
-    /// Uploads every chunk that ends at a pause, except the last (still being spoken).
+    /// Commits cuts at pauses and uploads each finished chunk while you keep talking.
     private func uploadFinishedChunks(sink: AudioSink) {
-        guard let key = Keys.get(.groq) else { return }
-        let recording = Recording(samples: sink.snapshot())
-        guard recording.duration > ChunkPlanner.wholeUpTo else { return }
-        for range in ChunkPlanner.chunks(recording).dropLast() where uploads[range.lowerBound] == nil {
-            guard QuotaBook.shared.available("groq.whisper") else { return }
-            uploads[range.lowerBound] = upload(Array(recording.samples[range]), key: key, trim: false)
+        guard let key = Keys.get(.groq), QuotaBook.shared.available("groq.whisper") else { return }
+        let samples = sink.snapshot()
+        while let range = chunker.update(samples: samples) {
+            uploads[range.lowerBound] = upload(Array(samples[range]), key: key, trim: false)
         }
     }
 
