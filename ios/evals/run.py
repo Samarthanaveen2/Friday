@@ -5,7 +5,7 @@ Uses the same system prompt and message format as the app (FridayCore Dictation.
 A case passes when the cleaned text matches one of the expected answers, ignoring case,
 spaces and trailing punctuation differences.
 """
-import argparse, json, os, re, sys, time, urllib.request
+import argparse, json, os, re, sys, time, urllib.error, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SWIFT = os.path.join(HERE, "..", "FridayCore", "Sources", "FridayCore", "Dictation", "Dictation.swift")
@@ -34,9 +34,14 @@ def call(key, model, system, user):
     body = json.dumps({"model": model, "temperature": 0, "max_tokens": 1200, "reasoning_effort": "low", "include_reasoning": False,
                        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}).encode()
     req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=body,
-                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)["choices"][0]["message"]["content"]
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                                          # Groq's firewall blocks Python's default user agent.
+                                          "User-Agent": "FridayEvals/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.load(r)["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"HTTP {e.code}: {e.read()[:200]!r}") from None
 
 
 def main():
