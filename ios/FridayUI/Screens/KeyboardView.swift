@@ -89,6 +89,8 @@ struct KeyboardView: View {
                     .frame(height: 44)
             }
             .accessibilityLabel("Tone: \(model.tone)")
+            // Messages and Undo · Raw take the middle of the bar; Tone steps aside.
+            .opacity(model.strip == nil ? 1 : 0)
             Button(action: actions.mic) {
                 HStack(spacing: 7) {
                     Image(systemName: "mic.fill")
