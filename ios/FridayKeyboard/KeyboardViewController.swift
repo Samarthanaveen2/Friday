@@ -9,6 +9,7 @@ final class KeyboardViewController: UIInputViewController {
     private var ping = 0
     private var roundTrip = false
     private var timer: Timer?
+    private var openNote: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -117,6 +118,7 @@ final class KeyboardViewController: UIInputViewController {
             lines.append("App: not seen yet")
         }
         lines.append("Round trip: \(roundTrip ? "✓" : ping > 0 ? "waiting…" : "tap Ping")")
+        if let openNote { lines.append(openNote) }
         statusLabel.text = lines.joined(separator: "\n")
     }
 
@@ -142,19 +144,44 @@ final class KeyboardViewController: UIInputViewController {
 
     @objc private func openFriday() {
         guard let url = URL(string: "friday://probe?from=keyboard") else { return }
-        // Keyboards can't call UIApplication.open directly. Walk the responder chain to the
-        // app object and call the method through the Objective-C runtime.
+        // Keyboards can't call UIApplication.open directly. Find the app object (responder chain,
+        // then sharedApplication via the runtime) and call open through the Objective-C runtime.
+        guard let app = applicationObject() else {
+            openNote = "Open: no app object ✕"
+            refresh()
+            return
+        }
         let selector = NSSelectorFromString("openURL:options:completionHandler:")
+        guard app.responds(to: selector) else {
+            openNote = "Open: method missing ✕"
+            refresh()
+            return
+        }
+        typealias OpenURL = @convention(c) (AnyObject, Selector, NSURL, NSDictionary, AnyObject?) -> Void
+        let open = unsafeBitCast(app.method(for: selector), to: OpenURL.self)
+        open(app, selector, url as NSURL, NSDictionary(), nil)
+        openNote = "Open: asked iOS (\(foundVia))"
+        refresh()
+    }
+
+    private var foundVia = ""
+
+    private func applicationObject() -> NSObject? {
         var responder: UIResponder? = self
         while let current = responder {
-            if let app = current as? UIApplication, app.responds(to: selector) {
-                typealias OpenURL = @convention(c) (AnyObject, Selector, NSURL, NSDictionary, AnyObject?) -> Void
-                let open = unsafeBitCast(app.method(for: selector), to: OpenURL.self)
-                open(app, selector, url as NSURL, NSDictionary(), nil)
-                return
+            if let app = current as? UIApplication {
+                foundVia = "chain"
+                return app
             }
             responder = current.next
         }
+        let selector = NSSelectorFromString("sharedApplication")
+        if UIApplication.responds(to: selector),
+           let app = UIApplication.perform(selector)?.takeUnretainedValue() as? NSObject {
+            foundVia = "shared"
+            return app
+        }
+        return nil
     }
 
     @objc private func typeTest() {
