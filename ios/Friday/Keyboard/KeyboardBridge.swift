@@ -96,6 +96,8 @@ final class KeyboardBridge {
 @Observable
 final class AppState {
     static let shared = AppState()
-    /// Shown after the keyboard opened Friday to start a session.
+    /// Shown after the keyboard opened Friday to start a session, if jumping back failed.
     var showSwipeBack = false
+    /// Whether the last keyboard bounce jumped back to the chat by itself.
+    var lastAutoReturn: Bool?
 }

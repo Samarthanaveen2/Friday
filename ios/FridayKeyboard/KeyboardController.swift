@@ -20,6 +20,9 @@ final class KeyboardController {
     @ObservationIgnored private var watchdog: Task<Void, Never>?
     @ObservationIgnored private var stripTask: Task<Void, Never>?
     @ObservationIgnored private var tone: Tone
+    /// Set when 🎤 opened Friday to start the session: once it's live, start dictating by itself.
+    @ObservationIgnored private var autoStartUntil: Date?
+    @ObservationIgnored private var autoStartTimer: Timer?
 
     init() {
         tone = Tone(rawValue: UserDefaults.standard.string(forKey: "tone") ?? "") ?? .asSaid
@@ -60,6 +63,25 @@ final class KeyboardController {
         store.write(KeyboardBeat(at: .now, fullAccess: input?.hasFullAccess ?? false, ping: 0, roundTrip: false),
                     to: ProbeFile.keyboard)
         if pending == nil, model.mode != .idle { model.mode = .idle }
+        if let until = autoStartUntil, Date.now < until { waitForSessionThenDictate() }
+    }
+
+    /// Back from the bounce: as soon as the app's session is live, start recording (one tap total).
+    private func waitForSessionThenDictate() {
+        autoStartTimer?.invalidate()
+        autoStartTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self, let until = self.autoStartUntil, Date.now < until else {
+                    timer.invalidate()
+                    return
+                }
+                if KeyboardLogic.sessionLive(beat: self.store.read(AppBeat.self, from: ProbeFile.app), now: .now) {
+                    timer.invalidate()
+                    self.autoStartUntil = nil
+                    if self.pending == nil { self.mic() }
+                }
+            }
+        }
     }
 
     // MARK: Typing
@@ -119,7 +141,10 @@ final class KeyboardController {
         }
         guard KeyboardLogic.sessionLive(beat: store.read(AppBeat.self, from: ProbeFile.app), now: .now) else {
             // First tap of a session: Friday has to start the mic in the foreground (PLAN §2.3).
+            // It jumps straight back and recording starts by itself.
+            autoStartUntil = Date.now.addingTimeInterval(8)
             openFriday(path: "session")
+            waitForSessionThenDictate()
             return
         }
         let request = KeyboardRequest(id: UUID().uuidString, kind: .start, documentID: documentID,
