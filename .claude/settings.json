@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/ios/scripts/install-swift.sh", "timeout": 600 }
+        ]
+      }
+    ]
+  }
+}

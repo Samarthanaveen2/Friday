@@ -1,0 +1,10 @@
+# Made by XcodeGen in CI.
+Friday.xcodeproj/
+Friday/Info.plist
+Friday/Friday.entitlements
+FridayKeyboard/Info.plist
+FridayKeyboard/FridayKeyboard.entitlements
+FridayLive/Info.plist
+FridayLive/FridayLive.entitlements
+build/
+FridayCore/.build/

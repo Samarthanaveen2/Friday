@@ -1,0 +1,91 @@
+name: iOS
+
+on:
+  push:
+    branches: [claude/affectionate-fermat-scvp7y]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: FridayCore tests
+    runs-on: ubuntu-latest
+    container: swift:6.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path ios/FridayCore
+
+  build:
+    name: Build Friday.ipa
+    needs: core
+    runs-on: macos-26
+    env:
+      RUN: ${{ github.run_number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pick newest Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: Build (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/Friday.xcodeproj -scheme Friday -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            MARKETING_VERSION=0.1.$RUN CURRENT_PROJECT_VERSION=$RUN \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tee build.log | grep -E "error:|warning: .*(Swift|concurrency)|BUILD" || true
+          test -d build/Build/Products/Release-iphoneos/Friday.app
+
+      - name: Embed entitlements (SideStore reads them to create the App Group)
+        run: |
+          APP=build/Build/Products/Release-iphoneos/Friday.app
+          codesign --force --sign - --timestamp=none \
+            --entitlements ios/FridayKeyboard/FridayKeyboard.entitlements "$APP/PlugIns/FridayKeyboard.appex"
+          codesign --force --sign - --timestamp=none \
+            --entitlements ios/FridayLive/FridayLive.entitlements "$APP/PlugIns/FridayLive.appex"
+          codesign --force --sign - --timestamp=none \
+            --entitlements ios/Friday/Friday.entitlements "$APP"
+          for b in "$APP" "$APP"/PlugIns/*.appex; do
+            codesign -d --entitlements - "$b" 2>/dev/null | grep -q group.com.samarth.friday \
+              || { echo "App Group missing in $b"; exit 1; }
+          done
+
+      - name: Package
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/Friday.app Payload/
+          zip -qry "Friday-$RUN.ipa" Payload
+          URL="https://github.com/${{ github.repository }}/releases/download/latest/Friday-$RUN.ipa"
+          python3 ios/scripts/make_source.py "0.1.$RUN" "$RUN" "Friday-$RUN.ipa" "$URL" source.json
+
+      - name: Publish release "latest"
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest "Friday-$RUN.ipa" source.json \
+            --title "Friday (latest build)" \
+            --notes "Build $RUN from ${{ github.ref_name }} (${GITHUB_SHA::7})" \
+            --target "$GITHUB_SHA" --latest
+
+      - name: Keep the build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
