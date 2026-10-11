@@ -28,15 +28,22 @@ public enum CloudRequests {
             "temperature": 0,
             "max_tokens": maxTokens,
         ]
-        if let reasoningEffort { object["reasoning_effort"] = reasoningEffort }
+        if let reasoningEffort {
+            object["reasoning_effort"] = reasoningEffort
+        }
+        if model.hasPrefix("openai/gpt-oss") {
+            // Groq: don't send the model's thinking back; we only want the answer.
+            object["include_reasoning"] = false
+        }
         if json { object["response_format"] = ["type": "json_object"] }
         return try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
     }
 
-    /// Output budget: ~1.5× the input plus room for a short reasoning pass (gpt-oss counts it).
+    /// Output budget: the answer (~1.5× the input) plus room for the model's thinking,
+    /// which gpt-oss counts against the same limit. Too small and the answer gets cut off.
     public static func cleanupMaxTokens(for text: String) -> Int {
         let words = text.split(whereSeparator: \.isWhitespace).count
-        return min(2_000, Int(Double(words) * 1.5 * 1.4) + 256)
+        return min(4_000, words * 3 + 1_024)
     }
 
     public static func whisperText(_ data: Data) -> String? {

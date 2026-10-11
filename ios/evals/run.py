@@ -31,7 +31,7 @@ def out(reply):
 
 
 def call(key, model, system, user):
-    body = json.dumps({"model": model, "temperature": 0, "max_tokens": 600, "reasoning_effort": "low",
+    body = json.dumps({"model": model, "temperature": 0, "max_tokens": 1200, "reasoning_effort": "low", "include_reasoning": False,
                        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}).encode()
     req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=body,
                                  headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})

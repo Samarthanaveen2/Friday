@@ -74,6 +74,11 @@ public func extractOut(_ reply: String) -> String? {
     if let start = reply.range(of: "<out>"), let end = reply.range(of: "</out>", range: start.upperBound..<reply.endIndex) {
         return String(reply[start.upperBound..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
+    // Cut off before </out>: take what's there; the guard still checks it.
+    if let start = reply.range(of: "<out>") {
+        let rest = reply[start.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+        return rest.isEmpty ? nil : rest
+    }
     let trimmed = reply.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty || trimmed.contains("<out") || trimmed.contains("</") { return nil }
     return trimmed

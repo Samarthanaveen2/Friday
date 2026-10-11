@@ -29,6 +29,10 @@ final class RequestTests: XCTestCase {
         let plain = try XCTUnwrap(JSONSerialization.jsonObject(with: CloudRequests.chatBody(
             model: "m", system: "S", user: "U", maxTokens: 1, reasoningEffort: nil)) as? [String: Any])
         XCTAssertNil(plain["reasoning_effort"])
+        XCTAssertNil(plain["include_reasoning"])
+        let oss = try XCTUnwrap(JSONSerialization.jsonObject(with: CloudRequests.chatBody(
+            model: "openai/gpt-oss-20b", system: "S", user: "U", maxTokens: 1, reasoningEffort: "low")) as? [String: Any])
+        XCTAssertEqual(oss["include_reasoning"] as? Bool, false)
         XCTAssertNil(plain["response_format"])
     }
 
@@ -41,9 +45,9 @@ final class RequestTests: XCTestCase {
     }
 
     func testMaxTokens() {
-        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: ""), 256)
-        XCTAssertGreaterThan(CloudRequests.cleanupMaxTokens(for: String(repeating: "word ", count: 100)), 400)
-        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: String(repeating: "word ", count: 5000)), 2_000)
+        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: ""), 1_024)
+        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: String(repeating: "word ", count: 100)), 1_324)
+        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: String(repeating: "word ", count: 5000)), 4_000)
     }
 
     func testOutcomes() {

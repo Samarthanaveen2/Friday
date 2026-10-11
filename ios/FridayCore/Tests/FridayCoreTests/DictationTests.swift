@@ -143,7 +143,8 @@ final class GuardTests: XCTestCase {
     func testExtractOut() {
         XCTAssertEqual(extractOut("blah <out> Hi there. </out> blah"), "Hi there.")
         XCTAssertEqual(extractOut("Hi there."), "Hi there.")
-        XCTAssertNil(extractOut("<out>unterminated"))
+        XCTAssertEqual(extractOut("<out>cut off here"), "cut off here")
+        XCTAssertNil(extractOut("<out>   "))
         XCTAssertNil(extractOut("   "))
     }
 }

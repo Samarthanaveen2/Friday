@@ -100,7 +100,7 @@ final class Cleaner {
     }
 
     private func cloud(base: URL, key: String, body: Data, quota: String) async -> Attempt? {
-        await withTimeout(2.0) { () async -> Attempt? in
+        await withTimeout(2.5) { () async -> Attempt? in
             do {
                 return .reply(try await CloudClient.shared.chat(base: base, key: key, body: body))
             } catch {
