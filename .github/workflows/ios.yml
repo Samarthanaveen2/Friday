@@ -45,13 +45,13 @@ jobs:
 
       - name: Build (unsigned)
         run: |
-          set -o pipefail
           xcodebuild -project ios/Friday.xcodeproj -scheme Friday -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
             MARKETING_VERSION=0.1.$RUN CURRENT_PROJECT_VERSION=$RUN \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build | tee build.log | grep -E "error:|warning: .*(Swift|concurrency)|BUILD" || true
-          test -d build/Build/Products/Release-iphoneos/Friday.app
+            build > build.log 2>&1 || { grep -E -A3 "error:" build.log; tail -20 build.log; exit 1; }
+          grep -E "warning:.*\.swift" build.log | sort -u | head -40 || true
+          ls build/Build/Products/Release-iphoneos/Friday.app/PlugIns
 
       - name: Embed entitlements (SideStore reads them to create the App Group)
         run: |

@@ -163,10 +163,15 @@ final class Session {
     }
 
     private func endActivity() {
-        let current = activity
         activity = nil
         activityRunning = false
-        Task { await current?.end(nil, dismissalPolicy: .immediate) }
+        Task { await Session.endAllActivities() }
+    }
+
+    nonisolated private static func endAllActivities() async {
+        for activity in Activity<FridayActivityAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
     }
 
     // MARK: Heartbeat
