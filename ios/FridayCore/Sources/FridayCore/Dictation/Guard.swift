@@ -68,20 +68,20 @@ public enum CleanupGuard {
     }
 }
 
-/// The model is told to answer inside <out></out>. Returns what's inside, or the whole reply
-/// if it forgot the tags but otherwise looks like plain text.
+/// The model is told to answer inside <out></out>. Models don't always comply exactly:
+/// some add a <think> block, drop the opening or closing tag, or get cut off. Take the answer
+/// in every one of those cases; the guard still checks what comes out.
 public func extractOut(_ reply: String) -> String? {
-    if let start = reply.range(of: "<out>"), let end = reply.range(of: "</out>", range: start.upperBound..<reply.endIndex) {
-        return String(reply[start.upperBound..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+    var text = Rx.replace(reply, "<think>[\\s\\S]*?(</think>|$)", with: "")
+    if let start = text.range(of: "<out>") {
+        text = String(text[start.upperBound...])
     }
-    // Cut off before </out>: take what's there; the guard still checks it.
-    if let start = reply.range(of: "<out>") {
-        let rest = reply[start.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
-        return rest.isEmpty ? nil : rest
+    if let end = text.range(of: "</out>") {
+        text = String(text[..<end.lowerBound])
     }
-    let trimmed = reply.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty || trimmed.contains("<out") || trimmed.contains("</") { return nil }
-    return trimmed
+    text = text.replacingOccurrences(of: "<out>", with: "").replacingOccurrences(of: "</out>", with: "")
+    text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    return text.isEmpty ? nil : text
 }
 
 /// Whisper invents subtitles on silence (RISKS B1).

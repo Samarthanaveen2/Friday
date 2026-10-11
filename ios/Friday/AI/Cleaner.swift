@@ -49,7 +49,7 @@ final class Cleaner {
                 return nil
             case .reply(let reply):
                 guard let text = extractOut(reply) else {
-                    notes.append("\(name): bad reply")
+                    notes.append("\(name): bad reply (\(reply.prefix(40)))")
                     return nil
                 }
                 let verdict = CleanupGuard.check(output: text, transcript: prepared, relaxed: tone != .asSaid)
@@ -68,7 +68,7 @@ final class Cleaner {
         if let key = Keys.get(.groq), QuotaBook.shared.available("groq.chat") {
             QuotaBook.shared.record("groq.chat")
             let body = CloudRequests.chatBody(model: Models.groqCleanup, system: Dictation.systemPrompt, user: message,
-                                              maxTokens: maxTokens, reasoningEffort: Models.groqCleanup.hasPrefix("qwen") ? "none" : "low")
+                                              maxTokens: maxTokens, reasoningEffort: Models.reasoningEffort(for: Models.groqCleanup))
             let reply = await cloud(base: Models.groqBase, key: key, body: body, quota: "groq.chat")
             if let good = accepted(reply, "Groq") { return done(good, .groq) }
         } else {
@@ -77,7 +77,7 @@ final class Cleaner {
         if let key = Keys.get(.gemini), QuotaBook.shared.available("gemini.chat") {
             QuotaBook.shared.record("gemini.chat")
             let body = CloudRequests.chatBody(model: Models.geminiCleanup, system: Dictation.systemPrompt, user: message,
-                                              maxTokens: maxTokens, reasoningEffort: "none")
+                                              maxTokens: maxTokens, reasoningEffort: Models.reasoningEffort(for: Models.geminiCleanup))
             let reply = await cloud(base: Models.geminiBase, key: key, body: body, quota: "gemini.chat")
             if let good = accepted(reply, "Gemini") { return done(good, .gemini) }
         }

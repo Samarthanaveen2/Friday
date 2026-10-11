@@ -8,6 +8,8 @@ let package = Package(
     products: [.library(name: "FridayCore", targets: ["FridayCore"])],
     targets: [
         .target(name: "FridayCore"),
+        // Runs the dictation evals through the app's exact cleanup path against real Groq.
+        .executableTarget(name: "FridayEval", dependencies: ["FridayCore"]),
         .testTarget(name: "FridayCoreTests", dependencies: ["FridayCore"]),
     ]
 )

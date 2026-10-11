@@ -144,7 +144,10 @@ final class GuardTests: XCTestCase {
         XCTAssertEqual(extractOut("blah <out> Hi there. </out> blah"), "Hi there.")
         XCTAssertEqual(extractOut("Hi there."), "Hi there.")
         XCTAssertEqual(extractOut("<out>cut off here"), "cut off here")
-        XCTAssertNil(extractOut("<out>   "))
+        XCTAssertEqual(extractOut("No opening tag.</out>"), "No opening tag.")
+        XCTAssertEqual(extractOut("<think>\nhmm\n</think>\n<out>Line one\n- Two</out>"), "Line one\n- Two")
+        XCTAssertEqual(extractOut("<think></think>\n\nJust text."), "Just text.")
+        XCTAssertNil(extractOut("<out>   </out>"))
         XCTAssertNil(extractOut("   "))
     }
 }

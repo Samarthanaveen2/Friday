@@ -11,6 +11,14 @@ public enum Models {
     public static let groqDecision = "openai/gpt-oss-120b"
     public static let geminiCleanup = "gemini-flash-lite-latest"
     public static let geminiDecision = "gemini-flash-latest"
+
+    /// Thinking off or minimal for cleanup: it's a copy-edit, not a puzzle.
+    public static func reasoningEffort(for model: String) -> String? {
+        if model.hasPrefix("qwen") { return "none" }
+        if model.hasPrefix("openai/gpt-oss") { return "low" }
+        if model.hasPrefix("gemini") { return "none" }
+        return nil
+    }
 }
 
 /// Who did a job, for the timing line and the quota tracker.
