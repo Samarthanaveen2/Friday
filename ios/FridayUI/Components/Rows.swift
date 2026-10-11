@@ -1,15 +1,17 @@
 import SwiftUI
 
-/// What a Today row shows. The app maps its items onto this.
+/// One line in the Today strip. The app maps its items onto this.
 struct RowModel: Identifiable, Equatable {
     var id: String
     var title: String
     var time: String?
     var done = false
+    /// Named as a priority today: accent dot, sorted to the top.
+    var priority = false
     /// Short change note after Done ("New", "from 14:00", "→ Sun"), shown for ~5 s.
     var note: String?
     var highlighted = false
-    /// Read-only calendar event: a coloured dot instead of a checkbox.
+    /// Read-only calendar event: a coloured dot instead of a tick circle.
     var calendarColor: Color?
 }
 
@@ -41,40 +43,7 @@ struct SectionLabel: View {
     }
 }
 
-/// A big Focus row inside the white card.
-struct FocusRow: View {
-    let row: RowModel
-    var onToggle: () -> Void = {}
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Button(action: onToggle) { CheckCircle(done: row.done, size: 26) }
-                .buttonStyle(.plain)
-                .accessibilityLabel(row.done ? "Mark not done: \(row.title)" : "Mark done: \(row.title)")
-            VStack(alignment: .leading, spacing: 1) {
-                Text(row.title)
-                    .scaledFont(18, .semibold)
-                    .strikethrough(row.done, color: Palette.secondary)
-                    .foregroundStyle(row.done ? Palette.secondary : Palette.text)
-                if let note = row.note {
-                    Text(note).scaledFont(13, .semibold, relativeTo: .footnote).foregroundStyle(Palette.accent)
-                }
-            }
-            Spacer(minLength: 8)
-            if let time = row.time {
-                Text(time).scaledFont(16, .medium, digits: true).foregroundStyle(Palette.secondary)
-            }
-        }
-        .padding(.leading, 6)
-        .padding(.trailing, 16)
-        .padding(.vertical, 8)
-        .frame(minHeight: 68)
-        .background(row.highlighted ? Palette.changeTint : Palette.card)
-    }
-}
-
-/// A small grey Also row, no card.
-struct AlsoRow: View {
+struct StripRow: View {
     let row: RowModel
     var onToggle: () -> Void = {}
 
@@ -84,53 +53,90 @@ struct AlsoRow: View {
                 Circle().fill(color).frame(width: 8, height: 8).frame(width: 44, height: 44)
                     .accessibilityHidden(true)
             } else {
-                Button(action: onToggle) { CheckCircle(done: row.done, size: 20) }
+                Button(action: onToggle) { CheckCircle(done: row.done, size: 22) }
                     .buttonStyle(.plain)
                     .accessibilityLabel(row.done ? "Mark not done: \(row.title)" : "Mark done: \(row.title)")
             }
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                if row.priority && !row.done {
+                    Circle().fill(Palette.accent).frame(width: 7, height: 7)
+                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                        .accessibilityLabel("Priority")
+                }
                 Text(row.title)
-                    .scaledFont(15)
+                    .scaledFont(16, row.priority ? .semibold : .regular)
                     .strikethrough(row.done, color: Palette.secondary)
-                    .foregroundStyle(row.done ? Palette.secondary : Palette.alsoText)
+                    .foregroundStyle(row.done ? Palette.secondary : Palette.text)
+                    .lineLimit(1)
                 if let note = row.note {
                     Text(note).scaledFont(13, .semibold, relativeTo: .footnote).foregroundStyle(Palette.accent)
+                        .lineLimit(1)
                 }
             }
             Spacer(minLength: 8)
             if let time = row.time {
-                Text(time).scaledFont(14, digits: true).foregroundStyle(Palette.secondary)
+                Text(time).scaledFont(15, .medium, digits: true).foregroundStyle(Palette.secondary)
             }
         }
-        .padding(.trailing, 8)
-        .frame(minHeight: 44)
-        .background(row.highlighted ? Palette.changeTint : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(.trailing, 14)
+        .frame(minHeight: 46)
+        .background(row.highlighted ? Palette.changeTint : Color.clear)
     }
 }
 
-struct FocusCard: View {
+/// The thin card at the top of home: today's items, priorities first, up to 4 rows.
+struct TodayStrip: View {
     let rows: [RowModel]
-    var emptyText = "Say what matters today."
+    var next: (title: String, when: String)?
+    var limit = 4
     var onToggle: (String) -> Void = { _ in }
+    @State private var expanded = false
 
     var body: some View {
         VStack(spacing: 0) {
-            if rows.isEmpty {
-                Text(emptyText)
-                    .scaledFont(16)
-                    .foregroundStyle(Palette.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 60)
+            let open = rows.filter { !$0.done }
+            if open.isEmpty {
+                emptyLine
             }
-            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                FocusRow(row: row) { onToggle(row.id) }
-                if index < rows.count - 1 {
-                    Rectangle().fill(Palette.separator).frame(height: 1).padding(.leading, 56)
+            let shown = expanded ? rows : Array(rows.prefix(limit))
+            ForEach(Array(shown.enumerated()), id: \.element.id) { index, row in
+                StripRow(row: row) { onToggle(row.id) }
+                if index < shown.count - 1 {
+                    Rectangle().fill(Palette.separator).frame(height: 1).padding(.leading, 48)
                 }
+            }
+            if rows.count > limit {
+                Button {
+                    withAnimation(Motion.spring) { expanded.toggle() }
+                } label: {
+                    Text(expanded ? "Show less" : "+\(rows.count - limit) more")
+                        .scaledFont(14, .semibold, relativeTo: .subheadline)
+                        .foregroundStyle(Palette.accent)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 48)
+                        .frame(height: 40)
+                }
+                .buttonStyle(.plain)
             }
         }
         .background(Palette.card)
         .clipShape(RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+    }
+
+    private var emptyLine: some View {
+        Group {
+            if let next {
+                (Text("Nothing left today · ").foregroundStyle(Palette.secondary)
+                    + Text("Next: ").foregroundStyle(Palette.secondary)
+                    + Text(next.title).fontWeight(.semibold).foregroundStyle(Palette.text)
+                    + Text(" · \(next.when)").foregroundStyle(Palette.secondary))
+            } else {
+                Text("Nothing today").foregroundStyle(Palette.secondary)
+            }
+        }
+        .scaledFont(15, relativeTo: .subheadline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 50)
     }
 }

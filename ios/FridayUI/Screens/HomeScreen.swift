@@ -1,65 +1,44 @@
 import SwiftUI
 
-/// Everything the Today screen shows. The app builds this from its store.
-struct TodayModel: Equatable {
-    enum Tab: String, CaseIterable { case today = "Today", notes = "Notes", money = "Money" }
-
+/// Everything home shows. The app builds this from its store.
+struct HomeModel: Equatable {
     var dateLabel: String
-    var focus: [RowModel]
-    var also: [RowModel]
+    var today: [RowModel]
     var next: (title: String, when: String)?
+    var boxes: [BoxModel]
     var pill: String?
     var pillUndo = true
     var card: ResultCardModel?
 
-    static func == (a: TodayModel, b: TodayModel) -> Bool {
-        a.dateLabel == b.dateLabel && a.focus == b.focus && a.also == b.also
+    static func == (a: HomeModel, b: HomeModel) -> Bool {
+        a.dateLabel == b.dateLabel && a.today == b.today && a.boxes == b.boxes
             && a.next?.title == b.next?.title && a.next?.when == b.next?.when
             && a.pill == b.pill && a.pillUndo == b.pillUndo && a.card == b.card
     }
 }
 
-struct TodayScreen: View {
-    let model: TodayModel
-    @Binding var tab: TodayModel.Tab
+/// One place, like Keep: a thin Today strip, then everything you've said as boxes.
+struct HomeScreen: View {
+    let model: HomeModel
     var onToggle: (String) -> Void = { _ in }
+    var onOpenBox: (String) -> Void = { _ in }
     var onTalk: () -> Void = {}
     var onUndo: () -> Void = {}
+    var onSearch: () -> Void = {}
     var onSettings: () -> Void = {}
     var onCloseCard: () -> Void = {}
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 20) {
                 header
-                Picker("Screen", selection: $tab) {
-                    ForEach(TodayModel.Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-
                 VStack(alignment: .leading, spacing: 8) {
-                    SectionLabel(text: "Focus", color: Palette.accent)
-                    FocusCard(rows: model.focus, onToggle: onToggle)
+                    SectionLabel(text: "Today", color: Palette.accent)
+                    TodayStrip(rows: model.today, next: model.next, onToggle: onToggle)
                 }
-
-                if !model.also.isEmpty {
-                    VStack(alignment: .leading, spacing: 2) {
-                        SectionLabel(text: "Also").padding(.bottom, 4)
-                        ForEach(model.also) { row in
-                            AlsoRow(row: row) { onToggle(row.id) }
-                        }
-                    }
-                }
-
-                if let next = model.next {
-                    (Text("Next: ").foregroundStyle(Palette.secondary)
-                        + Text(next.title).fontWeight(.semibold).foregroundStyle(Palette.text)
-                        + Text(" · \(next.when)").foregroundStyle(Palette.secondary))
-                        .scaledFont(14, relativeTo: .subheadline)
-                        .padding(.horizontal, 4)
-                }
+                BoxGrid(boxes: model.boxes, onOpen: onOpenBox)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
             .padding(.top, 8)
             .padding(.bottom, 16)
         }
@@ -69,7 +48,29 @@ struct TodayScreen: View {
         .animation(Motion.spring, value: model)
     }
 
-    /// Result card, change pill and mic. Rows scroll under it and fade instead of colliding.
+    private var header: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.dateLabel.uppercased())
+                    .scaledFont(13, .semibold, relativeTo: .footnote)
+                    .tracking(0.4)
+                    .foregroundStyle(Palette.secondary)
+                Text("Friday")
+                    .scaledFont(34, .bold, relativeTo: .largeTitle)
+                    .tracking(0.3)
+                    .foregroundStyle(Palette.text)
+            }
+            Spacer()
+            HStack(spacing: 10) {
+                RoundIcon(systemName: "magnifyingglass", label: "Search", action: onSearch)
+                RoundIcon(systemName: "gearshape", label: "Settings", action: onSettings)
+            }
+            .padding(.bottom, 4)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    /// Result card, change pill and mic. Content scrolls under it and fades instead of colliding.
     private var bottomBar: some View {
         VStack(spacing: 12) {
             if let card = model.card {
@@ -92,31 +93,23 @@ struct TodayScreen: View {
                 .ignoresSafeArea(edges: .bottom)
         }
     }
+}
 
-    private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.dateLabel.uppercased())
-                    .scaledFont(13, .semibold, relativeTo: .footnote)
-                    .tracking(0.4)
-                    .foregroundStyle(Palette.secondary)
-                Text(tab.rawValue)
-                    .scaledFont(34, .bold, relativeTo: .largeTitle)
-                    .tracking(0.3)
-                    .foregroundStyle(Palette.text)
-            }
-            Spacer()
-            Button(action: onSettings) {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Palette.secondary)
-                    .frame(width: 36, height: 36)
-                    .background(Palette.card, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
+struct RoundIcon: View {
+    let systemName: String
+    let label: String
+    var action: () -> Void = {}
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Palette.secondary)
+                .frame(width: 36, height: 36)
+                .background(Palette.card, in: Circle())
         }
-        .padding(.horizontal, 4)
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 

@@ -49,22 +49,33 @@ final class Snapshots: XCTestCase {
         return CGFloat(0.25 + 0.7 * abs(sin(x * 0.55) * cos(x * 0.21)))
     }
 
-    private func today(updated: Bool = false, card: ResultCardModel? = nil, emptyFocus: Bool = false) -> TodayModel {
-        TodayModel(
+    private func home(updated: Bool = false, card: ResultCardModel? = nil, emptyToday: Bool = false) -> HomeModel {
+        HomeModel(
             dateLabel: "Sunday, 11 October",
-            focus: emptyFocus ? [] : [
+            today: emptyToday ? [
                 RowModel(id: "1", title: "Signals lecture", time: "9:00", done: true),
-                RowModel(id: "2", title: "Finish lab report", time: "11:30", done: updated, note: updated ? "Done" : nil, highlighted: updated),
-                RowModel(id: "3", title: "See the warden", time: "15:00", note: updated ? "New" : nil, highlighted: updated),
-                RowModel(id: "4", title: "Reply to project group", time: "16:00"),
-            ],
-            also: [
-                RowModel(id: "5", title: "Gym", time: "17:00", note: updated ? "from 14:00" : nil, highlighted: updated),
-                RowModel(id: "6", title: "Wash clothes", note: updated ? "→ Sun" : nil, highlighted: updated),
+            ] : [
+                RowModel(id: "3", title: "See the warden", time: "15:00", priority: true, note: updated ? "New" : nil, highlighted: updated),
+                RowModel(id: "4", title: "Reply to project group", time: "16:00", priority: true),
                 RowModel(id: "7", title: "DBMS lecture", time: "10:00", calendarColor: .orange),
-                RowModel(id: "8", title: "Call home", time: "18:00"),
+                RowModel(id: "5", title: "Gym", time: "17:00", note: updated ? "from 14:00" : nil, highlighted: updated),
+                RowModel(id: "6", title: "Wash clothes"),
+                RowModel(id: "2", title: "Finish lab report", time: "11:30", done: true, note: updated ? "Done" : nil, highlighted: updated),
             ],
             next: ("Project meeting", "Sat 16:00"),
+            boxes: [
+                BoxModel(id: "m", title: "Money", text: "", kind: .money(lines: [
+                    .init(label: "Rahul owes you", amount: "₹150", tone: .positive),
+                    .init(label: "You owe Priya", amount: "₹80", tone: .negative),
+                    .init(label: "This week", amount: "₹1,240"),
+                ]), pinned: true),
+                BoxModel(id: "b1", title: "Club fest poster", text: "Blue background, club logo big in the middle. Ask Arjun for the font. Print 40 copies by Thursday.",
+                         reminder: updated ? "Thu 18:00" : nil, highlighted: updated, note: updated ? "New" : nil),
+                BoxModel(id: "b2", title: nil, text: "Books to read: Zero to One, The Mom Test, Shoe Dog"),
+                BoxModel(id: "b3", title: "Hostel wifi", text: "KGP-Hall-5 / password on the notice board near the mess", reminder: nil),
+                BoxModel(id: "b4", title: "Startup idea", text: "Mess menu app that lets students vote on tomorrow's dinner. Start with our hall, 20 regulars first.", reminder: "Sun 10:00"),
+                BoxModel(id: "b5", title: nil, text: "Gift for mom's birthday — the brass lamp from the market"),
+            ],
             pill: updated ? "4 changes" : nil,
             card: card
         )
@@ -122,23 +133,28 @@ final class Snapshots: XCTestCase {
         }
     }
 
-    // MARK: Today
+    // MARK: Home
 
-    func testToday() throws {
+    func testHome() throws {
         for dark in [false, true] {
             let mode = dark ? "dark" : "light"
-            try snap("today-\(mode)", size: phone, dark: dark) {
-                TodayScreen(model: today(), tab: .constant(.today))
-            }
-            try snap("today-updated-\(mode)", size: phone, dark: dark) {
-                TodayScreen(model: today(updated: true), tab: .constant(.today))
+            try snap("home-\(mode)", size: phone, dark: dark) { HomeScreen(model: home()) }
+            try snap("home-updated-\(mode)", size: phone, dark: dark) { HomeScreen(model: home(updated: true)) }
+        }
+        try snap("home-nothing-left-light", size: phone) { HomeScreen(model: home(emptyToday: true)) }
+        try snap("home-large-text-light", size: phone, textSize: .xxxLarge) { HomeScreen(model: home()) }
+    }
+
+    func testBoxDetail() throws {
+        for dark in [false, true] {
+            try snap("box-\(dark ? "dark" : "light")", size: phone, dark: dark) {
+                BoxDetailScreen(title: .constant("Club fest poster"),
+                                text: .constant("Blue background, club logo big in the middle. Ask Arjun for the font.\n\nPrint 40 copies by Thursday."),
+                                reminder: "Thu 16 Oct, 18:00", pinned: true)
             }
         }
-        try snap("today-empty-focus-light", size: phone) {
-            TodayScreen(model: today(emptyFocus: true), tab: .constant(.today))
-        }
-        try snap("today-large-text-light", size: phone, textSize: .xxxLarge) {
-            TodayScreen(model: today(), tab: .constant(.today))
+        try snap("box-new-listening-light", size: phone) {
+            BoxDetailScreen(title: .constant(""), text: .constant(""), listening: true)
         }
     }
 
@@ -146,13 +162,13 @@ final class Snapshots: XCTestCase {
         let answer = ResultCardModel(kind: .answer(text: "Arsenal play Chelsea on Sat 18 Oct at 22:00 (Emirates).", source: "premierleague.com"))
         let ready = ResultCardModel(kind: .ready(title: "WhatsApp to Rahul", preview: "I'll be 10 min late, start without me", button: "Send on WhatsApp", systemImage: "paperplane.fill"))
         let choice = ResultCardModel(kind: .choice(question: "Which Rahul?", options: ["Rahul S", "Rahul K"]))
-        try snap("card-answer-light", size: phone) { TodayScreen(model: today(card: answer), tab: .constant(.today)) }
-        try snap("card-ready-light", size: phone) { TodayScreen(model: today(card: ready), tab: .constant(.today)) }
-        try snap("card-choice-dark", size: phone, dark: true) { TodayScreen(model: today(card: choice), tab: .constant(.today)) }
-        var missed = today()
+        try snap("card-answer-light", size: phone) { HomeScreen(model: home(card: answer)) }
+        try snap("card-ready-light", size: phone) { HomeScreen(model: home(card: ready)) }
+        try snap("card-choice-dark", size: phone, dark: true) { HomeScreen(model: home(card: choice)) }
+        var missed = home()
         missed.pill = "Didn't catch that"
         missed.pillUndo = false
-        try snap("pill-missed-light", size: phone) { TodayScreen(model: missed, tab: .constant(.today)) }
+        try snap("pill-missed-light", size: phone) { HomeScreen(model: missed) }
     }
 
     func testTalkingSheet() throws {
@@ -160,7 +176,7 @@ final class Snapshots: XCTestCase {
         for dark in [false, true] {
             try snap("talking-\(dark ? "dark" : "light")", size: phone, dark: dark) {
                 ZStack(alignment: .bottom) {
-                    TodayScreen(model: today(), tab: .constant(.today)).opacity(0.35)
+                    HomeScreen(model: home()).opacity(0.35)
                     TalkingSheet(transcript: words, levels: Array(wave.prefix(28)))
                 }
                 .ignoresSafeArea(edges: .bottom)
