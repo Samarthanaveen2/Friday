@@ -5,8 +5,8 @@ name: Speech bench
 on:
   push:
     branches: [claude/affectionate-fermat-scvp7y]
-    paths: ["ios/tools/speech_bench.py", "ios/tools/AppleSpeech.swift", "ios/speechbench/**",
-            "ios/FridayCore/Sources/FridayCore/Dictation/Coverage.swift", ".github/workflows/speech-bench.yml"]
+    paths: ["ios/tools/speech_bench.py", "ios/speechbench/**",
+            "ios/FridayCore/Sources/FridayEval/**", ".github/workflows/speech-bench.yml"]
   workflow_dispatch:
     inputs:
       setups:
@@ -26,37 +26,29 @@ jobs:
       - run: python3 -I ios/tools/speech_bench.py ios/speechbench ${{ github.event.inputs.setups || 'whisper-large-v3-turbo+prompt whisper-large-v3+prompt' }} | tee bench.txt
       - run: sed -n '/^| setup/,$p' bench.txt >> "$GITHUB_STEP_SUMMARY"
 
-  # The app's real setup: Whisper + the iPhone's own recogniser + gap-fill (Coverage), scored
-  # against the reference. Shows whether the second ear helps or adds wrong words.
-  two-ears:
-    runs-on: macos-26
-    timeout-minutes: 50
+
+  # Whisper as the app sends it, then the app's cleanup on top: does the cleanup ever drop
+  # what was said? Skips against Whisper's own text = words the cleanup removed.
+  cleanup:
+    runs-on: ubuntu-latest
+    container: swift:6.1-noble
+    timeout-minutes: 40
     env:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      HOMEBREW_NO_AUTO_UPDATE: "1"
     steps:
       - uses: actions/checkout@v4
-      - run: brew install ffmpeg > /dev/null
-      - name: Decode clips to 16 kHz WAV
-        run: |
-          mkdir wavs
-          for f in ios/speechbench/*.ogg; do ffmpeg -loglevel error -y -i "$f" -ar 16000 -ac 1 "wavs/$(basename "${f%.ogg}").wav"; done
-      - name: iPhone recogniser (SpeechTranscriber)
-        run: |
-          # Speech models are handed out per app, so the tool runs inside a small signed .app bundle.
-          mkdir -p AppleSpeech.app/Contents/MacOS
-          swiftc -parse-as-library -O ios/tools/AppleSpeech.swift -o AppleSpeech.app/Contents/MacOS/AppleSpeech
-          /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.samarth.friday.speechbench" \
-            -c "Add :CFBundleExecutable string AppleSpeech" -c "Add :CFBundleName string AppleSpeech" \
-            -c "Add :CFBundlePackageType string APPL" -c "Add :LSMinimumSystemVersion string 26.0" \
-            -c "Add :NSSpeechRecognitionUsageDescription string Speech bench" AppleSpeech.app/Contents/Info.plist
-          codesign --force --sign - AppleSpeech.app
-          ./AppleSpeech.app/Contents/MacOS/AppleSpeech wavs > iphone.json
-      - name: Whisper (as the app sends it)
-        run: SAVE_DIR=. python3 -I ios/tools/speech_bench.py ios/speechbench whisper-large-v3-turbo+prompt > whisper.txt; tail -3 whisper.txt
-      - name: Gap-fill
-        run: swift run -q --package-path ios/FridayCore FridayEval fill whisper-large-v3-turbo+prompt.json iphone.json > filled.json
+      - run: apt-get update -qq && apt-get install -y -qq ffmpeg python3 > /dev/null
+      - name: Whisper
+        run: SAVE_DIR=. python3 -I ios/tools/speech_bench.py ios/speechbench whisper-large-v3-turbo+prompt | tail -4
+      - name: Cleanup
+        run: swift run -q --package-path ios/FridayCore FridayEval clean whisper-large-v3-turbo+prompt.json > typed.json
       - name: Score
         run: |
-          python3 -I ios/tools/speech_bench.py ios/speechbench file:iphone.json file:whisper-large-v3-turbo+prompt.json file:filled.json | tee score.txt
-          sed -n '/^| setup/,$p' score.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "## Typed text vs what was said" >> "$GITHUB_STEP_SUMMARY"
+          python3 -I ios/tools/speech_bench.py ios/speechbench file:whisper-large-v3-turbo+prompt.json file:typed.json | tee said.txt
+          sed -n '/^| setup/,$p' said.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "## Typed text vs Whisper (what the cleanup removed)" >> "$GITHUB_STEP_SUMMARY"
+          REF_JSON=whisper-large-v3-turbo+prompt.json python3 -I ios/tools/speech_bench.py ios/speechbench file:typed.json | tee removed.txt
+          sed -n '/^| setup/,$p' removed.txt >> "$GITHUB_STEP_SUMMARY"
+          paste -d'\n' /dev/null > /dev/null
+          cat typed.json | head -40

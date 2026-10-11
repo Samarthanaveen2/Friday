@@ -76,6 +76,11 @@ def skips(ops, length=3):
 
 bench, setups = sys.argv[1], sys.argv[2:]
 cases = json.load(open(os.path.join(bench, "manifest.json")))
+if os.environ.get("REF_JSON"):
+    # Score against other transcripts (e.g. did the cleanup keep everything Whisper heard?).
+    refs = json.load(open(os.environ["REF_JSON"]))
+    for c in cases:
+        c["text"] = refs.get(c["id"], c["text"])
 tmp = tempfile.mkdtemp()
 for c in cases if any(not s.startswith("file:") for s in setups) else []:
     src = os.path.join(bench, c["id"] + ".ogg")

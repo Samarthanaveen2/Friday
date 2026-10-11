@@ -41,10 +41,15 @@ func post(_ body: Data, key: String) async -> (Int, Data) {
 
 // Speech bench helper: `FridayEval fill whisper.json iphone.json` prints the app's gap-filled text
 // (Coverage.fill) for each clip as JSON, so the bench can score it.
+func load(_ path: String) throws -> [String: String] {
+    try JSONDecoder().decode([String: String].self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+}
+func printJSON(_ map: [String: String]) throws {
+    let data = try JSONSerialization.data(withJSONObject: map, options: [.sortedKeys, .prettyPrinted])
+    print(String(decoding: data, as: UTF8.self))
+}
+
 if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "fill" {
-    func load(_ path: String) throws -> [String: String] {
-        try JSONDecoder().decode([String: String].self, from: Data(contentsOf: URL(fileURLWithPath: path)))
-    }
     let whisper = try load(CommandLine.arguments[2]), device = try load(CommandLine.arguments[3])
     var filled: [String: String] = [:]
     for (id, text) in whisper {
@@ -52,8 +57,7 @@ if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "fill" {
         filled[id] = result.text
         for run in result.added { FileHandle.standardError.write(Data("\(id) added: \(run)\n".utf8)) }
     }
-    let data = try JSONSerialization.data(withJSONObject: filled, options: [.sortedKeys, .prettyPrinted])
-    print(String(decoding: data, as: UTF8.self))
+    try printJSON(filled)
     exit(0)
 }
 
@@ -61,6 +65,33 @@ guard let key = ProcessInfo.processInfo.environment["GROQ_API_KEY"], !key.isEmpt
     print("GROQ_API_KEY not set; skipping evals.")
     exit(0)
 }
+// Speech bench helper: `FridayEval clean transcripts.json` runs each transcript through the app's
+// cleanup (Groq main model, guard, final text) and prints the typed text as JSON, so the bench can
+// check the cleanup never drops what was said. Falls back to the rules text like the app would.
+if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "clean" {
+    let dictation = Dictation(dictionary: [])
+    var typed: [String: String] = [:]
+    for (id, text) in try load(CommandLine.arguments[2]).sorted(by: { $0.key < $1.key }) {
+        let prepared = dictation.prepare(text)
+        let body = CloudRequests.chatBody(model: Models.groqCleanup, system: Dictation.systemPrompt,
+                                          user: dictation.aiMessage(prepared: prepared, context: "", tone: .asSaid),
+                                          maxTokens: CloudRequests.cleanupMaxTokens(for: prepared),
+                                          reasoningEffort: Models.reasoningEffort(for: Models.groqCleanup))
+        var (status, data) = await post(body, key: key)
+        if status == 429 {
+            try await Task.sleep(nanoseconds: 15_000_000_000)
+            (status, data) = await post(body, key: key)
+        }
+        let reply = status == 200 ? CloudRequests.chatText(data) : nil
+        let accepted = reply.flatMap(extractOut).map { CleanupGuard.check(output: $0, transcript: prepared).accepted } ?? false
+        typed[id] = dictation.finish(prepared: prepared, aiOutput: reply, context: "")
+        FileHandle.standardError.write(Data("\(id): \(status) \(accepted ? "AI" : "rules")\n".utf8))
+        try await Task.sleep(nanoseconds: 2_500_000_000)
+    }
+    try printJSON(typed)
+    exit(0)
+}
+
 let path = CommandLine.arguments.dropFirst().first ?? "ios/evals/dictation.jsonl"
 let cases = try String(contentsOfFile: path, encoding: .utf8)
     .split(separator: "\n")
