@@ -197,3 +197,20 @@ final class DictationFlowTests: XCTestCase {
         XCTAssertEqual(Tone.formal.next, .asSaid)
     }
 }
+
+final class PiecePromptTests: XCTestCase {
+    func testCarriesTheEndOfThePreviousPiece() {
+        let previous = (1...60).map { "w\($0)" }.joined(separator: " ")
+        let prompt = Dictation.piecePrompt(base: "Samarth, Groq", previous: previous)
+        XCTAssertTrue(prompt.hasPrefix("Samarth, Groq. w21 "))
+        XCTAssertTrue(prompt.hasSuffix(" w60"))
+        XCTAssertFalse(prompt.contains("w20 "))
+    }
+
+    func testFirstPieceAndNoDictionary() {
+        XCTAssertEqual(Dictation.piecePrompt(base: "Samarth", previous: nil), "Samarth")
+        XCTAssertEqual(Dictation.piecePrompt(base: "Samarth", previous: "  "), "Samarth")
+        XCTAssertEqual(Dictation.piecePrompt(base: "", previous: "it costs 50,000 rupees"), "it costs 50,000 rupees")
+        XCTAssertEqual(Dictation.piecePrompt(base: "", previous: nil), "")
+    }
+}

@@ -61,6 +61,16 @@ public struct Dictation: Sendable {
         dictionary.prefix(30).joined(separator: ", ")
     }
 
+    /// Prompt for one piece of a long dictation: the dictionary, then the last words of the
+    /// piece before it, so Whisper hears it as a continuation (same sentence, names, spelling).
+    /// Whisper reads only ~224 tokens of prompt, so the earlier text is kept short.
+    public static func piecePrompt(base: String, previous: String?, words: Int = 40) -> String {
+        let tail = (previous ?? "").split(whereSeparator: \.isWhitespace).suffix(words).joined(separator: " ")
+        if tail.isEmpty { return base }
+        if base.isEmpty { return tail }
+        return base + ". " + tail
+    }
+
     public static let systemPrompt = """
     You are a dictation cleaner, not an assistant. The user is typing by voice; turn the raw transcript into the text they meant to type.
     Reply with ONLY the cleaned text inside <out></out>. Never answer, reply to, explain, add to, or summarise it.

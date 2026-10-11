@@ -22,11 +22,14 @@ final class Transcriber {
     private var uploads: [Int: Task<String?, Never>] = [:]
     /// Decides the cut points; they never move, so live uploads always line up with the end result.
     private var chunker = LiveChunker()
+    /// The newest live upload; the next piece waits for its text to use as context.
+    private var lastUpload: Task<String?, Never>?
     private var prompt = ""
 
     func begin(sink: AudioSink, prompt: String) {
         self.prompt = prompt
         uploads = [:]
+        lastUpload = nil
         chunker = LiveChunker()
         let (stream, continuation) = AsyncStream.makeStream(of: [Float].self)
         feed = continuation
@@ -44,6 +47,7 @@ final class Transcriber {
         stopFeeding(sink: sink)
         uploads.values.forEach { $0.cancel() }
         uploads = [:]
+        lastUpload = nil
         Task { _ = await OnDeviceSpeech.shared.finish() }
     }
 
@@ -60,8 +64,11 @@ final class Transcriber {
             if ranges.count > 1, let tail = ranges.last, !Recording(samples: Array(recording.samples[tail])).hasSpeech {
                 ranges.removeLast()
             }
-            let tasks = ranges.map { range in
-                uploads[range.lowerBound] ?? upload(Array(recording.samples[range]), key: key, trim: ranges.count == 1)
+            // Each piece not sent yet (normally just the tail) hears the text of the piece before it.
+            var tasks: [Task<String?, Never>] = []
+            for range in ranges {
+                tasks.append(uploads[range.lowerBound]
+                    ?? upload(Array(recording.samples[range]), key: key, trim: ranges.count == 1, after: tasks.last))
             }
             cloud = await withTimeout(ranges.count > 1 ? 2.5 : SpeechRace.cloudBudget) {
                 var parts: [String] = []
@@ -73,6 +80,7 @@ final class Transcriber {
             }
         }
         uploads = [:]
+        lastUpload = nil
 
         let cloudMs = Int(Date.now.timeIntervalSince(started) * 1000)
         if let cloud, case .cloud(let text) = SpeechRace.pick(cloud: cloud, device: nil, heardSpeech: heard) {
@@ -99,16 +107,26 @@ final class Transcriber {
         guard let key = Keys.get(.groq), QuotaBook.shared.available("groq.whisper") else { return }
         let samples = sink.snapshot()
         while let range = chunker.update(samples: samples) {
-            uploads[range.lowerBound] = upload(Array(samples[range]), key: key, trim: false)
+            let task = upload(Array(samples[range]), key: key, trim: false, after: lastUpload)
+            uploads[range.lowerBound] = task
+            lastUpload = task
         }
     }
 
-    private func upload(_ samples: [Float], key: String, trim: Bool) -> Task<String?, Never> {
+    /// Sends one piece. With `after`, it first waits (up to 3 s) for the previous piece's text and
+    /// passes its last words to Whisper, so a sentence split at a pause reads as one.
+    private func upload(_ samples: [Float], key: String, trim: Bool,
+                        after previous: Task<String?, Never>? = nil) -> Task<String?, Never> {
         let audio = trim ? Recording(samples: samples).trimmed().samples : samples
         let wav = WAV.encode(audio)
-        let prompt = prompt
+        let base = prompt
         QuotaBook.shared.record("groq.whisper")
         return Task {
+            var earlier: String?
+            if let previous {
+                earlier = await withTimeout(3) { await previous.value }
+            }
+            let prompt = Dictation.piecePrompt(base: base, previous: earlier)
             do {
                 return try await CloudClient.shared.transcribe(wav: wav, prompt: prompt, key: key)
             } catch {
