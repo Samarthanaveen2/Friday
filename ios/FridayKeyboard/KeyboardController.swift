@@ -90,6 +90,12 @@ final class KeyboardController {
         }
     }
 
+    /// The keyboard is going away (app switch, dismissed): don't leave a recording hanging.
+    func disappeared() {
+        guard pending != nil, model.mode != .working else { return }
+        cancel()
+    }
+
     // MARK: Typing
 
     private func type(_ text: String) {

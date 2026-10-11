@@ -29,9 +29,13 @@ final class KeyboardBridge {
         let session = Session.shared
         switch request.kind {
         case .start:
+            // A new tap always wins: drop a recording left hanging (keyboard closed mid-dictation).
+            if session.state == .dictating {
+                stopLevels()
+                pipeline.cancel()
+            }
             guard session.state == .holding else {
-                let message = session.state == .dictating ? "Still listening…" : "Session ended — tap 🎤"
-                reply(request, .failed, message: message)
+                reply(request, .failed, message: "Session ended — tap 🎤")
                 return
             }
             pipeline.tone = request.tone

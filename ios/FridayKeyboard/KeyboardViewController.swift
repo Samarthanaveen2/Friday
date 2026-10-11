@@ -30,6 +30,11 @@ final class KeyboardViewController: UIInputViewController {
         super.viewWillAppear(animated)
         controller.appeared()
     }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        controller.disappeared()
+    }
 }
 
 private struct KeyboardRoot: View {
