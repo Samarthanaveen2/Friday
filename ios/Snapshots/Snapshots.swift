@@ -18,8 +18,11 @@ final class Snapshots: XCTestCase {
 
     private func snap<V: View>(_ name: String, size: CGSize, dark: Bool = false,
                                textSize: DynamicTypeSize = .large, @ViewBuilder _ view: () -> V) throws {
-        let root = view().environment(\.dynamicTypeSize, textSize)
+        let root = view()
+            .environment(\.dynamicTypeSize, textSize)
+            .environment(\.colorScheme, dark ? .dark : .light)
         let host = UIHostingController(rootView: root)
+        host.overrideUserInterfaceStyle = dark ? .dark : .light
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.overrideUserInterfaceStyle = dark ? .dark : .light
         window.rootViewController = host

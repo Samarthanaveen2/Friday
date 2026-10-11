@@ -29,59 +29,68 @@ struct TodayScreen: View {
     var onCloseCard: () -> Void = {}
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    header
-                    Picker("Screen", selection: $tab) {
-                        ForEach(TodayModel.Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                header
+                Picker("Screen", selection: $tab) {
+                    ForEach(TodayModel.Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        SectionLabel(text: "Focus", color: Palette.accent)
-                        FocusCard(rows: model.focus, onToggle: onToggle)
-                    }
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "Focus", color: Palette.accent)
+                    FocusCard(rows: model.focus, onToggle: onToggle)
+                }
 
-                    if !model.also.isEmpty {
-                        VStack(alignment: .leading, spacing: 2) {
-                            SectionLabel(text: "Also").padding(.bottom, 4)
-                            ForEach(model.also) { row in
-                                AlsoRow(row: row) { onToggle(row.id) }
-                            }
+                if !model.also.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        SectionLabel(text: "Also").padding(.bottom, 4)
+                        ForEach(model.also) { row in
+                            AlsoRow(row: row) { onToggle(row.id) }
                         }
                     }
+                }
 
-                    if let next = model.next {
-                        (Text("Next: ").foregroundStyle(Palette.secondary)
-                            + Text(next.title).fontWeight(.semibold).foregroundStyle(Palette.text)
-                            + Text(" · \(next.when)").foregroundStyle(Palette.secondary))
-                            .scaledFont(14, relativeTo: .subheadline)
-                            .padding(.horizontal, 4)
-                    }
+                if let next = model.next {
+                    (Text("Next: ").foregroundStyle(Palette.secondary)
+                        + Text(next.title).fontWeight(.semibold).foregroundStyle(Palette.text)
+                        + Text(" · \(next.when)").foregroundStyle(Palette.secondary))
+                        .scaledFont(14, relativeTo: .subheadline)
+                        .padding(.horizontal, 4)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 200)
             }
-            .scrollIndicators(.hidden)
-
-            VStack(spacing: 12) {
-                if let card = model.card {
-                    ResultCard(model: card, onClose: onCloseCard)
-                        .padding(.horizontal, 16)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                if let pill = model.pill {
-                    ChangePill(text: pill, undo: model.pillUndo ? onUndo : nil)
-                        .transition(.scale(scale: 0.9).combined(with: .opacity))
-                }
-                MicButton(action: onTalk)
-            }
-            .padding(.bottom, 12)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
         }
+        .scrollIndicators(.hidden)
+        .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
         .background(Palette.background.ignoresSafeArea())
         .animation(Motion.spring, value: model)
+    }
+
+    /// Result card, change pill and mic. Rows scroll under it and fade instead of colliding.
+    private var bottomBar: some View {
+        VStack(spacing: 12) {
+            if let card = model.card {
+                ResultCard(model: card, onClose: onCloseCard)
+                    .padding(.horizontal, 16)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            if let pill = model.pill {
+                ChangePill(text: pill, undo: model.pillUndo ? onUndo : nil)
+                    .transition(.scale(scale: 0.9).combined(with: .opacity))
+            }
+            MicButton(action: onTalk)
+        }
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity)
+        .background(alignment: .top) {
+            LinearGradient(colors: [Palette.background.opacity(0), Palette.background],
+                           startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.25))
+                .ignoresSafeArea(edges: .bottom)
+        }
     }
 
     private var header: some View {

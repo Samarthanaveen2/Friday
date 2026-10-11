@@ -216,7 +216,7 @@ struct KeyboardView: View {
                     if model.mode == .working {
                         WorkingDots().frame(height: 56)
                     } else {
-                        Waveform(levels: model.levels, height: 56, barWidth: 3.5, color: Palette.keyText)
+                        Waveform(levels: Array(model.levels.suffix(24)), height: 56, barWidth: 3.5, color: Palette.keyText)
                     }
                     Text(timeLabel)
                         .font(.system(size: 13, weight: .medium).monospacedDigit())
