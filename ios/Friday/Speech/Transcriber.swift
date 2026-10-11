@@ -27,15 +27,23 @@ final class Transcriber {
     /// The newest live upload; the next piece waits for its text to use as context.
     private var lastUpload: Task<String?, Never>?
     private var prompt = ""
+    /// Bumped by every begin(); a finish() only clears state that still belongs to its dictation.
+    private var generation = 0
+    /// Live pieces are only sent for dictations longer than this. Shorter ones go as one whole
+    /// file at ✓ (fast enough, and it keeps Groq's 20-requests-a-minute allowance for real use).
+    private static let piecesAfter = 45.0
 
     func begin(sink: AudioSink, prompt: String) {
+        chunkTimer?.invalidate()
+        generation += 1
         self.prompt = prompt
         uploads = [:]
         lastUpload = nil
         chunker = LiveChunker()
         let (stream, continuation) = AsyncStream.makeStream(of: [Float].self)
         feed = continuation
-        sink.setLive { samples in continuation.yield(samples) }
+        let preRoll = sink.setLive { samples in continuation.yield(samples) }
+        if !preRoll.isEmpty { continuation.yield(preRoll) }
         Task { await OnDeviceSpeech.shared.start(stream) }
 
         if Keys.get(.groq) != nil {
@@ -46,6 +54,8 @@ final class Transcriber {
     }
 
     func cancel(sink: AudioSink) {
+        // Nothing to cancel once the dictation is finishing; its uploads must keep going.
+        guard feed != nil else { return }
         stopFeeding(sink: sink)
         uploads.values.forEach { $0.cancel() }
         uploads = [:]
@@ -56,6 +66,7 @@ final class Transcriber {
     func finish(_ recording: Recording, sink: AudioSink) async -> SpeechResult {
         stopFeeding(sink: sink)
         let started = Date.now
+        let gen = generation
         let heard = recording.hasSpeech
         // The iPhone's final text, finishing in parallel with the cloud call.
         let deviceText = Task { await OnDeviceSpeech.shared.finish() }
@@ -95,13 +106,17 @@ final class Transcriber {
                 if cloud != nil {
                     detail = "whole \(Int(recording.duration.rounded())) s"
                 } else {
-                    cloud = await withTimeout(0.7) { await joined.value }
+                    // One deadline for both: if the whole file failed fast, the pieces get the rest.
+                    let left = max(0.7, 3.7 - Date.now.timeIntervalSince(started))
+                    cloud = await withTimeout(left) { await joined.value }
                     if cloud != nil { detail = "\(tasks.count) pieces" }
                 }
             }
         }
-        uploads = [:]
-        lastUpload = nil
+        if gen == generation {
+            uploads = [:]
+            lastUpload = nil
+        }
 
         if let cloud, case .cloud(let text) = SpeechRace.pick(cloud: cloud, device: nil, heardSpeech: heard) {
             // The iPhone's text is only kept for the step-by-step report. Gap-filling Whisper with it
@@ -134,6 +149,7 @@ final class Transcriber {
     private func uploadFinishedChunks(sink: AudioSink) {
         guard let key = Keys.get(.groq), QuotaBook.shared.available("groq.whisper") else { return }
         let samples = sink.snapshot()
+        guard Double(samples.count) > Transcriber.piecesAfter * Double(AudioFormat.sampleRate) else { return }
         while let range = chunker.update(samples: samples) {
             let task = upload(Array(samples[range]), key: key, trim: false, after: lastUpload)
             uploads[range.lowerBound] = task

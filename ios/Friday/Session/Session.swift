@@ -193,7 +193,10 @@ final class Session {
     private func interrupted() {
         // iOS has stopped the engine; a dictation in progress can't continue.
         interruptedNow = true
-        if state == .dictating { engine.sink.cancel(); state = .holding }
+        if state == .dictating {
+            // Stops the live uploads and on-device speech too, not just the recording.
+            DictationPipeline.shared.cancel()
+        }
         publish()
     }
 
@@ -202,7 +205,9 @@ final class Session {
         guard running, !engine.isRunning else { return }
         do {
             try engine.restart()
-            state = .holding
+            // The recording buffer survives a restart, so a dictation in progress just carries on
+            // (e.g. AirPods connected mid-sentence).
+            if state != .dictating { state = .holding }
             recoveries += 1
             lastError = nil
         } catch {
@@ -221,7 +226,7 @@ final class Session {
         guard running else { return }
         do {
             try engine.rebuild()
-            state = .holding
+            if state != .dictating { state = .holding }
             recoveries += 1
         } catch {
             failed("Mic stopped: \(error.localizedDescription)")

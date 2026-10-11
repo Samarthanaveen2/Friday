@@ -9,8 +9,7 @@ actor OnDeviceSpeech {
 
     private var locale: Locale?
     private var ready = false
-    private var finalText = ""
-    private var running: Task<Void, Never>?
+    private var running: Task<String, Never>?
 
     /// Finds the best English model and downloads it if needed. False if unavailable.
     func prepare() async -> Bool {
@@ -35,24 +34,23 @@ actor OnDeviceSpeech {
 
     /// Transcribes everything that arrives on `samples` (16 kHz mono) until the stream ends.
     func start(_ samples: AsyncStream<[Float]>) {
-        finalText = ""
         running = Task { await self.run(samples) }
     }
 
     /// Waits for the final text after the sample stream has been finished.
     func finish() async -> String {
-        let task = running
-        await task?.value
-        // A new dictation may have started meanwhile; don't clear its task.
+        // Each dictation's text comes from its own task, so a newer dictation can't swap it.
+        guard let task = running else { return "" }
+        let text = await task.value
         if running == task { running = nil }
-        return finalText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func run(_ samples: AsyncStream<[Float]>) async {
+    private func run(_ samples: AsyncStream<[Float]>) async -> String {
         if !ready { _ = await prepare() }
         guard ready, let locale else {
             for await _ in samples {}
-            return
+            return ""
         }
         let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [], attributeOptions: [])
         let analyzer = SpeechAnalyzer(modules: [transcriber])
@@ -62,7 +60,7 @@ actor OnDeviceSpeech {
               let converter = AVAudioConverter(from: source, to: target)
         else {
             for await _ in samples {}
-            return
+            return ""
         }
 
         let (inputs, feed) = AsyncStream.makeStream(of: AnalyzerInput.self)
@@ -80,7 +78,7 @@ actor OnDeviceSpeech {
         } catch {
             feed.finish()
             for await _ in samples {}
-            return
+            return ""
         }
         for await chunk in samples {
             if let buffer = OnDeviceSpeech.convert(chunk, from: source, with: converter, to: target) {
@@ -89,7 +87,7 @@ actor OnDeviceSpeech {
         }
         feed.finish()
         try? await analyzer.finalizeAndFinishThroughEndOfInput()
-        finalText = await collector.value
+        return await collector.value
     }
 
     private static func convert(_ samples: [Float], from source: AVAudioFormat, with converter: AVAudioConverter,

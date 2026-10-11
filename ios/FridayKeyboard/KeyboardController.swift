@@ -181,7 +181,7 @@ final class KeyboardController {
         send(request)
         stopLevels()
         withAnimation(Motion.fade) { model.mode = .working }
-        guardReply(within: 15, message: nil)
+        guardReply(within: 20, message: nil)
     }
 
     private func cancel() {
@@ -211,7 +211,7 @@ final class KeyboardController {
             watchdog?.cancel()
         case .working:
             watchdog?.cancel()
-            guardReply(within: 15, message: nil)
+            guardReply(within: 20, message: nil)
             if model.mode != .working { withAnimation(Motion.fade) { model.mode = .working } }
         case .result:
             finish()

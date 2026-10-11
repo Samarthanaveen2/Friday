@@ -47,10 +47,14 @@ final class AudioSink: @unchecked Sendable {
         return (samples, preRollCount)
     }
 
-    func setLive(_ handler: (@Sendable ([Float]) -> Void)?) {
+    /// Installs the live handler and returns what was recorded before it (the pre-roll), in one
+    /// step, so the on-device recogniser hears the dictation from its very first sample.
+    @discardableResult
+    func setLive(_ handler: (@Sendable ([Float]) -> Void)?) -> [Float] {
         lock.lock()
+        defer { lock.unlock() }
         live = handler
-        lock.unlock()
+        return recording ?? []
     }
 
     /// A copy of what's been recorded so far, pre-roll included (for chunked uploads).
