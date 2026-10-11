@@ -18,6 +18,7 @@ public struct Quota: Codable, Equatable, Sendable {
         "groq.whisper": Limits(perMinute: 20, perDay: 2_000),
         "groq.chat": Limits(perMinute: 30, perDay: 1_000),
         "groq.chat.backup": Limits(perMinute: 30, perDay: 1_000),
+        "groq.chat.backup2": Limits(perMinute: 30, perDay: 1_000),
         "gemini.chat": Limits(perMinute: 15, perDay: 1_000),
     ]
 
