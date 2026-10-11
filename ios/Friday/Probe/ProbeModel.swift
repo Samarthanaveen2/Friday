@@ -58,6 +58,7 @@ final class ProbeModel {
             Haptics.success()
         }
         if url.host == "session" {
+            if from == "keyboard" { AppState.shared.showSwipeBack = true }
             Task {
                 await Session.shared.start(source: from == "intent" ? .app : .keyboard)
                 if from == "intent" {

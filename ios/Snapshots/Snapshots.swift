@@ -125,6 +125,9 @@ final class Snapshots: XCTestCase {
         try snap("keyboard-offline-dark", size: size, dark: true) {
             keyboardFrame { KeyboardView(model: KeyboardModel(strip: .warning("No internet — used phone"))) }
         }
+        try snap("keyboard-undo-raw-dark", size: size, dark: true) {
+            keyboardFrame { KeyboardView(model: KeyboardModel(strip: .undoRaw(hasRaw: true))) }
+        }
         try snap("keyboard-pastelast-light", size: size) {
             keyboardFrame { KeyboardView(model: KeyboardModel(strip: .pasteLast)) }
         }

@@ -12,6 +12,8 @@ struct KeyboardModel: Equatable {
         case info(String)
         case warning(String)
         case pasteLast
+        /// Right after an insert: take it back, or swap in the plain transcript.
+        case undoRaw(hasRaw: Bool)
     }
 
     var mode: Mode = .idle
@@ -24,6 +26,13 @@ struct KeyboardModel: Equatable {
 struct KeyboardActions {
     var key: (String) -> Void = { _ in }
     var delete: () -> Void = {}
+    /// Hold ⌫: down starts repeating, up stops.
+    var deleteDown: () -> Void = {}
+    var deleteUp: () -> Void = {}
+    /// Drag on the space bar moves the cursor by this many characters.
+    var cursor: (Int) -> Void = { _ in }
+    var undo: () -> Void = {}
+    var raw: () -> Void = {}
     var space: () -> Void = {}
     var returnKey: () -> Void = {}
     var nextKeyboard: () -> Void = {}
@@ -94,10 +103,17 @@ struct KeyboardView: View {
             .accessibilityLabel("Dictate")
         }
         .buttonStyle(.plain)
-        .overlay { stripView.allowsHitTesting(model.strip == .pasteLast) }
+        .overlay { stripView.allowsHitTesting(stripIsTappable) }
         .padding(.horizontal, 6)
         .padding(.top, 4)
         .frame(height: 52)
+    }
+
+    private var stripIsTappable: Bool {
+        switch model.strip {
+        case .pasteLast, .undoRaw: true
+        default: false
+        }
     }
 
     @ViewBuilder private var stripView: some View {
@@ -118,6 +134,13 @@ struct KeyboardView: View {
                     .background(Palette.key, in: Capsule())
             }
             .buttonStyle(.plain)
+        case .undoRaw(let hasRaw):
+            HStack(spacing: 8) {
+                StripButton(title: "Undo", systemImage: "arrow.uturn.backward", action: actions.undo)
+                if hasRaw {
+                    StripButton(title: "Raw", systemImage: "text.quote", action: actions.raw)
+                }
+            }
         case nil:
             EmptyView()
         }
@@ -153,14 +176,15 @@ struct KeyboardView: View {
                         }
                     }
                     Spacer(minLength: 0)
-                    Key(systemImage: "delete.left", action: actions.delete)
+                    RepeatKey(systemImage: "delete.left", onDown: actions.deleteDown, onUp: actions.deleteUp)
                         .frame(width: unit * 1.35)
                         .accessibilityLabel("Delete")
+                        .accessibilityAction { actions.delete() }
                 }
                 HStack(spacing: gap) {
                     Key(label: "ABC", font: 16, action: actions.nextKeyboard)
                         .frame(width: unit * 2.5 + gap * 1.5)
-                    Key(label: "Friday", font: 16, action: actions.space)
+                    SpaceKey(label: "Friday", onTap: actions.space, onCursor: actions.cursor)
                         .accessibilityLabel("Space")
                     Key(systemImage: "return.left", action: actions.returnKey)
                         .frame(width: unit * 2.5 + gap * 1.5)
@@ -283,6 +307,100 @@ struct KeyStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 8.5, style: .continuous)
                     .fill(configuration.isPressed ? Palette.keyPressed : Palette.key)
                     .shadow(color: Palette.keyShadow, radius: 0, x: 0, y: 1)
+            )
+    }
+}
+
+private struct StripButton: View {
+    let title: String
+    let systemImage: String
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Palette.keyText)
+                .padding(.horizontal, 12)
+                .frame(height: 30)
+                .background(Palette.key, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// ⌫: deletes on touch down, then repeats while held (like Apple's).
+struct RepeatKey: View {
+    var systemImage: String
+    var onDown: () -> Void
+    var onUp: () -> Void
+    @State private var pressed = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 19, weight: .regular))
+            .foregroundStyle(Palette.keyText)
+            .frame(maxWidth: .infinity)
+            .frame(height: 42)
+            .background(
+                RoundedRectangle(cornerRadius: 8.5, style: .continuous)
+                    .fill(pressed ? Palette.keyPressed : Palette.key)
+                    .shadow(color: Palette.keyShadow, radius: 0, x: 0, y: 1)
+            )
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if !pressed { pressed = true; onDown() }
+                    }
+                    .onEnded { _ in
+                        pressed = false
+                        onUp()
+                    }
+            )
+    }
+}
+
+/// Space bar: tap types a space; drag sideways moves the cursor (like Apple's).
+struct SpaceKey: View {
+    var label: String
+    var onTap: () -> Void
+    var onCursor: (Int) -> Void
+    @State private var pressed = false
+    @State private var moved = 0
+    @State private var dragging = false
+
+    private let step: CGFloat = 9
+
+    var body: some View {
+        Text(dragging ? "" : label)
+            .font(.system(size: 16))
+            .foregroundStyle(Palette.keyText)
+            .frame(maxWidth: .infinity)
+            .frame(height: 42)
+            .background(
+                RoundedRectangle(cornerRadius: 8.5, style: .continuous)
+                    .fill(pressed && !dragging ? Palette.keyPressed : Palette.key)
+                    .shadow(color: Palette.keyShadow, radius: 0, x: 0, y: 1)
+            )
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        pressed = true
+                        let target = Int(value.translation.width / step)
+                        if abs(value.translation.width) > 12 { dragging = true }
+                        if dragging, target != moved {
+                            onCursor(target - moved)
+                            moved = target
+                        }
+                    }
+                    .onEnded { _ in
+                        if !dragging { onTap() }
+                        pressed = false
+                        dragging = false
+                        moved = 0
+                    }
             )
     }
 }

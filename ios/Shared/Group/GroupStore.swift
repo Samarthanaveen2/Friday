@@ -56,6 +56,16 @@ struct GroupStore: Sendable {
         try? data.write(to: folder.appendingPathComponent(file), options: .atomic)
     }
 
+    func writeData(_ data: Data, to file: String) {
+        guard let folder else { return }
+        try? data.write(to: folder.appendingPathComponent(file))
+    }
+
+    func readData(_ file: String) -> Data? {
+        guard let folder else { return nil }
+        return try? Data(contentsOf: folder.appendingPathComponent(file))
+    }
+
     func read<T: Decodable>(_ type: T.Type, from file: String) -> T? {
         guard let folder, let data = try? Data(contentsOf: folder.appendingPathComponent(file)) else { return nil }
         return ProbeCodec.decode(type, from: data)
