@@ -4,7 +4,9 @@ Runs every clip in ios/speechbench through each setup (compressed to .m4a like t
 aligns the result with the verbatim reference and counts missing words, especially "skips":
 runs of 3+ reference words in a row that never appear. Usage:
   python3 speech_bench.py <bench dir> <setup> [<setup> ...]    (GROQ_API_KEY set)
-  setup = model[+prompt], e.g. whisper-large-v3-turbo+prompt
+  setup = model[+prompt], e.g. whisper-large-v3-turbo+prompt, or file:<transcripts.json> to score
+  ready-made transcripts ({id: text}, e.g. Apple's or the gap-filled ones).
+  With SAVE_DIR set, each model setup's transcripts are saved to SAVE_DIR/<setup>.json.
 """
 import json, os, re, subprocess, sys, tempfile, time, urllib.request, uuid, statistics
 
@@ -75,7 +77,7 @@ def skips(ops, length=3):
 bench, setups = sys.argv[1], sys.argv[2:]
 cases = json.load(open(os.path.join(bench, "manifest.json")))
 tmp = tempfile.mkdtemp()
-for c in cases:
+for c in cases if any(not s.startswith("file:") for s in setups) else []:
     src = os.path.join(bench, c["id"] + ".ogg")
     c["m4a"] = os.path.join(tmp, c["id"] + ".m4a")
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-ar", "16000", "-ac", "1",
@@ -83,13 +85,19 @@ for c in cases:
 
 summary = []
 for setup in setups:
+    ready = json.load(open(setup[5:])) if setup.startswith("file:") else None
     model, _, opt = setup.partition("+")
     prompt = STYLE if opt == "prompt" else ""
+    saved = {}
     totals = {"ref": 0, "sub": 0, "del": 0, "ins": 0}
     all_skips, times = [], []
     print(f"\n=== {setup} ===")
     for c in cases:
-        text, secs = transcribe(c["m4a"], model, prompt)
+        if ready is not None:
+            text, secs = ready.get(c["id"], ""), 0.0
+        else:
+            text, secs = transcribe(c["m4a"], model, prompt)
+            saved[c["id"]] = text
         times.append(secs)
         ref = words(c["text"])
         ops = align(ref, words(text))
@@ -101,7 +109,10 @@ for setup in setups:
         print(f"{c['id']} {c['seconds']:5.1f}s  WER {100*sum(counts.values())/len(ref):5.1f}%  missing {counts['del']:3d}  skips {len(sk)}  {secs:.2f}s")
         for s in sk:
             print(f"      skipped: \"{s}\"")
-        time.sleep(3.2)
+        if ready is None:
+            time.sleep(3.2)
+    if saved and os.environ.get("SAVE_DIR"):
+        json.dump(saved, open(os.path.join(os.environ["SAVE_DIR"], setup + ".json"), "w"), indent=1)
     wer = 100 * (totals["sub"] + totals["del"] + totals["ins"]) / totals["ref"]
     summary.append((setup, wer, 100 * totals["del"] / totals["ref"], len(all_skips),
                     sum(len(s.split()) for _, s in all_skips), statistics.median(times)))

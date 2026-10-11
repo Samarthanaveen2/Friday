@@ -5,7 +5,8 @@ name: Speech bench
 on:
   push:
     branches: [claude/affectionate-fermat-scvp7y]
-    paths: ["ios/tools/speech_bench.py", "ios/speechbench/**", ".github/workflows/speech-bench.yml"]
+    paths: ["ios/tools/speech_bench.py", "ios/tools/AppleSpeech.swift", "ios/speechbench/**",
+            "ios/FridayCore/Sources/FridayCore/Dictation/Coverage.swift", ".github/workflows/speech-bench.yml"]
   workflow_dispatch:
     inputs:
       setups:
@@ -14,6 +15,7 @@ on:
 
 jobs:
   bench:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -23,3 +25,31 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
       - run: python3 -I ios/tools/speech_bench.py ios/speechbench ${{ github.event.inputs.setups || 'whisper-large-v3-turbo+prompt whisper-large-v3+prompt' }} | tee bench.txt
       - run: sed -n '/^| setup/,$p' bench.txt >> "$GITHUB_STEP_SUMMARY"
+
+  # The app's real setup: Whisper + the iPhone's own recogniser + gap-fill (Coverage), scored
+  # against the reference. Shows whether the second ear helps or adds wrong words.
+  two-ears:
+    runs-on: macos-26
+    timeout-minutes: 50
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install ffmpeg > /dev/null
+      - name: Decode clips to 16 kHz WAV
+        run: |
+          mkdir wavs
+          for f in ios/speechbench/*.ogg; do ffmpeg -loglevel error -y -i "$f" -ar 16000 -ac 1 "wavs/$(basename "${f%.ogg}").wav"; done
+      - name: iPhone recogniser (SpeechTranscriber)
+        run: |
+          swiftc -parse-as-library -O ios/tools/AppleSpeech.swift -o applespeech
+          ./applespeech wavs > iphone.json
+      - name: Whisper (as the app sends it)
+        run: SAVE_DIR=. python3 -I ios/tools/speech_bench.py ios/speechbench whisper-large-v3-turbo+prompt > whisper.txt; tail -3 whisper.txt
+      - name: Gap-fill
+        run: swift run -q --package-path ios/FridayCore FridayEval fill whisper-large-v3-turbo+prompt.json iphone.json > filled.json
+      - name: Score
+        run: |
+          python3 -I ios/tools/speech_bench.py ios/speechbench file:iphone.json file:whisper-large-v3-turbo+prompt.json file:filled.json | tee score.txt
+          sed -n '/^| setup/,$p' score.txt >> "$GITHUB_STEP_SUMMARY"

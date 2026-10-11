@@ -39,6 +39,24 @@ func post(_ body: Data, key: String) async -> (Int, Data) {
     }
 }
 
+// Speech bench helper: `FridayEval fill whisper.json iphone.json` prints the app's gap-filled text
+// (Coverage.fill) for each clip as JSON, so the bench can score it.
+if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "fill" {
+    func load(_ path: String) throws -> [String: String] {
+        try JSONDecoder().decode([String: String].self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+    }
+    let whisper = try load(CommandLine.arguments[2]), device = try load(CommandLine.arguments[3])
+    var filled: [String: String] = [:]
+    for (id, text) in whisper {
+        let result = Coverage.fill(primary: text, backup: device[id] ?? "")
+        filled[id] = result.text
+        for run in result.added { FileHandle.standardError.write(Data("\(id) added: \(run)\n".utf8)) }
+    }
+    let data = try JSONSerialization.data(withJSONObject: filled, options: [.sortedKeys, .prettyPrinted])
+    print(String(decoding: data, as: UTF8.self))
+    exit(0)
+}
+
 guard let key = ProcessInfo.processInfo.environment["GROQ_API_KEY"], !key.isEmpty else {
     print("GROQ_API_KEY not set; skipping evals.")
     exit(0)
