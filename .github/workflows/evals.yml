@@ -18,4 +18,4 @@ jobs:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - run: python3 ios/evals/run.py
+      - run: python3 ios/evals/run.py --screen
