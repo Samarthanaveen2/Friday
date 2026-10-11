@@ -69,18 +69,22 @@ final class KeyboardController {
     /// Back from the bounce: as soon as the app's session is live, start recording (one tap total).
     private func waitForSessionThenDictate() {
         autoStartTimer?.invalidate()
-        autoStartTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] timer in
-            MainActor.assumeIsolated {
-                guard let self, let until = self.autoStartUntil, Date.now < until else {
-                    timer.invalidate()
-                    return
-                }
-                if KeyboardLogic.sessionLive(beat: self.store.read(AppBeat.self, from: ProbeFile.app), now: .now) {
-                    timer.invalidate()
-                    self.autoStartUntil = nil
-                    if self.pending == nil { self.mic() }
-                }
-            }
+        autoStartTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.checkAutoStart() }
+        }
+    }
+
+    private func checkAutoStart() {
+        guard let until = autoStartUntil, Date.now < until else {
+            autoStartTimer?.invalidate()
+            autoStartTimer = nil
+            return
+        }
+        if KeyboardLogic.sessionLive(beat: store.read(AppBeat.self, from: ProbeFile.app), now: .now) {
+            autoStartTimer?.invalidate()
+            autoStartTimer = nil
+            autoStartUntil = nil
+            if pending == nil { mic() }
         }
     }
 
