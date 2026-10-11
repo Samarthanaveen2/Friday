@@ -51,8 +51,8 @@
 {"id": 51, "context": "", "say": "I I think the the plan is good", "expect": ["I think the plan is good."]}
 {"id": 52, "context": "", "say": "we we should leave now", "expect": ["We should leave now."]}
 {"id": 53, "context": "", "say": "so basically the idea is uh we start with the twenty people who come every week and then you know we expand slowly", "expect": ["So basically the idea is we start with the 20 people who come every week and then we expand slowly.", "So basically, the idea is we start with the 20 people who come every week, and then we expand slowly."]}
-{"id": 54, "context": "", "say": "remind everyone that the fest starts at ten and entry closes at eleven thirty", "expect": ["Remind everyone that the fest starts at 10 and entry closes at 11:30."]}
-{"id": 55, "context": "", "say": "okay so number one buy milk number two call mom", "expect": ["Okay, so:\n1. Buy milk\n2. Call mom", "Okay so\n1. Buy milk\n2. Call mom"]}
+{"id": 54, "context": "", "say": "remind everyone that the fest starts at ten and entry closes at eleven thirty", "expect": ["Remind everyone that the fest starts at 10 and entry closes at 11:30.", "Remind everyone that the fest starts at 10:00 and entry closes at 11:30."]}
+{"id": 55, "context": "", "say": "okay so number one buy milk number two call mom", "expect": ["Okay, so:\n1. Buy milk\n2. Call mom", "Okay so\n1. Buy milk\n2. Call mom", "Okay, so\n1. Buy milk\n2. Call mom"]}
 {"id": 56, "context": "", "say": "hey comma are you free at 4 question mark", "expect": ["Hey, are you free at 4?"]}
 {"id": 57, "context": "", "say": "sorry I can't make it today", "expect": ["Sorry, I can't make it today."]}
 {"id": 58, "context": "", "say": "no I don't want that", "expect": ["No, I don't want that.", "No I don't want that."]}

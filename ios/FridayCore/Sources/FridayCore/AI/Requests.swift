@@ -39,11 +39,13 @@ public enum CloudRequests {
         return try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
     }
 
-    /// Output budget: the answer (~1.5× the input) plus room for the model's thinking,
-    /// which gpt-oss counts against the same limit. Too small and the answer gets cut off.
-    public static func cleanupMaxTokens(for text: String) -> Int {
+    /// Output budget: the answer (~1.5× the input) plus, for models that think first (gpt-oss),
+    /// room for that thinking. Kept tight otherwise: Groq counts the reserved tokens against
+    /// its per-minute allowance.
+    public static func cleanupMaxTokens(for text: String, model: String = Models.groqCleanup) -> Int {
         let words = text.split(whereSeparator: \.isWhitespace).count
-        return min(4_000, words * 3 + 1_024)
+        if model.hasPrefix("openai/gpt-oss") { return min(4_000, words * 3 + 1_024) }
+        return min(2_000, words * 3 + 64)
     }
 
     public static func whisperText(_ data: Data) -> String? {

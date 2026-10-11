@@ -45,9 +45,10 @@ final class RequestTests: XCTestCase {
     }
 
     func testMaxTokens() {
-        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: ""), 1_024)
-        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: String(repeating: "word ", count: 100)), 1_324)
-        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: String(repeating: "word ", count: 5000)), 4_000)
+        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: "", model: "qwen/qwen3.8-27b"), 64)
+        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: String(repeating: "word ", count: 100), model: "qwen/x"), 364)
+        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: String(repeating: "word ", count: 5000), model: "qwen/x"), 2_000)
+        XCTAssertEqual(CloudRequests.cleanupMaxTokens(for: "", model: "openai/gpt-oss-120b"), 1_024)
     }
 
     func testOutcomes() {

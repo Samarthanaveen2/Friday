@@ -36,7 +36,7 @@ final class Cleaner {
     func clean(_ prepared: String, dictation: Dictation, context: String, tone: Tone) async -> Result {
         let started = Date.now
         let message = dictation.aiMessage(prepared: prepared, context: context, tone: tone)
-        let maxTokens = CloudRequests.cleanupMaxTokens(for: prepared)
+        let maxTokens = CloudRequests.cleanupMaxTokens(for: prepared, model: Models.groqCleanup)
 
         var notes: [String] = []
         func accepted(_ attempt: Attempt?, _ name: String) -> String? {
