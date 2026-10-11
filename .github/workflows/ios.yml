@@ -75,13 +75,15 @@ jobs:
           URL="https://github.com/${{ github.repository }}/releases/download/latest/Friday-$RUN.ipa"
           python3 ios/scripts/make_source.py "0.1.$RUN" "$RUN" "Friday-$RUN.ipa" "$URL" source.json
 
+      # No --target: the Actions token is refused (403) when tagging a commit that is no longer the
+      # branch tip (a newer push landed during the build). The tag is only a label; notes name the commit.
       - name: Publish release "latest"
         run: |
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest "Friday-$RUN.ipa" source.json \
             --title "Friday (latest build)" \
             --notes "Build $RUN from ${{ github.ref_name }} (${GITHUB_SHA::7})" \
-            --target "$GITHUB_SHA" --latest
+            --latest
 
       - name: Keep the build log
         if: failure()
@@ -132,4 +134,4 @@ jobs:
           gh release delete screens --yes --cleanup-tag || true
           gh release create screens screens/*.png \
             --title "Friday screens" --notes "Screens from ${GITHUB_SHA::7}" \
-            --target "$GITHUB_SHA" --prerelease --latest=false
+            --prerelease --latest=false
