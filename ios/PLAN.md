@@ -183,7 +183,7 @@ All network providers sit behind one **OpenAI-compatible client**. Model IDs liv
 |---|---|---|---|
 | Hidden backup transcript while talking (never shown in the keyboard) | **Apple SpeechAnalyzer** (on-device, streaming) | — | — |
 | Final transcript | **Groq `whisper-large-v3-turbo`** (`language: en`, `temperature: 0`, `prompt` = dictionary) | SpeechAnalyzer final | — |
-| Dictation cleanup | **Groq `openai/gpt-oss-20b`** (`reasoning_effort: low`) | Gemini Flash-Lite | Apple Foundation Models |
+| Dictation cleanup | **Groq `qwen/qwen3.8-27b`** (thinking off; 60/60 on evals, ~200 ms) | Gemini Flash-Lite | Apple Foundation Models |
 | Decision engine (app only) | **Groq `openai/gpt-oss-120b`** (`reasoning_effort: low`, JSON) | Gemini Flash | Apple Foundation Models (`@Generable`, schedule + notes only) |
 | Web answers | **Gemini Flash + Google Search grounding** | Tavily search → Groq 120b summarises | "Can't search right now" |
 | OCR (screenshots) | **Apple Vision** (on-device) | — | — |
