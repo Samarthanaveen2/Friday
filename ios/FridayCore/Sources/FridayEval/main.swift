@@ -67,6 +67,12 @@ for c in cases {
     for _ in 0..<4 {
         (status, data) = await post(body, key: key)
         if status != 429 { break }
+        // Daily allowance used up: retrying only burns more. Skip instead of failing.
+        if String(decoding: data, as: UTF8.self).contains("per day") {
+            print("Groq daily limit reached — evals skipped, run again tomorrow.")
+            print("::warning::Groq daily limit reached; dictation evals skipped (\(passed) passed before it).")
+            exit(0)
+        }
         try await Task.sleep(nanoseconds: 8_000_000_000)
     }
     times.append(Date().timeIntervalSince(start) * 1000)

@@ -4,7 +4,7 @@ on:
   push:
     branches: [claude/affectionate-fermat-scvp7y]
     # Only when the prompt or test cases change: each run spends part of Groq's free daily allowance.
-    paths: ["ios/evals/**", "ios/FridayCore/Sources/FridayCore/Dictation/Dictation.swift"]
+    paths: ["ios/evals/**", "ios/FridayCore/Sources/FridayCore/Dictation/Prompt.swift"]
   workflow_dispatch:
 
 concurrency:
