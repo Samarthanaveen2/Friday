@@ -7,7 +7,7 @@ public enum Models {
     public static let geminiBase = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai")!
 
     public static let whisper = "whisper-large-v3-turbo"
-    public static let groqCleanup = "openai/gpt-oss-20b"
+    public static let groqCleanup = "qwen/qwen3.8-27b"
     public static let groqDecision = "openai/gpt-oss-120b"
     public static let geminiCleanup = "gemini-flash-lite-latest"
     public static let geminiDecision = "gemini-flash-latest"

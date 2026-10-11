@@ -68,7 +68,7 @@ final class Cleaner {
         if let key = Keys.get(.groq), QuotaBook.shared.available("groq.chat") {
             QuotaBook.shared.record("groq.chat")
             let body = CloudRequests.chatBody(model: Models.groqCleanup, system: Dictation.systemPrompt, user: message,
-                                              maxTokens: maxTokens, reasoningEffort: "low")
+                                              maxTokens: maxTokens, reasoningEffort: Models.groqCleanup.hasPrefix("qwen") ? "none" : "low")
             let reply = await cloud(base: Models.groqBase, key: key, body: body, quota: "groq.chat")
             if let good = accepted(reply, "Groq") { return done(good, .groq) }
         } else {
