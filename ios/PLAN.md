@@ -103,34 +103,46 @@ The owner wants it as neat as Wispr Flow. It should look like part of iOS, not a
 
 ## 3. Friday app: the decision engine
 
-Three screens, switched with a small segmented control under the title: **Today | Notes | Money**. Native SwiftUI, stock iOS look (Today matches `ios/design/`).
+**One place, not three apps** (like Google Keep). A single home screen: a thin **Today strip** on top, then everything you've said as **boxes** in two columns. Native SwiftUI, stock iOS feel, same tokens as `ios/design/` (§13).
 
-- **Header:** date in small grey caps, large title **Today**, small gear (Settings) top-right.
-- **Focus:** only items you named as priority today. Big rows (18 pt semibold) in a white card. If none named today: `Say what matters today.`
-- **Also:** everything else. Small grey rows (15 pt), no card. Read-only events from your calendars (lectures, Google Calendar) appear here with a calendar dot.
-- **Next:** one line for the next thing after today: `Next: Project meeting · Sat 16:00`.
-- **Rows:** 44 pt checkbox (tap to toggle), title, time on the right. Long-press: Edit, Move to tomorrow, Delete.
-- **Mic:** 76 pt accent circle at the bottom.
+- **Header:** date in small grey caps, large title **Friday**, a search icon (filters boxes by text) and a small gear (Settings) top-right.
+- **Today strip** (one compact white card):
+  - Today's items, timed first. Priorities have an accent dot and sort to the top.
+  - Up to 4 rows show; `+2 more` expands the strip.
+  - Row: 44 pt tick circle, title, time. Long-press: Edit, Move to tomorrow, Delete.
+  - Calendar events (lectures, Google Calendar) appear with a calendar dot.
+  - When nothing is left today: `Nothing left today · Next: Project meeting · Sat 16:00`.
+- **Boxes** (2-column masonry grid, pinned first, then newest first):
+  - Each note, idea, list or anything you say that isn't a schedule action becomes a box.
+  - A box shows an optional bold title, the text (up to ~8 lines), and small chips: a reminder (`🔔 Sun 10:00`) when set.
+  - White cards, radius 16, no clutter.
+- **Money box:** one pinned box that keeps itself up to date: who owes what (`Rahul owes you ₹150`, `You owe Priya ₹80`) and this week's spending (`₹1,240 this week`). Open it for the full list (swipe to settle or delete). No charts.
+- **Opening a box** (full screen):
+  - **Text you can edit:** title and body, edited by typing.
+  - **Reminder time:** a date and time; Friday notifies you then, and on that day the box also shows in the Today strip.
+  - **Talk to the box:** a mic at the bottom. What you say applies to *this* box: "add the venue is LHC", "make it shorter", "turn this into a WhatsApp to Rahul", "remind me Sunday 10", "delete this". It shows the change with Undo.
+  - **Menu:** Pin, Copy, Share, Delete.
+- **Mic:** 76 pt accent circle at the bottom of home.
 - **Talking:** a bottom sheet with waveform, live transcript, and **Cancel** / **Done**.
-- **After Done:** the sheet closes, changed rows get a light tint and a note (`New`, `Done`, `from 14:00`, `→ Sun`) for ~5 s, and a dark pill `N changes · Undo` sits above the mic.
+- **After Done:**
+  - The sheet closes, and new or changed things get a light tint and a note (`New`, `Done`, `from 14:00`, `→ Sun`) for ~5 s.
+  - New boxes slide in at the top of the grid.
+  - A dark pill `N changes · Undo` sits above the mic.
 - **Nothing understood:** the pill says `Didn't catch that` and the transcript stays visible to retry. No other text, ever.
-
 - **Result card** (above the mic, only when there's something to show, dismissible):
   - **Answer:** 1–3 lines (a web answer, an email summary).
   - **Ready to send:** a short preview plus one button (`Send on WhatsApp`, `Send email`, `Call Rahul`).
   - **Choice:** when a name is ambiguous ("Rahul S" / "Rahul K").
-- **Notes:** a plain list, newest first. Each note is the cleaned text plus the time. Tap to edit, swipe to delete, long-press to copy or share. Notes come from voice ("note: …", "remember this idea…") or from typing.
-- **Money:** two short lists. **Owed:** one row per person with the net amount (`Rahul owes you ₹150` / `You owe Priya ₹80`); swipe to settle. **Spent:** entries newest first (`Lunch · ₹200 · Thu`). Tap to edit, swipe to delete. No charts. Totals only appear as an answer card when you ask.
 
 ### 3.1 Priority and rollover rules (you decide, the app never guesses)
 - You say priorities explicitly, in the same breath or later: "priority today is the warden and the group reply", "make gym top priority", "laundry isn't important".
-- Named items → **Focus** (today only). Everything else → **Also**.
-- **Rollover** (on the first activity of a new day, and every time the app comes to the foreground): unfinished items from past days move to today, keeping their time of day, and always land in **Also**. Focus resets daily.
+- Named items get the priority dot and sort to the top of the Today strip (today only).
+- **Rollover** (on the first activity of a new day, and every time the app comes to the foreground): unfinished items from past days move to today, keeping their time of day, without the priority dot. Priorities reset daily.
 - Future-dated items ("Sunday", "tomorrow 10") wait for their day.
 
 ### 3.2 Calendar, Reminders, notifications
 - Friday's own store is the source of truth. Timed items mirror one-way to a **Friday** calendar and untimed ones to a **Friday** Reminders list (EventKit).
-- Local notifications only, and only for **Focus items with a time** (10 min before).
+- Local notifications only: **priority items with a time** (10 min before) and **box reminders** (at their time).
 
 ### 3.3 Everything the decision engine can do
 
@@ -250,7 +262,7 @@ Schedule:
  {"a":"move","id":s,"date":"YYYY-MM-DD","time":"HH:MM"|null}
  {"a":"rename","id":s,"title":s} {"a":"focus","id":s,"on":b}
 Other:
- {"a":"note","text":s}
+ {"a":"note","title":s|null,"text":s,"remind":"YYYY-MM-DDTHH:MM"|null}   (becomes a box)
  {"a":"message","app":"whatsapp"|"sms","to":s,"text":s}
  {"a":"email","to":s,"subject":s,"body":s}
  {"a":"call","to":s}
@@ -270,13 +282,17 @@ Rules:
 - Match existing items by meaning; use their id; never invent ids.
 - delete only if the user clearly says delete/remove/cancel/drop.
 - focus=true ONLY if the user explicitly calls it priority/important/top/focus.
-- "note"/"remember this" -> note with the user's words cleaned, not summarised.
+- "note"/"remember this"/an idea or anything worth keeping that isn't a schedule item -> note (a box), with the user's words cleaned, not summarised. Short title only if obvious.
 - "from": use the name from PEOPLE when it matches an alias. Topics: reuse TOPICS when one fits.
 - Messages and emails: write the text the user would send, in their voice.
 - Use "ask" only when an answer needs outside info, your notes, or money totals. Never do money maths yourself.
 - Titles short, no dates/times inside. Nothing actionable -> {"actions":[]}.
 ```
 **In code, not the model:** time rules (bare hours 1–7 → PM, 8–11 → AM; between 00:00 and 04:00 "tomorrow" = today's date), validation (unknown id or contact → choice card; bad date → drop), one transaction and one undo entry for all schedule/note/money actions. Each `ask` runs its fetch (web/Gmail/HealthKit/Contacts/notes search/money totals computed in code), then one short call writes a 1–3 line answer and any follow-up actions ("add it"). Everything else finishes in one call.
+
+### 7.2b Talking to a box
+Same model, given only that box: `BOX: {"title":…,"text":…,"remind":…}` + `SAID`. Output `{"actions":[…]}` from:
+`{"a":"set_text","title":s|null,"text":s}` (add to or rewrite the box as asked; keep everything not mentioned), `{"a":"remind","at":"YYYY-MM-DDTHH:MM"|null}`, `{"a":"pin","on":b}`, `{"a":"delete"}`, plus the normal message/email/call actions ("send this to Rahul"). The same overlap guard as dictation (§7.1) applies to `set_text` unless the user asked to rewrite or shorten.
 
 ### 7.3 Evals
 `ios/evals/dictation.jsonl` (≥60 cases: fillers, backtracks, questions that must not be answered, lists, numbers, emails, names, mid-sentence continuation) and `ios/evals/decisions.jsonl` (≥60 cases across all abilities). `ios/evals/run.sh` runs them against the configured models with a local key and prints pass/fail. Every real miss on the phone becomes a new case.
@@ -297,7 +313,7 @@ Friday (app, SwiftUI)
  ├─ Store       items JSON in the App Group (app is the only writer);
  │              daily zipped backup to a Files/iCloud Drive folder (keep last 7), auto-restore
  ├─ Mirror      EventKit calendar + reminders, read other calendars
- ├─ Notifier    timed Focus items; "refresh in SideStore" 2 days before signing expiry
+ ├─ Notifier    timed priority items, box reminders; "refresh in SideStore" 2 days before signing expiry
  └─ Intents     Start Friday (AudioRecordingIntent + Live Activity), Control Center control, App Shortcut
 FridayKeyboard (keyboard extension, RequestsOpenAccess = YES)
  └─ voice bar UI only. No audio, no AI, no network. Talks to the app over the App Group.
@@ -355,14 +371,14 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 5. Cleanup: Groq/Gemini/Foundation Models chain, quota tracker, timing overlay, dictation evals.
 6. **Keyboard:** voice bar, IPC, session start/bounce, ✓ insert with context, ✕, `Paste last`, status lines. **Daily-usable at this point.**
 7. Action button + Control Center: **double use** — in the app's settings choose what the Action button does: "Start keyboard session" or "Talk to Friday" (decision engine without opening the app, via AudioRecordingIntent + Live Activity). Default: Talk to Friday; the Control Center button starts the keyboard session.
-8. Today UI, store, backup/restore, long-press edit, Settings, first-run checklist.
-9. Decision engine on schedule + notes: highlights, Undo, Notes screen, evals.
+8. Home (Today strip + boxes grid), store, backup/restore, long-press edit, search, Settings, first-run checklist.
+9. Decision engine on schedule + boxes: highlights, Undo, box detail with "talk to the box", evals.
 10. EventKit mirror + calendar read, notifications, expiry warning.
 11. Abilities: contacts, messages, calls, alarms/timers, location reminders, music, Health, Notion, Shortcuts, open.
 12. Web answers (Gemini grounding, Tavily), Gmail bridge script + client, result card.
 13. Share extension + OCR.
 14. Dictionary, snippets, fix rules, optional auto-add.
-15. Money screen + actions.
+15. Money box + actions.
 16. Tune on the phone: latency, VAD thresholds, prompts against real speech.
 
 ---
