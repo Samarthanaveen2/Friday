@@ -81,6 +81,41 @@ final class CleanupTests: XCTestCase {
         XCTAssertEqual(clean("do your homework before dinner"), "Do your homework before dinner.")
     }
 
+    // The owner's real ramble (eval #64): the junk goes, every finished sentence stays.
+    static let ramble = "No, but my question is, look, how does it know about context, though? That's my question. I suppose... Wait... No, it got the time right. That's not a problem. But... Yeah, I understand my question. My question actually is, how can... Wait, I'm forgetting it. Yeah, I got it. Suppose I'm telling something big. Dude, I need to speak it out and then read it again. So I hope there are no mistakes. The act of reading it again is just too much work, man. Is there any way you can... So I just have to trust that it gets the words right, is it?"
+
+    func testDropsThinkingAloudFromARamble() {
+        let out = clean(Self.ramble)
+        for junk in ["I suppose", "Wait", "But...", "how can", "forgetting", "I got it"] {
+            XCTAssertFalse(out.contains(junk), "still has \(junk): \(out)")
+        }
+        for kept in ["how does it know about context, though?", "That's my question.", "No, it got the time right.",
+                     "That's not a problem.", "I understand my question.", "Suppose I'm telling something big.",
+                     "Dude, I need to speak it out and then read it again.", "too much work, man.",
+                     "Is there any way you can", "trust that it gets the words right, is it?"] {
+            XCTAssertTrue(out.contains(kept), "lost \(kept): \(out)")
+        }
+    }
+
+    func testDropsGivenUpHalfSentence() {
+        XCTAssertEqual(clean("so my question is how do we... wait I forgot. yeah I got it. how do we split the bill"),
+                       "How do we split the bill?")
+        XCTAssertEqual(clean("I was thinking... What was I saying? Let's meet at 5."), "Let's meet at 5.")
+        XCTAssertEqual(clean("Call Rahul. But... Tell him I'm late."), "Call Rahul. Tell him I'm late.")
+    }
+
+    func testKeepsThingsThatLookLikeSelfTalk() {
+        // Said on their own, these are the message.
+        XCTAssertEqual(clean("Did you call mom? I forgot."), "Did you call mom? I forgot.")
+        XCTAssertEqual(clean("Got it. See you at 5."), "Got it. See you at 5.")
+        XCTAssertEqual(clean("Wait, I forgot."), "Wait, I forgot.")
+        XCTAssertEqual(clean("I sent the file... Got it?"), "I sent the file... Got it?")
+        // A trailing-off thought that carries on is kept.
+        XCTAssertEqual(clean("So I was thinking... maybe we go to Goa."), "So I was thinking... maybe we go to Goa.")
+        XCTAssertEqual(clean("No... I don't think so."), "No... I don't think so.")
+        XCTAssertEqual(clean("It costs 5.30 dollars."), "It costs 5.30 dollars.")
+    }
+
     func testShortThingsGetNoFullStop() {
         XCTAssertEqual(clean("ok cool"), "Ok cool")
         XCTAssertEqual(clean(""), "")
@@ -131,6 +166,16 @@ final class GuardTests: XCTestCase {
     func testAcceptsHeavySelfCorrection() {
         let said = "I know what I need to do this weekend. I need to hang out with my friends. No, no. No wait. I need to study. No, that's not it. What do I need to do? I think I need.. I think.. Yeah, I think I need to go to the swimming pool."
         XCTAssertTrue(CleanupGuard.check(output: "I know what I need to do this weekend. I need to go to the swimming pool.", transcript: said).accepted)
+    }
+
+    func testAcceptsLightTouchOnARamble() {
+        // Wispr Flow's take on the owner's ramble: fragments and self-talk gone, a few words fixed.
+        let wispr = "No but my question is: how does it know about context? That's my question. I suppose it got the time right. That's not the problem. I understand my question. Suppose I'm telling something big: do I need to speak it out and then read it again? I hope there are no mistakes, right? The act of reading it again is just too much work, man. Is there any way you can? I just have to trust that you guess the word, right? Is it?"
+        XCTAssertTrue(CleanupGuard.check(output: wispr, transcript: CleanupTests.ramble).accepted)
+        XCTAssertTrue(CleanupGuard.check(output: Cleanup.run(CleanupTests.ramble), transcript: CleanupTests.ramble).accepted)
+        // Answering the question inside it is still caught.
+        let answered = "It uses the text before your cursor and the app you're in to understand context, so you don't need to reread everything you dictate."
+        XCTAssertFalse(CleanupGuard.check(output: answered, transcript: CleanupTests.ramble).accepted)
     }
 
     func testRejectsLongerOutput() {
