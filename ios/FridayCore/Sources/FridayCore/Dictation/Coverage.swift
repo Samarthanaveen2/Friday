@@ -39,6 +39,11 @@ public enum Coverage {
             let k = br.count, j = pr.count
             let run = Array(b[br])
             guard run.contains(where: { $0.key == "#" || ($0.key.count >= 4 && !Words.spokenMarks.contains($0.key)) }) else { continue }
+            // Already said nearby (e.g. the iPhone also caught a false start of a later phrase):
+            // putting it in would type it twice.
+            let window = p[max(0, pr.lowerBound - 15)..<min(p.count, pr.upperBound + 15)].map(\.key)
+            let shared = longestShared(run.map(\.key), window)
+            if shared >= 2 && shared * 2 >= k { continue }
             let texts = run.map(\.text)
             if j == 0 && k >= 2 {
                 insertAt[pr.lowerBound, default: []] += texts
@@ -84,6 +89,23 @@ public enum Coverage {
             }
         }
         return result
+    }
+
+    /// Length of the longest run of words appearing, in order and back to back, in both lists.
+    static func longestShared(_ a: [String], _ b: [String]) -> Int {
+        guard !a.isEmpty, !b.isEmpty else { return 0 }
+        var best = 0
+        var previous = Array(repeating: 0, count: b.count + 1)
+        for x in a {
+            var current = Array(repeating: 0, count: b.count + 1)
+            // Numbers don't count: "2,000 rupees" nearby doesn't mean "50,000 rupees" was already said.
+            for (j, y) in b.enumerated() where x == y && x != "#" {
+                current[j + 1] = previous[j] + 1
+                best = max(best, current[j + 1])
+            }
+            previous = current
+        }
+        return best
     }
 
     /// Longest common subsequence: matched index pairs, in order.

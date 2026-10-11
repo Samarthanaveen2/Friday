@@ -65,6 +65,20 @@ struct SessionTestSection: View {
                     if !outcome.notes.isEmpty {
                         Text(outcome.notes.joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary)
                     }
+                    if let cloud = outcome.cloudText {
+                        Text("Groq heard: \(cloud)").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    if let device = outcome.deviceText, !device.isEmpty {
+                        Text("iPhone heard: \(device)").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    copyButton(outcome.report)
+                }
+                .padding(.vertical, 2)
+            } else if let saved = DictationPipeline.savedReport {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Last dictation").font(.subheadline)
+                    Text(saved).font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
+                    copyButton(saved)
                 }
                 .padding(.vertical, 2)
             }
@@ -101,6 +115,17 @@ struct SessionTestSection: View {
             4. Take or make a call, hang up: the session should come back by itself.
             """)
         }
+    }
+
+    /// Copies every step of the last dictation, to paste into a chat when something looks wrong.
+    private func copyButton(_ report: String) -> some View {
+        Button {
+            UIPasteboard.general.string = report
+            Haptics.success()
+        } label: {
+            Label("Copy steps", systemImage: "doc.on.doc").font(.footnote)
+        }
+        .buttonStyle(.borderless)
     }
 
     private var stateLabel: String {

@@ -57,3 +57,20 @@ final class CoverageTests: XCTestCase {
                        "call mom tonight.")
     }
 }
+
+final class CoverageNoDuplicateTests: XCTestCase {
+    func testOwnersWhatsAppCaseDoesNotDuplicate() {
+        // Whisper dropped "I mean"; the iPhone heard the phrase (plus a false start) earlier too.
+        let whisper = "When's your exam getting over? You said it's Friday, right? So Friday or... Yeah, we could do one session on Friday, sure."
+        let device = "When's your exam getting over I mean we could you said it's Friday right so Friday or yeah I mean we could do one session on Friday sure"
+        let (text, _) = Coverage.fill(primary: whisper, backup: device)
+        XCTAssertEqual(text.components(separatedBy: "could").count - 1, 1, text)
+        XCTAssertTrue(text.contains("Yeah, I mean we could do one session"), text)
+    }
+
+    func testRunAlreadyNearbyIsNotInserted() {
+        let whisper = "Let's meet at the cafe near the station, the cafe near the station is nice."
+        let device = "let's meet at the cafe near the station near the station the cafe near the station is nice"
+        XCTAssertEqual(Coverage.fill(primary: whisper, backup: device).text, whisper)
+    }
+}

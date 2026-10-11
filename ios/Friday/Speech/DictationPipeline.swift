@@ -12,6 +12,25 @@ final class DictationPipeline {
         var timings: Timings
         var nothing: Bool
         var notes: [String] = []
+        /// What each ear heard, before any fixing (for the step-by-step report).
+        var cloudText: String? = nil
+        var deviceText: String? = nil
+
+        /// Every step on its own line, for the Copy button in Setup check.
+        var report: String {
+            var lines = ["Typed: \(nothing ? "(nothing)" : text)"]
+            lines.append("Groq heard: \(cloudText ?? "(no reply)")")
+            lines.append("iPhone heard: \(deviceText.map { $0.isEmpty ? "(nothing)" : $0 } ?? "(not ready)")")
+            lines.append("Sent to cleanup: \(raw)")
+            if !notes.isEmpty { lines.append("Notes: \(notes.joined(separator: " · "))") }
+            lines.append(timings.line)
+            return lines.joined(separator: "\n")
+        }
+    }
+
+    /// The last dictation's report, kept across restarts (keyboard dictations included).
+    static var savedReport: String? {
+        UserDefaults.standard.string(forKey: "dict.lastReport")
     }
 
     static let shared = DictationPipeline()
@@ -51,8 +70,8 @@ final class DictationPipeline {
                                   timings: Timings(speechMs: speech.ms, cleanupMs: nil,
                                                    totalMs: Int(Date.now.timeIntervalSince(started) * 1000),
                                                    speechBy: speech.by, cleanupBy: .rules),
-                                  nothing: true)
-            last = outcome
+                                  nothing: true, cloudText: speech.cloudText, deviceText: speech.deviceText)
+            remember(outcome)
             return outcome
         }
         let d = dictation
@@ -61,9 +80,15 @@ final class DictationPipeline {
                               timings: Timings(speechMs: speech.by == .device ? nil : speech.ms, cleanupMs: cleaned.ms,
                                                totalMs: Int(Date.now.timeIntervalSince(started) * 1000),
                                                speechBy: speech.by, cleanupBy: cleaned.by),
-                              nothing: false, notes: (speech.detail.map { ["Speech: \($0)"] } ?? []) + cleaned.notes)
-        last = outcome
+                              nothing: false, notes: (speech.detail.map { ["Speech: \($0)"] } ?? []) + cleaned.notes,
+                              cloudText: speech.cloudText, deviceText: speech.deviceText)
+        remember(outcome)
         return outcome
+    }
+
+    private func remember(_ outcome: Outcome) {
+        last = outcome
+        UserDefaults.standard.set(outcome.report, forKey: "dict.lastReport")
     }
 
     /// Settings → Dictionary (fix rules and snippets arrive in a later phase).
