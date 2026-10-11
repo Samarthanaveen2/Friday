@@ -57,6 +57,8 @@ final class Transcriber {
         stopFeeding(sink: sink)
         let started = Date.now
         let heard = recording.hasSpeech
+        // The iPhone's final text, finishing in parallel with the cloud call.
+        let deviceText = Task { await OnDeviceSpeech.shared.finish() }
 
         var cloud: String?
         var detail: String?
@@ -101,12 +103,24 @@ final class Transcriber {
         uploads = [:]
         lastUpload = nil
 
-        let cloudMs = Int(Date.now.timeIntervalSince(started) * 1000)
         if let cloud, case .cloud(let text) = SpeechRace.pick(cloud: cloud, device: nil, heardSpeech: heard) {
-            Task { _ = await OnDeviceSpeech.shared.finish() }
-            return SpeechResult(choice: .cloud(text), cloudText: cloud, deviceText: nil, ms: cloudMs, by: .groq, detail: detail)
+            // Second ear: the iPhone has been transcribing live the whole time, so its text is nearly
+            // ready. Whisper sometimes skips a stretch; put back anything only the iPhone heard.
+            let device = await withTimeout(0.4) { await deviceText.value }
+            var final = text
+            var notes = detail.map { [$0] } ?? []
+            if let device {
+                let filled = Coverage.fill(primary: text, backup: device)
+                if !filled.added.isEmpty {
+                    final = filled.text
+                    notes.append("added " + filled.added.map { "‘\($0)’" }.joined(separator: ", ") + " from iPhone")
+                }
+            }
+            return SpeechResult(choice: .cloud(final), cloudText: cloud, deviceText: device,
+                                ms: Int(Date.now.timeIntervalSince(started) * 1000), by: .groq,
+                                detail: notes.isEmpty ? nil : notes.joined(separator: " · "))
         }
-        let device = await withTimeout(2.0) { await OnDeviceSpeech.shared.finish() }
+        let device = await withTimeout(2.0) { await deviceText.value }
         let choice = SpeechRace.pick(cloud: cloud, device: device, heardSpeech: heard)
         let by: Provider = { if case .cloud = choice { return .groq } else { return .device } }()
         return SpeechResult(choice: choice, cloudText: cloud, deviceText: device,

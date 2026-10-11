@@ -104,15 +104,33 @@ final class QuotaBook {
 }
 
 /// Runs `operation`, giving up with nil after `seconds`.
+/// Returns on time even if the work ignores cancellation (like awaiting another task's value);
+/// a task group would quietly wait for it to finish.
 func withTimeout<T: Sendable>(_ seconds: Double, _ operation: @escaping @Sendable () async -> T?) async -> T? {
-    await withTaskGroup(of: T?.self) { group in
-        group.addTask { await operation() }
-        group.addTask {
-            try? await Task.sleep(for: .seconds(seconds))
-            return nil
+    let once = Once<T?>()
+    return await withCheckedContinuation { continuation in
+        let work = Task {
+            let value = await operation()
+            once.resume(continuation, with: value)
         }
-        let first = await group.next() ?? nil
-        group.cancelAll()
-        return first
+        Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            work.cancel()
+            once.resume(continuation, with: nil)
+        }
+    }
+}
+
+/// Resumes a continuation exactly once, whichever side gets there first.
+private final class Once<T: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+
+    func resume(_ continuation: CheckedContinuation<T, Never>, with value: T) {
+        lock.lock()
+        let first = !done
+        done = true
+        lock.unlock()
+        if first { continuation.resume(returning: value) }
     }
 }

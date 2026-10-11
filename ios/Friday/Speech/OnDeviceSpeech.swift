@@ -39,8 +39,10 @@ actor OnDeviceSpeech {
 
     /// Waits for the final text after the sample stream has been finished.
     func finish() async -> String {
-        await running?.value
-        running = nil
+        let task = running
+        await task?.value
+        // A new dictation may have started meanwhile; don't clear its task.
+        if running == task { running = nil }
         return finalText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
