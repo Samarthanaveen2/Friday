@@ -13,6 +13,10 @@ struct AppleSpeech {
         let fallback = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US"))
         guard let locale = wanted ?? fallback else { fatalError("SpeechTranscriber has no English model here") }
         FileHandle.standardError.write(Data("locale \(locale.identifier)\n".utf8))
+        // Models are per-app "reservations"; reserve English before checking the download.
+        if let reserved = try? await AssetInventory.reserve(locale: locale) {
+            FileHandle.standardError.write(Data("reserved \(reserved)\n".utf8))
+        }
         let probe = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [], attributeOptions: [])
         if let request = try await AssetInventory.assetInstallationRequest(supporting: [probe]) {
             try await request.downloadAndInstall()

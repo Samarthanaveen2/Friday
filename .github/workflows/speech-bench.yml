@@ -43,8 +43,15 @@ jobs:
           for f in ios/speechbench/*.ogg; do ffmpeg -loglevel error -y -i "$f" -ar 16000 -ac 1 "wavs/$(basename "${f%.ogg}").wav"; done
       - name: iPhone recogniser (SpeechTranscriber)
         run: |
-          swiftc -parse-as-library -O ios/tools/AppleSpeech.swift -o applespeech
-          ./applespeech wavs > iphone.json
+          # Speech models are handed out per app, so the tool runs inside a small signed .app bundle.
+          mkdir -p AppleSpeech.app/Contents/MacOS
+          swiftc -parse-as-library -O ios/tools/AppleSpeech.swift -o AppleSpeech.app/Contents/MacOS/AppleSpeech
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.samarth.friday.speechbench" \
+            -c "Add :CFBundleExecutable string AppleSpeech" -c "Add :CFBundleName string AppleSpeech" \
+            -c "Add :CFBundlePackageType string APPL" -c "Add :LSMinimumSystemVersion string 26.0" \
+            -c "Add :NSSpeechRecognitionUsageDescription string Speech bench" AppleSpeech.app/Contents/Info.plist
+          codesign --force --sign - AppleSpeech.app
+          ./AppleSpeech.app/Contents/MacOS/AppleSpeech wavs > iphone.json
       - name: Whisper (as the app sends it)
         run: SAVE_DIR=. python3 -I ios/tools/speech_bench.py ios/speechbench whisper-large-v3-turbo+prompt > whisper.txt; tail -3 whisper.txt
       - name: Gap-fill
