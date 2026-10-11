@@ -119,7 +119,7 @@ Three screens, switched with a small segmented control under the title: **Today 
   - **Answer:** 1–3 lines (a web answer, an email summary).
   - **Ready to send:** a short preview plus one button (`Send on WhatsApp`, `Send email`, `Call Rahul`).
   - **Choice:** when a name is ambiguous ("Rahul S" / "Rahul K").
-- **Notes:** a plain list, newest first. Each note is the cleaned text plus the time. Tap to edit, swipe to delete, long-press to copy or share. Notes come from voice ("note: …", "remember this idea…") or from typing. Idea notes show who it came from and your own thoughts (§3.5).
+- **Notes:** a plain list, newest first. Each note is the cleaned text plus the time. Tap to edit, swipe to delete, long-press to copy or share. Notes come from voice ("note: …", "remember this idea…") or from typing.
 - **Money:** two short lists. **Owed:** one row per person with the net amount (`Rahul owes you ₹150` / `You owe Priya ₹80`); swipe to settle. **Spent:** entries newest first (`Lunch · ₹200 · Thu`). Tap to edit, swipe to delete. No charts. Totals only appear as an answer card when you ask.
 
 ### 3.1 Priority and rollover rules (you decide, the app never guesses)
@@ -155,46 +155,11 @@ One utterance can contain several of these; each becomes its own action.
 | **Open** | "open Instagram", "directions to the station" | URL schemes, Apple Maps URL |
 | **Screenshots** | share a screenshot of a notice → Friday | Share extension + Vision OCR → decision engine (can only *add* items or notes without a tap) |
 | **Money** | "spent 200 on lunch", "Rahul owes me 150 for the cab", "paid Priya back", "how much did I spend this week?" | Own store (§3.4). Totals and balances are computed in code, never by the model |
-| **Ideas memory** | "Kunal said charge more early on, and I think that fits the club fest" … later: "where did the charge-more idea come from?" | §3.5 |
 
 **One-tap rule:** iOS never lets an app send a WhatsApp/iMessage or place a call by itself. Friday prepares it and you tap once. Email through the Gmail bridge could send silently, but still requires the `Send email` tap.
 
 ### 3.4 Money
 **Money:** amounts in ₹. Each entry: amount, what, date, and optionally a person and direction. Owed balances are per person (net). "Paid Rahul back" / "Rahul paid me" settles the full balance unless an amount is said. Lives in the same store, backup and undo as items and notes.
-
-### 3.5 Ideas memory (never forget where an idea came from)
-For advice and ideas you hear (founders, friends, podcasts, books) mixed with your own thoughts. Spoken, never typed. **Nothing is ever overwritten or lost.**
-
-**What one idea holds**
-- **Idea:** their point, in their words, cleaned (not summarised).
-- **From:** a person or source from the **People & sources** list (below), or none if it's your own idea.
-- **Takes:** a timeline of your own thoughts, each with its date. A take is `added` (more thoughts) or `changed` (you changed your mind). Old takes are never edited or removed; the newest is your current view.
-- **Topics:** 1–3 tags, picked from your existing topic list first, so `pricing` doesn't also become `price` and `charging`.
-- **Links:** related ideas ("this connects to the obsessed-few idea").
-- **Raw:** the exact transcript of every recording that touched it, kept as the source of truth.
-- Dates: created, and each take.
-
-**People & sources:** one list with aliases, so `Kunal`, `Kunal Shah` and `KS` are the same person. New names are added automatically; an unclear one ("Rahul" when there are two) shows a choice card. You can rename or merge them in Settings.
-
-**Saving (the logic)**
-1. You talk. The decision engine gets the ~20 closest existing ideas, your people list and topic list (§7.2).
-2. It decides: **new idea**, **add a take** to an existing one, or **changed my mind** on an existing one ("I don't agree with the Kunal thing anymore, now I think…").
-3. Before saving a *new* idea, code checks for a very close match (same person and similar meaning). If found, a choice card asks `Add to "obsessed few" (Kunal, 12 Oct)?` / `Save as new`.
-4. Everything is saved in one step with **Undo** in the pill (`Saved idea · Undo`, `Added to Kunal's idea · Undo`).
-
-**Asking (the logic)**
-1. The model turns your question into a search: words to look for, plus optional filters (person, topic, date range: "last month", "before the fest").
-2. Code finds matches: filters first, then a mix of keyword match + meaning match (embeddings) + a small boost for recent ideas. Top ~15.
-3. One short call writes the answer and must cite idea ids. Code checks every cited id exists; the card's **from**, **date** and **takes** come from the store, never from the model's text, so the source can't be made up.
-4. Answer card: the idea, `from Kunal Shah · 12 Oct`, your **current take**, and `You changed your mind on 3 Nov. Before: …` if there's history. Tap to open the full timeline. Several matches → a short list. Nothing → `Nothing saved about that`.
-
-Questions it handles: "where did this idea come from?", "what did Rahul tell me about startups?", "what have I saved about pricing?", "what did I think about X before?", "what ideas did I save last week?", "everything from Kunal".
-
-**Meaning search (embeddings):** Gemini embedding API (free) as the main one, Apple NaturalLanguage on-device as the offline fallback. Both are stored per idea, so search works offline too. Recomputed when an idea gets a new take.
-
-**Notes screen:** idea notes show the idea, a grey line `from Kunal Shah · 12 Oct`, then your current take. Open one to see the full take timeline (old takes greyed, `changed` ones marked), links and raw recordings. Typed edits create a new take, not an overwrite.
-
-**Kept forever:** append-only (every change is a new record), in the daily backup to iCloud Drive (survives losing the phone), auto-restored after a reinstall. Deleting an idea moves it to **Recently deleted** for 30 days.
 
 ---
 
@@ -274,9 +239,6 @@ NOW: 2026-10-08T08:14 Thu (Asia/Kolkata)
 ITEMS: [{"id":"a1","t":"Finish lab report","d":"2026-10-08","tm":"11:30","f":true,"x":false}, ...]
 PLACES: ["hostel","market"]
 PEOPLE_OWED: {"Rahul":150,"Priya":-80}
-IDEAS: [{"id":"i7","from":"Kunal Shah","idea":"build for the obsessed few","take":"start with the 20 regulars"}, ...]   (only the ~20 closest to SAID)
-PEOPLE: [{"id":"p3","name":"Kunal Shah","aka":["Kunal","KS"]}, ...]
-TOPICS: ["club","pricing", ...]
 SAID: "<transcript>"
 ```
 System:
@@ -289,8 +251,6 @@ Schedule:
  {"a":"rename","id":s,"title":s} {"a":"focus","id":s,"on":b}
 Other:
  {"a":"note","text":s}
- {"a":"idea","idea":s,"from":s|null,"take":s|null,"topics":[s],"links":[id]}
- {"a":"take","id":s,"text":s,"kind":"added"|"changed"}
  {"a":"message","app":"whatsapp"|"sms","to":s,"text":s}
  {"a":"email","to":s,"subject":s,"body":s}
  {"a":"call","to":s}
@@ -304,15 +264,13 @@ Other:
  {"a":"spend","amount":n,"what":s,"date":"YYYY-MM-DD"}
  {"a":"owe","person":s,"amount":n,"dir":"they_owe"|"i_owe","what":s|null}
  {"a":"settle","person":s,"amount":n|null}
- {"a":"ask","kind":"web"|"email"|"health"|"contacts"|"notes"|"ideas"|"money","query":s,"from":s|null,"topic":s|null,"after":"YYYY-MM-DD"|null,"before":"YYYY-MM-DD"|null}
+ {"a":"ask","kind":"web"|"email"|"health"|"contacts"|"notes"|"money","query":s}
 Rules:
 - One utterance can hold many actions; output all of them in order.
 - Match existing items by meaning; use their id; never invent ids.
 - delete only if the user clearly says delete/remove/cancel/drop.
 - focus=true ONLY if the user explicitly calls it priority/important/top/focus.
 - "note"/"remember this" -> note with the user's words cleaned, not summarised.
-- Advice or an idea from someone or somewhere, or the user's own idea worth keeping -> "idea". Put the other person's point in idea, the user's own thoughts in take. Never merge them, never summarise.
-- More thoughts on a saved idea -> "take" kind "added"; the user disagreeing with their old view -> kind "changed". Use its id from IDEAS.
 - "from": use the name from PEOPLE when it matches an alias. Topics: reuse TOPICS when one fits.
 - Messages and emails: write the text the user would send, in their voice.
 - Use "ask" only when an answer needs outside info, your notes, or money totals. Never do money maths yourself.
@@ -335,9 +293,8 @@ Friday (app, SwiftUI)
  ├─ Clean       deterministic pass (snippets, fix rules, fillers) + LLM cleanup + guard
  ├─ Decide      decision call, validation, apply, undo, rollover, time rules, ask → fetch → answer
  ├─ Abilities   Notes, Contacts, Messages, Mail (Gmail bridge), Calls, AlarmKit, Location (CLMonitor),
- │              Web (Gemini/Tavily), Music, HealthKit, Notion, Shortcuts, Open, Money,
- │              Ideas memory (people/aliases, take timeline, Gemini + NaturalLanguage embeddings, hybrid search)
- ├─ Store       items JSON in the App Group (app is the only writer); ideas in SQLite (append-only, embeddings as blobs);
+ │              Web (Gemini/Tavily), Music, HealthKit, Notion, Shortcuts, Open, Money
+ ├─ Store       items JSON in the App Group (app is the only writer);
  │              daily zipped backup to a Files/iCloud Drive folder (keep last 7), auto-restore
  ├─ Mirror      EventKit calendar + reminders, read other calendars
  ├─ Notifier    timed Focus items; "refresh in SideStore" 2 days before signing expiry
@@ -348,7 +305,7 @@ FridayLive (widget extension)   Live Activity + Control Center control
 FridayShare (share extension)   screenshots/text → OCR → decision engine
 FridayCore (Swift package, no UIKit/SwiftUI)
  └─ deterministic cleanup, snippets/fix rules, guard, schedule ops, validation, apply, undo, rollover,
-    time rules, money balances/totals, ideas: take timeline, alias matching, duplicate check, hybrid ranking, citation check — `swift test` on Linux and in CI
+    time rules, money balances/totals — `swift test` on Linux and in CI
 ```
 
 - **Keyboard ↔ app:** App Group `group.com.samarth.friday`. The keyboard writes a request (`start`, `stop_insert`, `cancel`) with a request ID plus `documentIdentifier` to a JSON file (atomic write) and posts a Darwin notification. The app replies the same way. The keyboard inserts only if the request ID and `documentIdentifier` still match; otherwise it shows `Paste last`.
@@ -371,9 +328,9 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 
 ## 9.1 Storage
 - **App:** ~15–30 MB (app + 3 extensions, no AI models inside). Apple's speech and AI models are part of iOS and shared, not counted against Friday.
-- **Data per idea:** ~1 KB text + ~1 KB raw transcript + ~5 KB embeddings ≈ **7 KB**. 5 ideas a day for 5 years ≈ 9,000 ideas ≈ **65 MB**. Items, notes and money are tiny (a few MB over years). No audio is kept.
+- **Data:** items, notes and money are tiny (a few MB over years). No audio is kept.
 - **Backups:** last 7 days, zipped: roughly the same again.
-- **Total:** under ~150 MB even after years of daily use.
+- **Total:** well under ~50 MB even after years of daily use.
 
 ## 10. Build and install without a Mac
 1. **Project:** XcodeGen `ios/project.yml`. Never commit a hand-edited `.xcodeproj`.
@@ -391,7 +348,7 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 
 ## 12. Build order (everything ships; this is just the order)
 1. **Install probe:** minimal app + keyboard + widget, App Group, keychain sharing, background audio, AudioRecordingIntent + Live Activity. It shows a report screen (App Group round trip with the keyboard, keyboard → app open, background mic survives 2 min in another app, intent can start the mic). CI → SideStore install → owner sends a screenshot. Adjust the plan to whatever free signing blocks before going further. **Done (build 0.1.13, Oct 11):** App Group works but SideStore renames it to `group.com.samarth.friday.<TEAMID>` (found at run time from the signing profile); keychain ✓; keyboard + Full Access ✓; keyboard opens Friday ✓; mic stayed live 2m 54s in another app ✓; Action button → **Shortcut → Start Friday** starts the mic without opening Friday ✓; on-device speech has Indian English ✓; Apple Intelligence model ready ✓. **Open:** Live Activity fails when started from the background ("Target is not foreground") — fix in step 3 (reuse a running activity; start it from the foreground session start).
-2. FridayCore + tests: deterministic cleanup, guard, schedule ops, validation, undo, rollover, time rules. **Done (51 tests):** whole-word fix rules/snippets, rule-based cleanup (fillers, backtracks, stutters, spoken punctuation, lists, ₹/%/emails, capitals, final mark), continuation from context, AI-output guard (overlap, recall, no new numbers, question kept, length), phantom-text filter, chunk join, day/time types, time rules (04:00 day start, "tomorrow" after midnight, bare hours), decision JSON parser with validation, apply + change labels, rollover, Today layout, prompt builders. Money and Ideas logic move to step 15.
+2. FridayCore + tests: deterministic cleanup, guard, schedule ops, validation, undo, rollover, time rules. **Done (51 tests):** whole-word fix rules/snippets, rule-based cleanup (fillers, backtracks, stutters, spoken punctuation, lists, ₹/%/emails, capitals, final mark), continuation from context, AI-output guard (overlap, recall, no new numbers, question kept, length), phantom-text filter, chunk join, day/time types, time rules (04:00 day start, "tomorrow" after midnight, bare hours), decision JSON parser with validation, apply + change labels, rollover, Today layout, prompt builders. Money logic moves to step 15.
 3. Session engine: audio session, pre-roll, VAD, interruptions, heartbeat, Live Activity.
 4. Speech: SpeechAnalyzer live, Groq Whisper (whole + chunked), race, phantom-text guards.
 5. Cleanup: Groq/Gemini/Foundation Models chain, quota tracker, timing overlay, dictation evals.
@@ -404,7 +361,7 @@ FridayCore (Swift package, no UIKit/SwiftUI)
 12. Web answers (Gemini grounding, Tavily), Gmail bridge script + client, result card.
 13. Share extension + OCR.
 14. Dictionary, snippets, fix rules, optional auto-add.
-15. Money screen + actions; ideas memory (people, takes timeline, duplicate check, hybrid search, cited answers), with ≥30 ideas eval cases.
+15. Money screen + actions.
 16. Tune on the phone: latency, VAD thresholds, prompts against real speech.
 
 ---
