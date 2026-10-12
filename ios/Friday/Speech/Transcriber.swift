@@ -126,6 +126,7 @@ final class Transcriber {
             let device = await withTimeout(0.2) { await deviceText.value }
             let final = text
             let notes = detail.map { [$0] } ?? []
+            UsageBook.shared.lastSpeech = Models.whisper
             return SpeechResult(choice: .cloud(final), cloudText: cloud, deviceText: device,
                                 ms: Int(Date.now.timeIntervalSince(started) * 1000), by: .groq,
                                 detail: notes.isEmpty ? nil : notes.joined(separator: " · "))
@@ -133,6 +134,7 @@ final class Transcriber {
         let device = await withTimeout(2.0) { await deviceText.value }
         let choice = SpeechRace.pick(cloud: cloud, device: device, heardSpeech: heard)
         let by: Provider = { if case .cloud = choice { return .groq } else { return .device } }()
+        UsageBook.shared.lastSpeech = by == .groq ? Models.whisper : "iphone"
         return SpeechResult(choice: choice, cloudText: cloud, deviceText: device,
                             ms: Int(Date.now.timeIntervalSince(started) * 1000), by: by)
     }
@@ -168,7 +170,8 @@ final class Transcriber {
             let m4a = M4A.encode(audio)
             do {
                 return try await CloudClient.shared.transcribe(wav: m4a ?? WAV.encode(audio), prompt: prompt,
-                                                               key: key, m4a: m4a != nil)
+                                                               key: key, m4a: m4a != nil,
+                                                               seconds: Double(audio.count) / Double(AudioFormat.sampleRate))
             } catch {
                 await MainActor.run { QuotaBook.shared.failed("groq.whisper", error) }
                 return nil
@@ -189,7 +192,8 @@ final class Transcriber {
             }
             let prompt = Dictation.piecePrompt(base: base, previous: earlier)
             do {
-                return try await CloudClient.shared.transcribe(wav: wav, prompt: prompt, key: key)
+                return try await CloudClient.shared.transcribe(wav: wav, prompt: prompt, key: key,
+                                                               seconds: Double(audio.count) / Double(AudioFormat.sampleRate))
             } catch {
                 await MainActor.run { QuotaBook.shared.failed("groq.whisper", error) }
                 return nil

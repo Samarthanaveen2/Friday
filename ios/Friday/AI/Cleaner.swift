@@ -81,7 +81,10 @@ final class Cleaner {
                                                   maxTokens: CloudRequests.cleanupMaxTokens(for: prepared, model: step.model),
                                                   reasoningEffort: Models.reasoningEffort(for: step.model))
                 let reply = await cloud(base: Models.groqBase, key: key, body: body, quota: step.quota)
-                if let good = accepted(reply, step.name) { return done(good, .groq) }
+                if let good = accepted(reply, step.name) {
+                    UsageBook.shared.lastCleanup = step.model
+                    return done(good, .groq)
+                }
             }
         } else {
             notes.append("Groq: no key")
@@ -91,7 +94,10 @@ final class Cleaner {
             let body = CloudRequests.chatBody(model: Models.geminiCleanup, system: Dictation.systemPrompt, user: message,
                                               maxTokens: maxTokens, reasoningEffort: Models.reasoningEffort(for: Models.geminiCleanup))
             let reply = await cloud(base: Models.geminiBase, key: key, body: body, quota: "gemini.chat")
-            if let good = accepted(reply, "Gemini") { return done(good, .gemini) }
+            if let good = accepted(reply, "Gemini") {
+                UsageBook.shared.lastCleanup = Models.geminiCleanup
+                return done(good, .gemini)
+            }
         }
         if case .available = SystemLanguageModel.default.availability {
             // With no cloud answer it's the main AI, so it gets more time.
@@ -104,10 +110,14 @@ final class Cleaner {
                     return .error(String(describing: error).prefix(60).description)
                 }
             }
-            if let good = accepted(reply, "Apple AI") { return done(good, .apple) }
+            if let good = accepted(reply, "Apple AI") {
+                UsageBook.shared.lastCleanup = "apple"
+                return done(good, .apple)
+            }
         } else {
             notes.append("Apple AI: not available")
         }
+        UsageBook.shared.lastCleanup = "rules"
         return done(nil, .rules)
     }
 

@@ -29,7 +29,8 @@ final class CloudClient: Sendable {
     }
 
     /// `m4a`: the audio is compressed AAC instead of WAV.
-    func transcribe(wav: Data, prompt: String, key: String, m4a: Bool = false) async throws -> String {
+    /// `seconds`: the audio's length, for the usage meter.
+    func transcribe(wav: Data, prompt: String, key: String, m4a: Bool = false, seconds: Double? = nil) async throws -> String {
         let boundary = "friday-\(UUID().uuidString)"
         var request = URLRequest(url: Models.groqBase.appendingPathComponent("audio/transcriptions"))
         request.httpMethod = "POST"
@@ -38,7 +39,7 @@ final class CloudClient: Sendable {
         request.httpBody = m4a
             ? CloudRequests.whisperBody(wav: wav, prompt: prompt, boundary: boundary, filename: "audio.m4a", contentType: "audio/mp4")
             : CloudRequests.whisperBody(wav: wav, prompt: prompt, boundary: boundary)
-        let data = try await send(request)
+        let data = try await send(request, model: Models.whisper, audioSeconds: seconds)
         guard let text = CloudRequests.whisperText(data) else { throw CloudError(kind: .empty) }
         return text
     }
@@ -49,12 +50,12 @@ final class CloudClient: Sendable {
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
-        let data = try await send(request)
+        let data = try await send(request, model: Usage.model(inRequest: body))
         guard let text = CloudRequests.chatText(data) else { throw CloudError(kind: .empty) }
         return text
     }
 
-    private func send(_ request: URLRequest) async throws -> Data {
+    private func send(_ request: URLRequest, model: String?, audioSeconds: Double? = nil) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
@@ -62,7 +63,18 @@ final class CloudClient: Sendable {
         } catch {
             throw CloudError(kind: .network)
         }
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        let http = response as? HTTPURLResponse
+        let status = http?.statusCode ?? 0
+        if let model {
+            var headers: [String: String] = [:]
+            for (name, value) in http?.allHeaderFields ?? [:] {
+                if let name = name as? String, let value = value as? String { headers[name.lowercased()] = value }
+            }
+            let ok = status == 200
+            await MainActor.run {
+                UsageBook.shared.record(model: model, headers: headers, body: ok ? data : nil, audioSeconds: audioSeconds, ok: ok)
+            }
+        }
         switch CallOutcome.from(status: status, body: String(decoding: data.prefix(400), as: UTF8.self)) {
         case .ok: return data
         case .useBackup(let seconds): throw CloudError(kind: .useBackup(seconds))
@@ -84,6 +96,8 @@ final class QuotaBook {
     }
 
     func available(_ key: String) -> Bool { quota.available(key, now: .now) }
+
+    func restingUntil(_ key: String) -> Date? { quota.restingUntil(key, now: .now) }
 
     func record(_ key: String) {
         quota.record(key, now: .now)

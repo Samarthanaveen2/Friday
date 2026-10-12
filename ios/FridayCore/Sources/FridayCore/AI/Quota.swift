@@ -48,6 +48,12 @@ public struct Quota: Codable, Equatable, Sendable {
         return Double(minute) < Double(limit.perMinute) * 0.9 && Double(today) < Double(limit.perDay) * 0.9
     }
 
+    /// When a provider resting after a limit can be used again (nil if it isn't resting).
+    public func restingUntil(_ key: String, now: Date) -> Date? {
+        guard let until = coolUntil[key], now < until else { return nil }
+        return until
+    }
+
     private mutating func roll(_ now: Date) {
         let key = Quota.dayKey(now)
         if key != day {

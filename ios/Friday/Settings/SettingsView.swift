@@ -12,6 +12,8 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            UsageSection()
+
             Section {
                 SecureField("Groq key (gsk_…)", text: $groq)
                     .textInputAutocapitalization(.never)
