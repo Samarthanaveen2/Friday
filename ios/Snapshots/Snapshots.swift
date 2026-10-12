@@ -146,6 +146,14 @@ final class Snapshots: XCTestCase {
         }
         try snap("home-nothing-left-light", size: phone) { HomeScreen(model: home(emptyToday: true)) }
         try snap("home-large-text-light", size: phone, textSize: .xxxLarge) { HomeScreen(model: home()) }
+        // First run: nothing saved yet, only the setup box.
+        let firstRun = HomeModel(dateLabel: "Monday, 12 October", today: [], next: nil,
+                                 boxes: [BoxModel(id: "setup", title: "Finish setup",
+                                                  text: "• Add the Friday keyboard (Settings → General → Keyboard) and allow Full Access\n• Paste your free Groq key in Settings",
+                                                  highlighted: true)],
+                                 pill: nil)
+        try snap("home-first-run-light", size: phone) { HomeScreen(model: firstRun) }
+        try snap("home-first-run-dark", size: phone, dark: true) { HomeScreen(model: firstRun) }
     }
 
     func testBoxDetail() throws {

@@ -16,7 +16,7 @@ struct FridayApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ProbeView(model: model)
+                HomeView(probe: model)
                 if app.showSwipeBack {
                     SwipeBackView { withAnimation(Motion.fade) { app.showSwipeBack = false } }
                         .transition(.opacity)

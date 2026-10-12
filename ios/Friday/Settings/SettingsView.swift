@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Keys and dictionary. Keys are pasted here on the phone and kept in the Keychain.
 struct SettingsView: View {
+    /// Set when opened from Home, so the Setup check can be reached from here.
+    var probe: ProbeModel?
+    @Environment(\.dismiss) private var dismiss
     @State private var groq = Keys.get(.groq) ?? ""
     @State private var gemini = Keys.get(.gemini) ?? ""
     @State private var words = (UserDefaults.standard.stringArray(forKey: "dict.words") ?? []).joined(separator: ", ")
@@ -44,7 +47,22 @@ struct SettingsView: View {
             } footer: {
                 Text("Names and words Friday must always spell exactly. Separate with commas.")
             }
+
+            if let probe {
+                Section {
+                    NavigationLink { ProbeView(model: probe, embedded: true) } label: {
+                        Label("Setup check", systemImage: "checklist")
+                    }
+                } footer: {
+                    Text("Keyboard, mic and Action button checks, the dictation test and Copy steps.")
+                }
+            }
         }
         .navigationTitle("Settings")
+        .toolbar {
+            if probe != nil {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+        }
     }
 }

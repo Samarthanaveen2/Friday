@@ -1,0 +1,62 @@
+import Foundation
+import FridayCore
+import Observation
+
+/// Talking on Home or inside a box: dictate, then the words become a new box or are added to
+/// the open one. (The decision engine, which files things for you, comes next.)
+@MainActor
+@Observable
+final class Talk {
+    static let shared = Talk()
+
+    enum Target: Equatable {
+        case newBox
+        case box(String)
+    }
+
+    private(set) var target: Target?
+    private(set) var working = false
+
+    var listening: Bool { target != nil }
+
+    func start(_ target: Target) {
+        guard self.target == nil, !working else { return }
+        Task {
+            if !Session.shared.running { await Session.shared.start(source: .app) }
+            guard DictationPipeline.shared.begin() else {
+                BoxStore.shared.flash("Mic isn't ready")
+                return
+            }
+            Haptics.tap()
+            self.target = target
+        }
+    }
+
+    func cancel() {
+        guard target != nil else { return }
+        target = nil
+        DictationPipeline.shared.cancel()
+    }
+
+    func done() {
+        guard let target else { return }
+        self.target = nil
+        working = true
+        Task {
+            let outcome = await DictationPipeline.shared.finish()
+            working = false
+            guard let outcome, !outcome.nothing,
+                  !outcome.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                BoxStore.shared.flash("Didn't catch that")
+                return
+            }
+            Haptics.success()
+            switch target {
+            case .newBox:
+                BoxStore.shared.change("New box") { $0.addNote(text: outcome.text, now: .now) }
+            case .box(let id):
+                BoxStore.shared.change("Added to the box") { $0.appendToNote(id, text: outcome.text, now: .now) }
+            }
+        }
+    }
+}

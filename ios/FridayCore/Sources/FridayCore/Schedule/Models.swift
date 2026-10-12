@@ -27,17 +27,46 @@ public struct Item: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+/// A box on Home (PLAN §3): a note with an optional title, pin and reminder.
 public struct Note: Codable, Equatable, Identifiable, Sendable {
     public var id: String
+    public var title: String?
     public var text: String
+    public var pinned: Bool
+    /// When to remind (shown on the box; notifications come with the calendar step).
+    public var reminder: Date?
     public var created: Date
     public var edited: Date?
 
-    public init(id: String, text: String, created: Date, edited: Date? = nil) {
+    public init(id: String, title: String? = nil, text: String, pinned: Bool = false, reminder: Date? = nil,
+                created: Date, edited: Date? = nil) {
         self.id = id
+        self.title = title
         self.text = text
+        self.pinned = pinned
+        self.reminder = reminder
         self.created = created
         self.edited = edited
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, title, text, pinned, reminder, created, edited }
+
+    /// Fields added later decode as empty, so older saved data still loads.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        title = try c.decodeIfPresent(String.self, forKey: .title)
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+        pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
+        reminder = try c.decodeIfPresent(Date.self, forKey: .reminder)
+        created = try c.decode(Date.self, forKey: .created)
+        edited = try c.decodeIfPresent(Date.self, forKey: .edited)
+    }
+
+    /// Nothing written: a box like this is removed when you leave it.
+    public var isBlank: Bool {
+        (title ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 
@@ -60,4 +89,14 @@ public struct Store: Codable, Equatable, Sendable {
     }
 
     public func item(_ id: String) -> Item? { items.first { $0.id == id } }
+    public func note(_ id: String) -> Note? { notes.first { $0.id == id } }
+
+    private enum CodingKeys: String, CodingKey { case items, notes, nextID }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        items = try c.decodeIfPresent([Item].self, forKey: .items) ?? []
+        notes = try c.decodeIfPresent([Note].self, forKey: .notes) ?? []
+        nextID = try c.decodeIfPresent(Int.self, forKey: .nextID) ?? 1
+    }
 }

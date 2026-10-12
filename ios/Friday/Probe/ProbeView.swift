@@ -3,45 +3,55 @@ import SwiftUI
 /// Setup check screen: one tap for the mic, then a ✓/✕ list of what this phone allows.
 struct ProbeView: View {
     let model: ProbeModel
+    /// Inside Settings' navigation: no own navigation stack or Settings button.
+    var embedded = false
     @State private var session = Session.shared
     @State private var copied = false
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    MicCard(session: session)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                }
-                SessionTestSection(session: session)
-                ForEach(model.sections) { section in
-                    Section(section.id) {
-                        ForEach(section.checks) { CheckRow(check: $0) }
+        if embedded {
+            content
+        } else {
+            NavigationStack {
+                content
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }
+                                .accessibilityLabel("Settings")
+                        }
                     }
-                }
-                Section {
-                    Button {
-                        UIPasteboard.general.string = model.reportText
-                        Haptics.success()
-                        withAnimation(Motion.fade) { copied = true }
-                    } label: {
-                        Label(copied ? "Copied — paste it to Claude" : "Copy report",
-                              systemImage: copied ? "checkmark" : "doc.on.doc")
-                            .frame(maxWidth: .infinity)
-                    }
-                }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Setup check")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("Settings")
-                }
-            }
-            .animation(Motion.spring, value: session.running)
         }
+    }
+
+    private var content: some View {
+        List {
+            Section {
+                MicCard(session: session)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+            SessionTestSection(session: session)
+            ForEach(model.sections) { section in
+                Section(section.id) {
+                    ForEach(section.checks) { CheckRow(check: $0) }
+                }
+            }
+            Section {
+                Button {
+                    UIPasteboard.general.string = model.reportText
+                    Haptics.success()
+                    withAnimation(Motion.fade) { copied = true }
+                } label: {
+                    Label(copied ? "Copied — paste it to Claude" : "Copy report",
+                          systemImage: copied ? "checkmark" : "doc.on.doc")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Setup check")
+        .animation(Motion.spring, value: session.running)
         .task {
             await model.checkSpeech()
         }

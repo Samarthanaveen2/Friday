@@ -56,9 +56,10 @@ struct GroupStore: Sendable {
         try? data.write(to: folder.appendingPathComponent(file), options: .atomic)
     }
 
-    func writeData(_ data: Data, to file: String) {
+    /// `atomic` for files that must never be half written (the saved boxes).
+    func writeData(_ data: Data, to file: String, atomic: Bool = false) {
         guard let folder else { return }
-        try? data.write(to: folder.appendingPathComponent(file))
+        try? data.write(to: folder.appendingPathComponent(file), options: atomic ? .atomic : [])
     }
 
     func readData(_ file: String) -> Data? {

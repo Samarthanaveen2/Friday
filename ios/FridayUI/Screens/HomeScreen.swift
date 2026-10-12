@@ -27,6 +27,7 @@ struct HomeScreen: View {
     var onSearch: () -> Void = {}
     var onSettings: () -> Void = {}
     var onCloseCard: () -> Void = {}
+    var onNew: () -> Void = {}
 
     var body: some View {
         ScrollView {
@@ -62,6 +63,7 @@ struct HomeScreen: View {
             }
             Spacer()
             HStack(spacing: 10) {
+                RoundIcon(systemName: "plus", label: "New box", action: onNew)
                 RoundIcon(systemName: "magnifyingglass", label: "Search", action: onSearch)
                 RoundIcon(systemName: "gearshape", label: "Settings", action: onSettings)
             }
