@@ -34,7 +34,7 @@ struct HomeScreen: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 VStack(alignment: .leading, spacing: 8) {
-                    SectionLabel(text: "Today", color: Palette.accent)
+                    SectionLabel(text: "Today")
                     TodayStrip(rows: model.today, next: model.next, onToggle: onToggle)
                 }
                 BoxGrid(boxes: model.boxes, onOpen: onOpenBox)
@@ -57,8 +57,7 @@ struct HomeScreen: View {
                     .tracking(0.4)
                     .foregroundStyle(Palette.secondary)
                 Text("Friday")
-                    .scaledFont(34, .bold, relativeTo: .largeTitle)
-                    .tracking(0.3)
+                    .scaledFont(40, .semibold, relativeTo: .largeTitle, serif: true)
                     .foregroundStyle(Palette.text)
             }
             Spacer()
@@ -106,9 +105,10 @@ struct RoundIcon: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Palette.secondary)
-                .frame(width: 36, height: 36)
+                .foregroundStyle(Palette.text)
+                .frame(width: 40, height: 40)
                 .background(Palette.card, in: Circle())
+                .overlay(Circle().strokeBorder(Palette.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -125,9 +125,9 @@ struct TalkingSheet: View {
     var body: some View {
         VStack(spacing: 20) {
             Capsule().fill(Palette.grabber).frame(width: 36, height: 5)
-            Waveform(levels: levels)
+            Waveform(levels: levels, color: Palette.text)
             (Text(transcript).foregroundStyle(Palette.text) + Text(" …").foregroundStyle(Palette.tertiary))
-                .scaledFont(20, .medium, relativeTo: .title3)
+                .scaledFont(24, .regular, relativeTo: .title3, serif: true)
                 .lineSpacing(6)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Spacer(minLength: 0)

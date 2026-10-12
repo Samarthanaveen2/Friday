@@ -119,8 +119,8 @@ struct TodayStrip: View {
                 .buttonStyle(.plain)
             }
         }
-        .background(Palette.card)
         .clipShape(RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+        .card()
     }
 
     private var emptyLine: some View {

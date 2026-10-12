@@ -23,6 +23,8 @@ struct FridayApp: App {
                 }
             }
             .tint(Theme.accent)
+            // Wispr-style white, always: the app doesn't follow dark mode (the keyboard does).
+            .preferredColorScheme(.light)
             .onOpenURL { model.handle($0) }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
                 app.showSwipeBack = false

@@ -1,22 +1,28 @@
 import SwiftUI
 import UIKit
 
-/// Colours (PLAN §13), each with a dark-mode partner. Every view uses these, never raw values.
+/// Colours, each with a dark-mode partner. Every view uses these, never raw values.
+/// Light is Wispr-style: warm white paper, near-black ink, a soft lilac for highlights.
+/// The app always runs light; dark values are for the keyboard in dark mode.
 enum Palette {
-    static let background = dynamic(0xF2F2F7, 0x000000)
+    static let background = dynamic(0xFAF9F4, 0x000000)
     static let card = dynamic(0xFFFFFF, 0x1C1C1E)
-    static let raised = dynamic(0xF2F2F7, 0x2C2C2E)
-    static let separator = dynamic(0xE3E3E8, 0x38383A)
-    static let text = dynamic(0x111114, 0xF5F5F7)
-    static let secondary = dynamic(0x5F5F66, 0x98989F)
-    static let tertiary = dynamic(0xA1A1A8, 0x636366)
-    static let alsoText = dynamic(0x3A3A40, 0xD1D1D6)
-    static let accent = dynamic(0x4338CA, 0x7C73FF)
-    static let changeTint = dynamic(0xEEF0FF, 0x23264A)
+    static let raised = dynamic(0xF3F1EA, 0x2C2C2E)
+    static let separator = dynamic(0xEEECE4, 0x38383A)
+    /// Hairline around cards and round buttons.
+    static let border = dynamic(0xE9E6DC, 0x2C2C2E)
+    static let text = dynamic(0x1A1A1A, 0xF5F5F7)
+    static let secondary = dynamic(0x6E6C64, 0x98989F)
+    static let tertiary = dynamic(0xAAA79D, 0x636366)
+    static let alsoText = dynamic(0x3C3B36, 0xD1D1D6)
+    /// Primary controls are ink, not colour.
+    static let accent = dynamic(0x1A1A1A, 0xF0D7FF)
+    static let lilac = dynamic(0xF0D7FF, 0x3A2D4F)
+    static let changeTint = dynamic(0xF7EEFF, 0x2A2238)
     static let stop = dynamic(0xD92D20, 0xFF453A)
-    static let pass = dynamic(0x1F9D55, 0x30D158)
-    static let pill = dynamic(0x111114, 0x2C2C2E)
-    static let grabber = dynamic(0xD1D1D6, 0x48484A)
+    static let pass = dynamic(0x1F7A4D, 0x30D158)
+    static let pill = dynamic(0x1A1A1A, 0x2C2C2E)
+    static let grabber = dynamic(0xDCD9CF, 0x48484A)
 
     // Keyboard: keys look like Apple's in both modes; the Wispr-style pill is the only contrast.
     static let key = dynamic(0xFFFFFF, 0x6B6B6E, darkAlpha: 0.55)
@@ -38,7 +44,7 @@ enum Theme {
     static let accent = Palette.accent
     static let stop = Palette.stop
     static let pass = Palette.pass
-    static let radius: CGFloat = 16
+    static let radius: CGFloat = 20
     static let micSize: CGFloat = 76
 }
 
@@ -60,22 +66,32 @@ struct ScaledFont: ViewModifier {
     @ScaledMetric private var size: CGFloat
     private let weight: Font.Weight
     private let monospacedDigits: Bool
+    private let design: Font.Design
 
-    init(size: CGFloat, weight: Font.Weight, relativeTo style: Font.TextStyle, monospacedDigits: Bool) {
+    init(size: CGFloat, weight: Font.Weight, relativeTo style: Font.TextStyle, monospacedDigits: Bool, design: Font.Design) {
         _size = ScaledMetric(wrappedValue: size, relativeTo: style)
         self.weight = weight
         self.monospacedDigits = monospacedDigits
+        self.design = design
     }
 
     func body(content: Content) -> some View {
-        let font = Font.system(size: size, weight: weight)
+        let font = Font.system(size: size, weight: weight, design: design)
         return content.font(monospacedDigits ? font.monospacedDigit() : font)
     }
 }
 
 extension View {
+    /// `serif`: Apple's New York, for titles (the Wispr look); everything else stays SF.
     func scaledFont(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body,
-                    digits: Bool = false) -> some View {
-        modifier(ScaledFont(size: size, weight: weight, relativeTo: style, monospacedDigits: digits))
+                    digits: Bool = false, serif: Bool = false) -> some View {
+        modifier(ScaledFont(size: size, weight: weight, relativeTo: style, monospacedDigits: digits,
+                            design: serif ? .serif : .default))
+    }
+
+    /// White card with a hairline edge, the one card style everywhere.
+    func card(radius: CGFloat = Theme.radius, fill: Color = Palette.card) -> some View {
+        background(fill, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Palette.border, lineWidth: 1))
     }
 }

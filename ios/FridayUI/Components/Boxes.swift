@@ -46,7 +46,7 @@ struct BoxCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     if let title = box.title {
                         Text(title)
-                            .scaledFont(16, .semibold)
+                            .scaledFont(18, .semibold, serif: true)
                             .foregroundStyle(Palette.text)
                             .lineLimit(2)
                     }
@@ -96,10 +96,9 @@ struct BoxCard: View {
                     }
                 }
             }
-            .padding(14)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(box.highlighted ? Palette.changeTint : Palette.card,
-                        in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+            .card(fill: box.highlighted ? Palette.changeTint : Palette.card)
         }
         .buttonStyle(PressScale())
     }

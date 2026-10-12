@@ -60,6 +60,8 @@ struct SettingsView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Palette.background)
         .navigationTitle("Settings")
         .toolbar {
             if probe != nil {

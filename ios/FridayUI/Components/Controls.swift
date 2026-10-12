@@ -1,20 +1,23 @@
 import SwiftUI
 
-/// The 76 pt talk button at the bottom of Today.
+/// The talk button at the bottom of Home: an ink pill, like Wispr's.
 struct MicButton: View {
     var action: () -> Void = {}
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "mic.fill")
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: Theme.micSize, height: Theme.micSize)
-                .background(Palette.accent, in: Circle())
-                .shadow(color: Palette.accent.opacity(0.30), radius: 16, y: 6)
+            HStack(spacing: 10) {
+                Image(systemName: "mic.fill").font(.system(size: 18, weight: .semibold))
+                Text("Talk to Friday").scaledFont(17, .semibold)
+            }
+            .foregroundStyle(Palette.onInverse)
+            .padding(.horizontal, 26)
+            .frame(height: 58)
+            .background(Palette.inverse, in: Capsule())
+            .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
         }
         .buttonStyle(PressScale())
-        .accessibilityLabel("Talk")
+        .accessibilityLabel("Talk to Friday")
     }
 }
 

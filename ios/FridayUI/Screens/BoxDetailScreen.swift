@@ -29,7 +29,7 @@ struct BoxDetailScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     TextField("Title", text: $title, axis: .vertical)
-                        .scaledFont(26, .bold, relativeTo: .title)
+                        .scaledFont(32, .semibold, relativeTo: .title, serif: true)
                         .foregroundStyle(Palette.text)
                     reminderChip
                     TextField("Write or talk…", text: $text, axis: .vertical)
@@ -52,11 +52,11 @@ struct BoxDetailScreen: View {
                         Text(listening ? "Listening… tap when done" : "Talk to this box")
                             .scaledFont(16, .semibold)
                     }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 22)
-                    .frame(height: 54)
-                    .background(Palette.accent, in: Capsule())
-                    .shadow(color: Palette.accent.opacity(0.28), radius: 14, y: 6)
+                    .foregroundStyle(Palette.onInverse)
+                    .padding(.horizontal, 24)
+                    .frame(height: 56)
+                    .background(Palette.inverse, in: Capsule())
+                    .shadow(color: .black.opacity(0.16), radius: 16, y: 7)
                 }
                 .buttonStyle(PressScale())
             }
@@ -65,7 +65,7 @@ struct BoxDetailScreen: View {
             .padding(.bottom, 12)
             .background(Palette.card.opacity(0.001))
         }
-        .background(Palette.card.ignoresSafeArea())
+        .background(Palette.background.ignoresSafeArea())
     }
 
     @ViewBuilder private var reminderChip: some View {
