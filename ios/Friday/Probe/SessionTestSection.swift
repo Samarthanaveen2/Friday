@@ -83,6 +83,16 @@ struct SessionTestSection: View {
                 .padding(.vertical, 2)
             }
 
+            let trail = IntentTrail.read()
+            if !trail.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Last Talk to Friday").font(.subheadline)
+                    Text(trail).font(.caption2.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                    copyButton(trail)
+                }
+                .padding(.vertical, 2)
+            }
+
             if let recording = session.lastRecording {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {

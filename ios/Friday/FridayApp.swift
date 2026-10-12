@@ -9,6 +9,11 @@ struct FridayApp: App {
     @State private var app = AppState.shared
 
     init() {
+        IntentTrail.markIfCut()
+        // An Objective-C exception (AVAudioEngine and friends) is written down before the crash.
+        NSSetUncaughtExceptionHandler { exception in
+            IntentTrail.add("CRASH \(exception.name.rawValue): \(exception.reason ?? "")")
+        }
         _ = Session.shared
         KeyboardBridge.shared.start()
     }

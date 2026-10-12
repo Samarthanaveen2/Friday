@@ -16,19 +16,37 @@ struct TalkToFridayIntent: AudioRecordingIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         // Waits for the mic (or the result): iOS stops Friday if the action ends first.
+        // Every step is written down (Setup check → Last Talk to Friday), and a failure is
+        // thrown with its reason, so iPhone shows it instead of "Something went wrong".
         if Talk.shared.listening {
+            IntentTrail.add("pressed again · finishing")
             await Talk.shared.finish()
+            IntentTrail.end("finished")
         } else {
-            await Talk.shared.begin(.newBox, source: .intent)
+            IntentTrail.begin("pressed · Talk to Friday (in the app)")
+            guard await Talk.shared.begin(.newBox, source: .intent) else {
+                let reason = Session.shared.lastError ?? Session.shared.activityNote ?? "Friday is busy"
+                IntentTrail.end("failed: \(reason)")
+                throw TalkFailure(reason: reason)
+            }
+            IntentTrail.end("listening · waiting for the second press")
         }
         return .result()
     }
     #else
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(URL(string: "friday://talk")!))
+        IntentTrail.begin("pressed · Talk to Friday (in the widget, opening Friday)")
+        IntentTrail.end("handed to the app")
+        return .result(opensIntent: OpenURLIntent(URL(string: "friday://talk")!))
     }
     #endif
+}
+
+/// Shown by iPhone when Talk to Friday can't start, e.g. "Mic couldn't start: …".
+struct TalkFailure: Error, CustomLocalizedStringResourceConvertible {
+    var reason: String
+    var localizedStringResource: LocalizedStringResource { "Mic couldn't start: \(reason)" }
 }
 
 /// ✓ in the Dynamic Island / Lock Screen while listening.

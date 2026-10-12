@@ -40,11 +40,17 @@ final class Talk {
     /// start before the button's action ends.
     @discardableResult
     func begin(_ target: Target, source: SessionSource = .app) async -> Bool {
-        guard self.target == nil, !working, !starting else { return false }
+        let traced = source == .intent
+        guard self.target == nil, !working, !starting else {
+            if traced { IntentTrail.add("busy (listening \(listening), writing \(working), starting \(starting))") }
+            return false
+        }
         starting = true
         defer { starting = false }
         if !Session.shared.running { await Session.shared.start(source: source) }
+        if traced { IntentTrail.add("starting dictation") }
         guard DictationPipeline.shared.begin() else {
+            if traced { IntentTrail.add("dictation didn't start: \(Session.shared.lastError ?? "session \(Session.shared.state)")") }
             BoxStore.shared.flash("Mic isn't ready")
             if target == .newBox { Session.shared.setActivity(phase: "done", message: "Mic isn't ready") }
             return false
@@ -52,6 +58,7 @@ final class Talk {
         Haptics.tap()
         self.target = target
         if target == .newBox { Session.shared.setActivity(phase: "listening") }
+        if traced { IntentTrail.add("listening") }
         return true
     }
 

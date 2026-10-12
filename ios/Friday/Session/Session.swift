@@ -92,10 +92,15 @@ final class Session {
 
     func start(source: SessionSource) async {
         let appWasActive = UIApplication.shared.applicationState == .active
+        let traced = source == .intent
+        if traced { IntentTrail.add("session start · app \(appWasActive ? "open" : "in background") · state \(state)") }
         ensureActivity(source: source)
+        if traced { IntentTrail.add(activityRunning ? "live activity on" : "live activity failed: \(activityNote ?? "?")") }
         if state == .off || state == .needsRestart {
             do {
+                if traced { IntentTrail.add("starting mic") }
                 if state == .needsRestart { try engine.rebuild() } else { try engine.start() }
+                if traced { IntentTrail.add("mic on") }
                 state = .holding
                 lastError = nil
                 endsAt = length.seconds.map { Date.now.addingTimeInterval($0) }
@@ -103,6 +108,7 @@ final class Session {
             } catch {
                 state = .needsRestart
                 lastError = error.localizedDescription
+                if traced { IntentTrail.add("mic failed: \(error.localizedDescription)") }
             }
         }
         if source == .intent {
