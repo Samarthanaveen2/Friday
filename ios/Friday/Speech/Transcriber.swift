@@ -10,6 +10,8 @@ struct SpeechResult: Sendable {
     var by: Provider
     /// How long dictations were sent ("whole 50 s" or "4 pieces"), shown under the result.
     var detail: String? = nil
+    /// Why the iPhone's own speech was used instead of Groq ("Groq was slow — used phone").
+    var fallback: String? = nil
 }
 
 /// Runs cloud and on-device speech side by side for one dictation (PLAN §5).
@@ -27,6 +29,8 @@ final class Transcriber {
     /// The newest live upload; the next piece waits for its text to use as context.
     private var lastUpload: Task<String?, Never>?
     private var prompt = ""
+    /// The last Groq speech error of this dictation, to say why the iPhone's text was used.
+    private var lastError: CloudError.Kind?
     /// Bumped by every begin(); a finish() only clears state that still belongs to its dictation.
     private var generation = 0
     /// Live pieces are only sent for dictations longer than this. Shorter ones go as one whole
@@ -39,6 +43,7 @@ final class Transcriber {
         self.prompt = prompt
         uploads = [:]
         lastUpload = nil
+        lastError = nil
         chunker = LiveChunker()
         let (stream, continuation) = AsyncStream.makeStream(of: [Float].self)
         feed = continuation
@@ -95,19 +100,20 @@ final class Transcriber {
                 }
                 return parts.reduce("") { joinChunks($0, $1) }
             }
+            let budget = SpeechRace.cloudBudget(seconds: recording.duration)
             if tasks.count == 1 {
-                cloud = await withTimeout(SpeechRace.cloudBudget) { await joined.value }
+                cloud = await withTimeout(budget) { await joined.value }
             } else {
                 // Long dictation: also send the whole recording in one go. Whisper then keeps its own
                 // context across all of it, so nothing can drop out where pieces meet.
                 // The pieces sent while you talked are the backup if this is slow.
                 let whole = uploadWhole(recording.samples, key: key)
-                cloud = await withTimeout(3.0) { await whole.value }
+                cloud = await withTimeout(budget) { await whole.value }
                 if cloud != nil {
                     detail = "whole \(Int(recording.duration.rounded())) s"
                 } else {
                     // One deadline for both: if the whole file failed fast, the pieces get the rest.
-                    let left = max(0.7, 3.7 - Date.now.timeIntervalSince(started))
+                    let left = max(0.7, budget + 0.7 - Date.now.timeIntervalSince(started))
                     cloud = await withTimeout(left) { await joined.value }
                     if cloud != nil { detail = "\(tasks.count) pieces" }
                 }
@@ -136,7 +142,26 @@ final class Transcriber {
         let by: Provider = { if case .cloud = choice { return .groq } else { return .device } }()
         UsageBook.shared.lastSpeech = by == .groq ? Models.whisper : "iphone"
         return SpeechResult(choice: choice, cloudText: cloud, deviceText: device,
-                            ms: Int(Date.now.timeIntervalSince(started) * 1000), by: by)
+                            ms: Int(Date.now.timeIntervalSince(started) * 1000), by: by,
+                            fallback: by == .device ? whyPhone(heard: heard) : nil)
+    }
+
+    /// The real reason Groq's text wasn't used, in a few words for the keyboard strip.
+    private func whyPhone(heard: Bool) -> String {
+        if Keys.get(.groq) == nil { return "No Groq key — used phone" }
+        if let until = QuotaBook.shared.restingUntil("groq.whisper") {
+            return "Groq resting till \(until.formatted(date: .omitted, time: .shortened)) — used phone"
+        }
+        if !QuotaBook.shared.available("groq.whisper") { return "Groq limit near — used phone" }
+        switch lastError {
+        case .network: return "No internet — used phone"
+        case .useBackup: return "Groq limit — used phone"
+        case .badKey: return "Groq key not working — used phone"
+        case .failed(let code): return "Groq error \(code) — used phone"
+        case .empty: return "Groq heard nothing — used phone"
+        case .noKey: return "No Groq key — used phone"
+        case nil: return heard ? "Groq was slow — used phone" : "Used phone"
+        }
     }
 
     private func stopFeeding(sink: AudioSink) {
@@ -173,7 +198,10 @@ final class Transcriber {
                                                                key: key, m4a: m4a != nil,
                                                                seconds: Double(audio.count) / Double(AudioFormat.sampleRate))
             } catch {
-                await MainActor.run { QuotaBook.shared.failed("groq.whisper", error) }
+                await MainActor.run {
+                    QuotaBook.shared.failed("groq.whisper", error)
+                    Transcriber.shared.lastError = (error as? CloudError)?.kind ?? .network
+                }
                 return nil
             }
         }
@@ -195,7 +223,10 @@ final class Transcriber {
                 return try await CloudClient.shared.transcribe(wav: wav, prompt: prompt, key: key,
                                                                seconds: Double(audio.count) / Double(AudioFormat.sampleRate))
             } catch {
-                await MainActor.run { QuotaBook.shared.failed("groq.whisper", error) }
+                await MainActor.run {
+                    QuotaBook.shared.failed("groq.whisper", error)
+                    Transcriber.shared.lastError = (error as? CloudError)?.kind ?? .network
+                }
                 return nil
             }
         }

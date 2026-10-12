@@ -10,7 +10,11 @@ public enum SpeechChoice: Equatable, Sendable {
 
 public enum SpeechRace {
     /// The cloud waits this long after ✓ before the on-device text is used instead.
-    public static let cloudBudget: TimeInterval = 1.2
+    /// Whisper is much better than the iPhone, so it gets time to upload on mobile data:
+    /// 2.5 s plus a little per second of audio, at most 5 s.
+    public static func cloudBudget(seconds: Double) -> TimeInterval {
+        min(5, 2.5 + 0.03 * max(0, seconds))
+    }
 
     /// - cloud: Whisper's text if it arrived within the budget, else nil.
     /// - device: Apple's on-device text, if any.

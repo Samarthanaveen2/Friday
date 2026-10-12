@@ -15,12 +15,15 @@ final class DictationPipeline {
         /// What each ear heard, before any fixing (for the step-by-step report).
         var cloudText: String? = nil
         var deviceText: String? = nil
+        /// Why the iPhone's speech was used instead of Groq, for the keyboard strip.
+        var fallback: String? = nil
 
         /// Every step on its own line, for the Copy button in Setup check.
         var report: String {
             var lines = ["Typed: \(nothing ? "(nothing)" : text)"]
             lines.append("Groq heard: \(cloudText ?? "(no reply)")")
             lines.append("iPhone heard: \(deviceText.map { $0.isEmpty ? "(nothing)" : $0 } ?? "(not ready)")")
+            if let fallback { lines.append("Speech: \(fallback)") }
             lines.append("Sent to cleanup: \(raw)")
             if !notes.isEmpty { lines.append("Notes: \(notes.joined(separator: " · "))") }
             lines.append(timings.line)
@@ -81,7 +84,7 @@ final class DictationPipeline {
                                                totalMs: Int(Date.now.timeIntervalSince(started) * 1000),
                                                speechBy: speech.by, cleanupBy: cleaned.by),
                               nothing: false, notes: (speech.detail.map { ["Speech: \($0)"] } ?? []) + cleaned.notes,
-                              cloudText: speech.cloudText, deviceText: speech.deviceText)
+                              cloudText: speech.cloudText, deviceText: speech.deviceText, fallback: speech.fallback)
         remember(outcome)
         return outcome
     }

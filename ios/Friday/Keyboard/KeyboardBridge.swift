@@ -61,7 +61,7 @@ final class KeyboardBridge {
                 let raw = Continuation.apply(outcome.raw, after: request.context)
                 GroupStore.shared.write(Insertion(text: outcome.text, raw: raw, at: .now), to: BridgeFile.last)
                 self.reply(request, .result, text: outcome.text, raw: raw,
-                           message: outcome.timings.speechBy == .device ? "No internet — used phone" : nil)
+                           message: outcome.timings.speechBy == .device ? (outcome.fallback ?? "Used phone") : nil)
             }
 
         case .cancel:
