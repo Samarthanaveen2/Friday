@@ -50,13 +50,19 @@ struct UsageSection: View {
         } header: {
             Text("AI usage today")
         } footer: {
-            Text("Free daily allowance used, counted from Groq's own numbers (requests) and Friday's (tokens, audio). Resets every day. When one model is resting, Friday moves to the next.")
+            Text("Free daily allowance used. Groq limits both requests and tokens; anything else using the same Groq key counts too. Resets every day. When one model is resting, Friday moves to the next.")
         }
     }
 
     private func detail(_ u: ModelUsage, resting: Date?) -> String {
         if let resting {
-            return "Resting after its limit until \(resting.formatted(date: .omitted, time: .shortened))"
+            let back = "back at \(resting.formatted(date: .omitted, time: .shortened))"
+            guard let kind = u.limitKind else { return "Resting after its limit · \(back)" }
+            let size = u.limitValue.map { " (\($0 >= 1000 ? "\($0 / 1000)K" : "\($0)"))" } ?? ""
+            let what = kind.replacingOccurrences(of: " per day", with: " for today")
+                .replacingOccurrences(of: " per minute", with: " for this minute")
+                .replacingOccurrences(of: " per hour", with: " for this hour")
+            return "Used up its \(what)\(size) · \(back)"
         }
         guard u.requests > 0 || u.requestsLeft != nil else { return "Not used today" }
         var parts = ["\(u.requests) request\(u.requests == 1 ? "" : "s")"]

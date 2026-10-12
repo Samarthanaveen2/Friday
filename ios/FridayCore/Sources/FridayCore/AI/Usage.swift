@@ -15,6 +15,11 @@ public struct ModelUsage: Codable, Equatable, Sendable {
     public var requestsLeft: Int?
     public var lastUsed: Date?
     public var lastOK = true
+    /// The limit Groq said was hit today ("tokens per day"), with its size and how much was used.
+    /// Groq counts every app or test using the key, so this is the true picture.
+    public var limitKind: String?
+    public var limitValue: Int?
+    public var limitUsed: Int?
 
     public init(model: String, day: String) {
         self.model = model
@@ -31,6 +36,9 @@ public struct ModelUsage: Codable, Equatable, Sendable {
         }
         if let limit = Usage.tokensPerDay[model] { parts.append(Double(tokens) / Double(limit)) }
         if let limit = Usage.audioSecondsPerDay[model] { parts.append(audioSeconds / limit) }
+        if let limit = limitValue, limit > 0, let usedSoFar = limitUsed, limitKind?.hasSuffix("per day") == true {
+            parts.append(Double(usedSoFar) / Double(limit))
+        }
         return min(1, max(0, parts.max() ?? 0))
     }
 }
@@ -64,7 +72,39 @@ public struct Usage: Codable, Equatable, Sendable {
         if let left = headers["x-ratelimit-remaining-requests"].flatMap(Int.init) { entry.requestsLeft = left }
         if let body, let tokens = Usage.tokens(in: body) { entry.tokens += tokens }
         if let audioSeconds { entry.audioSeconds += audioSeconds }
+        if !ok, let body, let hit = Usage.limitHit(in: String(decoding: body, as: UTF8.self)) {
+            entry.limitKind = hit.kind
+            entry.limitValue = hit.limit
+            entry.limitUsed = hit.used
+        }
         models[model] = entry
+    }
+
+    /// What a Groq 429 says: "Rate limit reached for model `x` … on tokens per day (TPD):
+    /// Limit 500000, Used 499120, Requested 1830. Please try again in 9m12.5s."
+    public struct LimitHit: Equatable, Sendable {
+        /// "tokens per day", "requests per minute", "audio seconds per hour"…
+        public var kind: String
+        public var limit: Int?
+        public var used: Int?
+        public var retryAfter: TimeInterval?
+    }
+
+    public static func limitHit(in body: String) -> LimitHit? {
+        guard let kind = Rx.firstMatch(body, "(tokens|requests|audio seconds) per (minute|hour|day)") else { return nil }
+        func number(_ label: String) -> Int? {
+            Rx.firstMatch(body, label + ":?\\s*\\d+").flatMap { Int($0.filter(\.isNumber)) }
+        }
+        var retry: TimeInterval?
+        if let wait = Rx.firstMatch(body, "try again in\\s*(?:\\d+(?:\\.\\d+)?[hms])+") {
+            var total = 0.0
+            for part in Rx.matches(wait, "\\d+(?:\\.\\d+)?[hms]") {
+                let value = Double(part.dropLast()) ?? 0
+                total += value * (part.hasSuffix("h") ? 3600 : part.hasSuffix("m") ? 60 : 1)
+            }
+            retry = total
+        }
+        return LimitHit(kind: kind.lowercased(), limit: number("Limit"), used: number("Used"), retryAfter: retry)
     }
 
     /// Today's entry for a model (zero if it hasn't been used today).

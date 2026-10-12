@@ -78,6 +78,9 @@ public enum CallOutcome: Equatable, Sendable {
     public static func from(status: Int, body: String = "") -> CallOutcome {
         switch status {
         case 200..<300: .ok
+        // Groq says when it will take requests again: rest exactly that long (a little extra).
+        case 429 where Usage.limitHit(in: body)?.retryAfter != nil:
+            .useBackup(coolDown: max(5, (Usage.limitHit(in: body)?.retryAfter ?? 0) + 2))
         // A daily cap won't lift in a minute: rest this model for an hour, then check again.
         case 429 where body.contains("per day"): .useBackup(coolDown: 3_600)
         case 429: .useBackup(coolDown: 60)

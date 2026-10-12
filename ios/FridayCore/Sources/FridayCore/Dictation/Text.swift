@@ -34,6 +34,18 @@ enum Rx {
         make(pattern).firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
     }
 
+    /// The first text matching the pattern, if any.
+    static func firstMatch(_ text: String, _ pattern: String) -> String? {
+        matches(text, pattern).first
+    }
+
+    /// Every text matching the pattern, in order.
+    static func matches(_ text: String, _ pattern: String) -> [String] {
+        make(pattern).matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap {
+            Range($0.range, in: text).map { String(text[$0]) }
+        }
+    }
+
     /// Escapes a phrase and lets any run of spaces in it match any whitespace.
     static func phrase(_ text: String) -> String {
         text.split(whereSeparator: \.isWhitespace)

@@ -72,10 +72,10 @@ final class CloudClient: Sendable {
             }
             let ok = status == 200
             await MainActor.run {
-                UsageBook.shared.record(model: model, headers: headers, body: ok ? data : nil, audioSeconds: audioSeconds, ok: ok)
+                UsageBook.shared.record(model: model, headers: headers, body: ok || status == 429 ? data : nil, audioSeconds: audioSeconds, ok: ok)
             }
         }
-        switch CallOutcome.from(status: status, body: String(decoding: data.prefix(400), as: UTF8.self)) {
+        switch CallOutcome.from(status: status, body: String(decoding: data.prefix(1000), as: UTF8.self)) {
         case .ok: return data
         case .useBackup(let seconds): throw CloudError(kind: .useBackup(seconds))
         case .badKey: throw CloudError(kind: .badKey)
