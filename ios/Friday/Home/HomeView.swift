@@ -30,6 +30,7 @@ struct HomeView: View {
                        onSettings: { showSettings = true },
                        onCloseCard: { boxes.answer = nil },
                        onNew: newBox,
+                       onPower: power,
                        onBoxAction: act,
                        zoom: zoom)
                 .toolbar(.hidden, for: .navigationBar)
@@ -101,7 +102,18 @@ struct HomeView: View {
                          card: boxes.answer.map { ResultCardModel(kind: .answer(text: $0, source: nil)) },
                          // Mic levels are only read while this place is listening: reading them always
                          // would redraw Home 20 times a second whenever the session is on.
-                         talk: talk.state(for: .newBox, levels: talk.target == .newBox ? session.levels : []))
+                         talk: talk.state(for: .newBox, levels: talk.target == .newBox ? session.levels : []),
+                         on: session.running)
+    }
+
+    /// The On/Off switch: off stops the mic and the Dynamic Island at once; on starts it again.
+    private func power() {
+        if session.running {
+            talk.cancel()
+            session.stop()
+        } else {
+            Task { await session.start(source: .app) }
+        }
     }
 
     /// First run: what's still missing before Friday works fully. Tapping it opens Settings.
