@@ -104,4 +104,6 @@ final class AppState {
     var showSwipeBack = false
     /// Whether the last keyboard bounce jumped back to the chat by itself.
     var lastAutoReturn: Bool?
+    /// How it got back: "breadcrumb", "bundle" or "link".
+    var lastReturnWay: String?
 }

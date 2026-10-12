@@ -63,9 +63,10 @@ final class ProbeModel {
                 if from == "keyboard" {
                     // Back to the chat on its own, like Wispr; the swipe screen only if iOS won't.
                     try? await Task.sleep(for: .milliseconds(250))
-                    let returned = Session.shared.running && BackToPreviousApp.go()
-                    AppState.shared.lastAutoReturn = returned
-                    if !returned { AppState.shared.showSwipeBack = true }
+                    let way = Session.shared.running ? await ReturnToHost.go() : nil
+                    AppState.shared.lastAutoReturn = way != nil
+                    AppState.shared.lastReturnWay = way
+                    if way == nil { AppState.shared.showSwipeBack = true }
                 }
                 if from == "intent" {
                     // Opened by the widget-extension fallback: record that the mic did start.
@@ -173,7 +174,7 @@ final class ProbeModel {
     private var openAppCheck: Check {
         if let returned = AppState.shared.lastAutoReturn {
             return Check(id: "open", title: "Keyboard opens Friday and comes back", status: returned ? .pass : .fail,
-                         detail: returned ? "Jumped back by itself" : "Had to swipe back")
+                         detail: returned ? "Jumped back by itself (\(AppState.shared.lastReturnWay ?? "?"))" : "Had to swipe back")
         }
         guard let at = openedFromKeyboardAt else {
             return Check(id: "open", title: "Keyboard opens Friday", status: .waiting, detail: "Not tested",
