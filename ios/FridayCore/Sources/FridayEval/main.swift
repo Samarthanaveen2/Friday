@@ -105,6 +105,8 @@ struct DecisionCase: Decodable {
     let events: [Event]
     let expect: [String]
     let forbid: [String]
+    /// Box texts; they get ids n1, n2… in order.
+    var boxes: [String]? = nil
 }
 
 func kinds(_ action: DecisionAction) -> [String] {
@@ -116,6 +118,9 @@ func kinds(_ action: DecisionAction) -> [String] {
     case .note: ["note"]
     case .delete(let id): ["delete", "delete:\(id)"]
     case .move(let id, _, _): ["move", "move:\(id)"]
+    case .deleteBox(let id): ["delete_box", "delete_box:\(id)"]
+    case .editBox(let id, _, _): ["edit_box", "edit_box:\(id)"]
+    case .answer: ["answer"]
     default: ["other"]
     }
 }
@@ -132,7 +137,9 @@ if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "decide" {
             CalendarEvent(id: e.id, title: e.t, date: today.adding(days: Int(e.d) ?? 0), time: e.tm.flatMap(TimeOfDay.init),
                           end: nil, calendar: "Personal")
         }
-        let input = DecisionPrompt.input(now: now, timeZone: zone, store: Store(), places: [], said: c.say, events: events)
+        var store = Store()
+        for text in (c.boxes ?? []).reversed() { store.addNote(text: text, now: now) }
+        let input = DecisionPrompt.input(now: now, timeZone: zone, store: store, places: [], said: c.say, events: events)
         let body = CloudRequests.chatBody(model: Models.groqDecision, system: DecisionPrompt.system, user: input,
                                           maxTokens: 2_500, reasoningEffort: Models.reasoningEffort(for: Models.groqDecision), json: true)
         var (status, data) = await post(body, key: key)

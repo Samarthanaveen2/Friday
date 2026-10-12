@@ -5,3 +5,7 @@
 {"id": 5, "say": "idea for the fest poster, blue background with the club logo big in the middle", "events": [], "expect": ["note"], "forbid": ["add_event", "cancel_event"]}
 {"id": 6, "say": "remind me to call mom at 6", "events": [], "expect": ["add"], "forbid": ["cancel_event"]}
 {"id": 7, "say": "I have a DBMS class on Monday at 10 and also cancel tomorrow's gym session", "events": [{"id": "e1", "t": "Gym", "d": "+1", "tm": "17:00"}], "expect": ["add_event", "cancel_event:e1"], "forbid": []}
+{"id": 8, "say": "Friday, delete all the boxes I have right now", "events": [], "boxes": ["old idea", "Things to buy: chicken"], "expect": ["delete_box:n1", "delete_box:n2"], "forbid": ["note"]}
+{"id": 9, "say": "Cancel my meeting with my other friend tomorrow", "events": [], "boxes": ["- Meeting with my friend at 8 pm tomorrow\n- Meeting with my other friend at 9 pm tomorrow"], "expect": ["edit_box:n1"], "forbid": ["note", "delete_box"]}
+{"id": 10, "say": "What's on my schedule tomorrow?", "events": [{"id": "e1", "t": "Dentist", "d": "+1", "tm": "11:00"}], "expect": ["answer"], "forbid": ["note", "cancel_event"]}
+{"id": 11, "say": "Remind me to change the UI of my app with my mother at 9 pm today", "events": [], "expect": ["add"], "forbid": ["note"]}

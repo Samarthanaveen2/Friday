@@ -50,3 +50,24 @@ final class DecisionCalendarTests: XCTestCase {
         XCTAssertTrue(Dictation(dictionary: ["Samartha"]).whisperPrompt().hasPrefix("Okay Friday,"))
     }
 }
+
+final class DecisionBoxTests: XCTestCase {
+    func testBoxActionsAndAnswer() {
+        var store = Store()
+        let a = store.addNote(text: "Meeting with my friend at 8 pm tomorrow\nMeeting with my other friend at 9 pm tomorrow", now: .now)
+        let b = store.addNote(text: "old idea", now: .now)
+        let reply = """
+        {"actions":[{"a":"edit_box","id":"\(a)","text":"Meeting with my friend at 8 pm tomorrow"},
+                    {"a":"delete_box","id":"\(b)"},{"a":"answer","text":"You have 1 meeting tomorrow."},{"a":"delete_box","id":"zz"}]}
+        """
+        let (actions, problems) = DecisionParser.parse(reply)
+        XCTAssertEqual(problems, [])
+        XCTAssertEqual(actions.last, DecisionAction.deleteBox(id: "zz"))
+        let result = Schedule.apply(actions, to: store, now: .now)
+        XCTAssertEqual(result.store.notes.map(\.id), [a])
+        XCTAssertEqual(result.store.note(a)?.text, "Meeting with my friend at 8 pm tomorrow")
+        XCTAssertEqual(result.other, [DecisionAction.answer(text: "You have 1 meeting tomorrow.")])
+        XCTAssertEqual(result.problems, [DecisionProblem.unknownItem("zz")])
+        XCTAssertTrue(DecisionPrompt.input(now: .now, timeZone: .current, store: store, places: [], said: "x").contains("BOXES: [{"))
+    }
+}

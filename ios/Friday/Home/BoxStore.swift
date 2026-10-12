@@ -13,6 +13,8 @@ final class BoxStore {
     /// The change pill ("New box", "Box deleted").
     private(set) var pill: String?
     var canUndo: Bool { undoPoint != nil }
+    /// Friday's answer to a question, shown in a card on Home until closed.
+    var answer: String?
 
     private var undoPoint: Store?
     /// Extra work to undo with the store (calendar changes).

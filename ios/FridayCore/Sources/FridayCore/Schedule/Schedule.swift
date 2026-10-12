@@ -10,12 +10,16 @@ public enum Change: Equatable, Sendable {
     case renamed(id: String)
     case focused(id: String, on: Bool)
     case noted(id: String)
+    case deletedBox(Note)
+    case editedBox(id: String)
 
     public var id: String {
         switch self {
         case .added(let id), .completed(let id), .uncompleted(let id), .moved(let id, _, _),
              .renamed(let id), .focused(let id, _), .noted(let id): id
         case .deleted(let item): item.id
+        case .deletedBox(let note): note.id
+        case .editedBox(let id): id
         }
     }
 
@@ -29,6 +33,8 @@ public enum Change: Equatable, Sendable {
         case .renamed: return "Renamed"
         case .focused(_, let on): return on ? "Focus" : "Not focus"
         case .noted: return "Saved"
+        case .deletedBox: return "Deleted"
+        case .editedBox: return "Edited"
         case .moved(let id, let fromDate, let fromTime):
             guard let item = store.item(id) else { return "Moved" }
             if item.date != fromDate {
@@ -102,6 +108,21 @@ public enum Schedule {
                 let id = s.makeID("n")
                 s.notes.insert(Note(id: id, title: title, text: text, reminder: remind, created: now), at: 0)
                 changes.append(.noted(id: id))
+            case .deleteBox(let id):
+                guard let i = s.notes.firstIndex(where: { $0.id == id }) else { problems.append(.unknownItem(id)); continue }
+                changes.append(.deletedBox(s.notes.remove(at: i)))
+            case let .editBox(id, title, text):
+                guard s.note(id) != nil else { problems.append(.unknownItem(id)); continue }
+                s.editNote(id, title: title ?? s.note(id)?.title, text: text, now: now)
+                changes.append(.editedBox(id: id))
+            case let .pinBox(id, on):
+                guard let i = s.notes.firstIndex(where: { $0.id == id }) else { problems.append(.unknownItem(id)); continue }
+                s.notes[i].pinned = on
+                changes.append(.editedBox(id: id))
+            case let .remindBox(id, at):
+                guard s.note(id) != nil else { problems.append(.unknownItem(id)); continue }
+                s.setReminder(id, at)
+                changes.append(.editedBox(id: id))
             default:
                 other.append(action)
             }

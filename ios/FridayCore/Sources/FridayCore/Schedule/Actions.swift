@@ -17,6 +17,13 @@ public enum DecisionAction: Equatable, Sendable {
     // Other
     /// Becomes a box; `remind` sets its reminder.
     case note(text: String, title: String? = nil, remind: Date? = nil)
+    // Boxes (ids from BOXES)
+    case deleteBox(id: String)
+    case editBox(id: String, title: String?, text: String)
+    case pinBox(id: String, on: Bool)
+    case remindBox(id: String, at: Date?)
+    /// A short spoken-style answer shown in a card.
+    case answer(text: String)
     case message(app: String, to: String, text: String)
     case email(to: String, subject: String, body: String)
     case call(to: String)
@@ -32,7 +39,8 @@ public enum DecisionAction: Equatable, Sendable {
     /// Schedule and note actions are applied together in one step with one undo.
     public var isStoreAction: Bool {
         switch self {
-        case .add, .complete, .uncomplete, .delete, .move, .rename, .focus, .note: true
+        case .add, .complete, .uncomplete, .delete, .move, .rename, .focus, .note,
+             .deleteBox, .editBox, .pinBox, .remindBox: true
         default: false
         }
     }
@@ -135,6 +143,17 @@ public enum DecisionParser {
                     remind = at
                 }
                 action = .note(text: try need("text"), title: str("title"), remind: remind)
+            case "delete_box": action = .deleteBox(id: try need("id"))
+            case "edit_box": action = .editBox(id: try need("id"), title: str("title"), text: try need("text"))
+            case "pin_box": action = .pinBox(id: try need("id"), on: raw["on"] == nil ? true : bool("on"))
+            case "remind_box":
+                var at: Date?
+                if let text = str("at") {
+                    guard let parsed = moment(text, timeZone: timeZone) else { throw Failure(value: .badDate(text)) }
+                    at = parsed
+                }
+                action = .remindBox(id: try need("id"), at: at)
+            case "answer": action = .answer(text: try need("text"))
             case "add_event":
                 guard let t = try time("time") else { throw Failure(value: .malformed("add_event: missing time")) }
                 let minutes = (raw["minutes"] as? Int) ?? (raw["minutes"] as? Double).map(Int.init) ?? str("minutes").flatMap(Int.init)

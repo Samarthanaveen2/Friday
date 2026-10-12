@@ -11,10 +11,17 @@ enum Manager {
         let calendar = CalendarService.shared.forPrompt()
         let store = BoxStore.shared.store
 
-        guard let actions = await Decider.shared.decide(said: said, store: store, events: calendar.events),
-              !actions.isEmpty else {
+        guard let actions = await Decider.shared.decide(said: said, store: store, events: calendar.events) else {
+            // No AI answered (free limit used up or offline): keep the words, and say why.
+            BoxStore.shared.change("AI is resting · saved as a box") { $0.addNote(text: said, now: .now) }
+            return
+        }
+        guard !actions.isEmpty else {
             BoxStore.shared.change("Saved as a box") { $0.addNote(text: said, now: .now) }
             return
+        }
+        for case .answer(let text) in actions {
+            BoxStore.shared.answer = text
         }
 
         var labels: [String] = []
@@ -50,8 +57,14 @@ enum Manager {
         let result = Schedule.apply(storeActions, to: store, now: .now)
         for change in result.changes { labels.append(label(change, in: result.store)) }
 
-        let unsupported = actions.filter { !$0.isStoreAction && !$0.isCalendarAction }
+        let unsupported = actions.filter {
+            if case .answer = $0 { return false }
+            return !$0.isStoreAction && !$0.isCalendarAction
+        }
         var finalStore = result.store
+        if labels.isEmpty && BoxStore.shared.answer != nil && unsupported.isEmpty {
+            return
+        }
         if labels.isEmpty {
             // Only things Friday can't do yet (messages, calls, web): keep what was said as a box.
             finalStore.addNote(text: said, now: .now)
@@ -75,6 +88,8 @@ enum Manager {
         case .renamed(let id): "Renamed ‘\(store.item(id)?.title ?? "")’"
         case .focused(let id, let on): on ? "Priority ‘\(store.item(id)?.title ?? "")’" : "Not priority"
         case .noted: "Saved as a box"
+        case .deletedBox(let note): "Deleted ‘\(Labels.title(of: note))’"
+        case .editedBox(let id): "Updated ‘\(store.note(id).map(Labels.title) ?? "box")’"
         }
     }
 }

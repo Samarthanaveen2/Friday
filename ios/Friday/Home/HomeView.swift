@@ -28,6 +28,7 @@ struct HomeView: View {
                        onUndo: { boxes.undo() },
                        onSearch: { showSearch = true },
                        onSettings: { showSettings = true },
+                       onCloseCard: { boxes.answer = nil },
                        onNew: newBox,
                        onBoxAction: act,
                        zoom: zoom)
@@ -97,6 +98,7 @@ struct HomeView: View {
         if let setup = setupBox { cards.insert(setup, at: 0) }
         return HomeModel(dateLabel: Labels.header(.now), today: rows, next: next, boxes: cards,
                          pill: boxes.pill, pillUndo: boxes.canUndo,
+                         card: boxes.answer.map { ResultCardModel(kind: .answer(text: $0, source: nil)) },
                          // Mic levels are only read while this place is listening: reading them always
                          // would redraw Home 20 times a second whenever the session is on.
                          talk: talk.state(for: .newBox, levels: talk.target == .newBox ? session.levels : []))
