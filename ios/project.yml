@@ -55,6 +55,7 @@ targets:
         NSSupportsLiveActivities: true
         NSMicrophoneUsageDescription: Friday listens only while you dictate or talk to it.
         NSSpeechRecognitionUsageDescription: Friday turns your voice into text on the phone as a fast backup.
+        NSCalendarsFullAccessUsageDescription: Friday reads your schedule and adds, moves or cancels events when you ask it to.
         CFBundleURLTypes:
           - CFBundleURLName: com.samarth.friday
             CFBundleURLSchemes: [friday]

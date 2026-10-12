@@ -1,4 +1,5 @@
 import FridayCore
+import EventKit
 import SwiftUI
 import UIKit
 
@@ -9,6 +10,7 @@ struct HomeView: View {
     @State private var boxes = BoxStore.shared
     @State private var talk = Talk.shared
     @State private var session = Session.shared
+    @State private var calendar = CalendarService.shared
     @State private var path: [String] = []
     @State private var showSettings = false
     @State private var showSearch = false
@@ -65,12 +67,25 @@ struct HomeView: View {
         let zone = TimeZone.current
         let today = TimeRules.today(now: .now, in: zone)
         let layout = TodayLayout(store: store, today: today)
-        var rows = (layout.focus + layout.also).map { item in
-            RowModel(id: item.id, title: item.title, time: item.time?.description, done: item.done, priority: item.focus)
+        // Friday's to-dos, box reminders and today's calendar events, in time order (untimed last).
+        var timed: [(minute: Int, row: RowModel)] = []
+        var untimed: [RowModel] = []
+        for item in layout.focus + layout.also {
+            let at = item.time.flatMap { CalendarService.date(item.date, $0) }
+            let row = RowModel(id: item.id, title: item.title, time: at.map(Labels.time), done: item.done, priority: item.focus)
+            if let time = item.time { timed.append((time.hour * 60 + time.minute, row)) } else { untimed.append(row) }
         }
-        rows += store.reminders(on: today, in: zone).map { note in
-            RowModel(id: "r:" + note.id, title: Labels.title(of: note), time: note.reminder.map(Labels.time))
+        for note in store.reminders(on: today, in: zone) {
+            guard let at = note.reminder else { continue }
+            timed.append((Labels.minuteOfDay(at), RowModel(id: "r:" + note.id, title: Labels.title(of: note), time: Labels.time(at))))
         }
+        for event in calendar.today() {
+            let row = RowModel(id: "e:" + (event.eventIdentifier ?? event.title ?? ""), title: event.title ?? "Event",
+                               time: event.isAllDay ? nil : Labels.time(event.startDate),
+                               calendarColor: event.calendar.map { Color(cgColor: $0.cgColor) } ?? Palette.secondary)
+            if event.isAllDay { untimed.insert(row, at: 0) } else { timed.append((Labels.minuteOfDay(event.startDate), row)) }
+        }
+        let rows = timed.sorted { $0.minute < $1.minute }.map(\.row) + untimed
         let next = layout.next.map { item in
             (title: item.title, when: Labels.day(item.date, today: today) + (item.time.map { " \($0)" } ?? ""))
         }
@@ -267,6 +282,11 @@ struct SearchSheet: View {
 enum Labels {
     static func header(_ date: Date) -> String {
         date.formatted(.dateTime.weekday(.wide).day().month(.wide))
+    }
+
+    static func minuteOfDay(_ date: Date) -> Int {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
 
     static func time(_ date: Date) -> String {

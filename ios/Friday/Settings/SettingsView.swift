@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Keys and dictionary. Keys are pasted here on the phone and kept in the Keychain.
 struct SettingsView: View {
@@ -13,6 +14,8 @@ struct SettingsView: View {
     var body: some View {
         Form {
             UsageSection()
+
+            CalendarSection()
 
             Section {
                 SecureField("Groq key (gsk_…)", text: $groq)
@@ -65,6 +68,31 @@ struct SettingsView: View {
             if probe != nil {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
+        }
+    }
+}
+
+/// Calendar access: Friday reads your calendars and adds events to a "Friday" calendar.
+private struct CalendarSection: View {
+    @State private var calendar = CalendarService.shared
+
+    var body: some View {
+        Section {
+            HStack {
+                Label("Calendar", systemImage: "calendar")
+                Spacer()
+                if calendar.authorized {
+                    Text("On").foregroundStyle(.secondary)
+                } else if CalendarService.denied {
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    }
+                } else {
+                    Button("Allow") { Task { _ = await calendar.requestAccess() } }
+                }
+            }
+        } footer: {
+            Text("Friday reads your calendars (Google too, if it's added in iOS Settings → Calendar) so it knows your schedule, adds new meetings to a “Friday” calendar, and can move or cancel events when you ask.")
         }
     }
 }

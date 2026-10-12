@@ -55,7 +55,8 @@ public struct Dictation: Sendable {
     /// or "on Friday we…" stay plain text. Edits reword more, so the guard is relaxed for them.
     public static func hasCommand(_ text: String) -> Bool {
         Rx.contains(text, "(?:^|[.!?,;]\\s*|\\b(?:hey|okay|ok)\\s+)friday[,.]?\\s+(?:please\\s+)?"
-            + "(?:change|delete|remove|scratch|cut|make|replace|add|turn|put|move|undo|fix|rewrite|capitali[sz]e|bold|drop)\\b")
+            + "(?:change|delete|remove|scratch|cut|make|replace|add|turn|put|move|undo|fix|rewrite|capitali[sz]e|bold|drop|"
+            + "cancel|clear|mark|tick|check|uncheck|rename|set|sort)\\b")
     }
 
     /// "Friday, how much do we owe each other?": a question for Friday to answer from what was
@@ -79,7 +80,8 @@ public struct Dictation: Sendable {
     /// Whisper copies the style of its prompt. A loose, spoken-style prompt makes it write down
     /// everything said, word for word (false starts, "no wait", repeats), instead of quietly
     /// tidying it and dropping parts; the cleanup AI then does the tidying with full context.
-    public static let verbatimStyle = "Umm, let me think like, hmm... Okay, here's what I'm, like, thinking."
+    /// It starts with "Okay Friday," so the wake word is heard as Friday, not a dictionary name.
+    public static let verbatimStyle = "Okay Friday, umm, let me think like, hmm... Okay, here's what I'm, like, thinking."
     /// Indian words Whisper often misspells ("ATA" for atta), so it sees the right spelling.
     public static let indianWords = "Atta, paneer, dal, chana, ghee, roti, sabzi, chai, yaar, lakh, crore, UPI."
 

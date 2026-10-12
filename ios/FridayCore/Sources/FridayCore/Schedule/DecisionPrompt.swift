@@ -1,8 +1,28 @@
 import Foundation
 
+/// A calendar event as the decision engine sees it (ids "e1", "e2"… are mapped by the app).
+public struct CalendarEvent: Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var date: Day
+    public var time: TimeOfDay?
+    public var end: TimeOfDay?
+    public var calendar: String
+
+    public init(id: String, title: String, date: Day, time: TimeOfDay?, end: TimeOfDay?, calendar: String) {
+        self.id = id
+        self.title = title
+        self.date = date
+        self.time = time
+        self.end = end
+        self.calendar = calendar
+    }
+}
+
 /// The decision engine's prompt (PLAN §7.2).
 public enum DecisionPrompt {
-    public static func input(now: Date, timeZone: TimeZone, store: Store, places: [String], said: String) -> String {
+    public static func input(now: Date, timeZone: TimeZone, store: Store, places: [String], said: String,
+                             events: [CalendarEvent] = []) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let c = calendar.dateComponents([.hour, .minute], from: now)
@@ -13,6 +33,7 @@ public enum DecisionPrompt {
         return """
         NOW: \(day)T\(String(format: "%02d:%02d", c.hour!, c.minute!)) \(day.shortWeekday) (\(timeZone.identifier))
         ITEMS: \(promptItems(store, today: today))
+        EVENTS: \(promptEvents(events))
         PLACES: \(placesJSON)
         SAID: \(saidJSON)
         """
@@ -20,13 +41,17 @@ public enum DecisionPrompt {
 
     public static let system = """
     Decide what the user wants done and output the actions. JSON only: {"actions":[...]}.
-    Schedule:
+    Calendar (the user's iPhone Calendar; ids from EVENTS):
+     {"a":"add_event","title":s,"date":"YYYY-MM-DD","time":"HH:MM","minutes":n|null}
+     {"a":"move_event","id":s,"date":"YYYY-MM-DD","time":"HH:MM"|null}
+     {"a":"cancel_event","id":s}
+    Friday's to-dos (ITEMS):
      {"a":"add","title":s,"date":"YYYY-MM-DD","time":"HH:MM"|null,"focus":b,"place":s|null}
      {"a":"complete","id":s} {"a":"uncomplete","id":s} {"a":"delete","id":s}
      {"a":"move","id":s,"date":"YYYY-MM-DD","time":"HH:MM"|null}
      {"a":"rename","id":s,"title":s} {"a":"focus","id":s,"on":b}
     Other:
-     {"a":"note","text":s}
+     {"a":"note","title":s|null,"text":s,"remind":"YYYY-MM-DDTHH:MM"|null}   (becomes a box)
      {"a":"message","app":"whatsapp"|"sms","to":s,"text":s}
      {"a":"email","to":s,"subject":s,"body":s}
      {"a":"call","to":s}
@@ -41,11 +66,26 @@ public enum DecisionPrompt {
     Rules:
     - One utterance can hold many actions; output all of them in order.
     - Match existing items by meaning; use their id; never invent ids.
+    - Meetings, appointments, classes, calls at a time, anything with other people at a set time -> add_event.
+      Plain to-dos ("buy milk", "finish the report") -> add. "Remind me at 6 to X" -> add with that time.
+    - Cancel or move a meeting -> cancel_event / move_event with the matching EVENTS id (match by meaning and day).
     - delete only if the user clearly says delete/remove/cancel/drop.
     - focus=true ONLY if the user explicitly calls it priority/important/top/focus.
-    - "note"/"remember this"/"idea" -> note with the user's words cleaned, not summarised.
+    - Thoughts, ideas, lists, anything worth keeping that isn't a to-do or event -> note (a box), the user's words cleaned, not summarised. Short title only if obvious.
     - Messages and emails: write the text the user would send, in their voice.
     - Use "ask" only when an answer needs outside info.
-    - Titles short, no dates/times inside. Nothing actionable -> {"actions":[]}.
+    - Titles short, no dates/times inside. If unsure, use note: never drop what was said.
     """
+}
+
+/// The EVENTS line: compact keys to keep the prompt small.
+public func promptEvents(_ events: [CalendarEvent], limit: Int = 40) -> String {
+    let rows = events.prefix(limit).map { e -> [String: Any] in
+        var row: [String: Any] = ["id": e.id, "t": e.title, "d": e.date.description, "cal": e.calendar]
+        if let time = e.time { row["tm"] = time.description }
+        if let end = e.end { row["end"] = end.description }
+        return row
+    }
+    let data = (try? JSONSerialization.data(withJSONObject: rows, options: [.sortedKeys])) ?? Data("[]".utf8)
+    return String(decoding: data, as: UTF8.self)
 }

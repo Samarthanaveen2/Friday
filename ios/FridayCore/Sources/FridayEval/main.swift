@@ -96,6 +96,67 @@ if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "clean" {
     exit(0)
 }
 
+// Decision evals: `FridayEval decide ios/evals/decision.jsonl`. Each case: what was said, calendar
+// events ("d" as days from today), the action kinds that must appear ("cancel_event:e2") and must not.
+struct DecisionCase: Decodable {
+    struct Event: Decodable { let id: String; let t: String; let d: String; let tm: String? }
+    let id: Int
+    let say: String
+    let events: [Event]
+    let expect: [String]
+    let forbid: [String]
+}
+
+func kinds(_ action: DecisionAction) -> [String] {
+    switch action {
+    case .addEvent: ["add_event"]
+    case .moveEvent(let id, _, _): ["move_event", "move_event:\(id)"]
+    case .cancelEvent(let id): ["cancel_event", "cancel_event:\(id)"]
+    case .add: ["add"]
+    case .note: ["note"]
+    case .delete(let id): ["delete", "delete:\(id)"]
+    case .move(let id, _, _): ["move", "move:\(id)"]
+    default: ["other"]
+    }
+}
+
+if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "decide" {
+    let zone = TimeZone(identifier: "Asia/Kolkata")!
+    let now = Date.now
+    let today = TimeRules.today(now: now, in: zone)
+    let cases = try String(contentsOfFile: CommandLine.arguments[2], encoding: .utf8)
+        .split(separator: "\n").map { try JSONDecoder().decode(DecisionCase.self, from: Data($0.utf8)) }
+    var passed = 0
+    for c in cases {
+        let events = c.events.map { e in
+            CalendarEvent(id: e.id, title: e.t, date: today.adding(days: Int(e.d) ?? 0), time: e.tm.flatMap(TimeOfDay.init),
+                          end: nil, calendar: "Personal")
+        }
+        let input = DecisionPrompt.input(now: now, timeZone: zone, store: Store(), places: [], said: c.say, events: events)
+        let body = CloudRequests.chatBody(model: Models.groqDecision, system: DecisionPrompt.system, user: input,
+                                          maxTokens: 2_500, reasoningEffort: Models.reasoningEffort(for: Models.groqDecision), json: true)
+        var (status, data) = await post(body, key: key)
+        if status == 429 {
+            if String(decoding: data, as: UTF8.self).contains("per day") {
+                print("::warning::Groq daily limit reached; decision evals skipped.")
+                exit(0)
+            }
+            try await Task.sleep(nanoseconds: 15_000_000_000)
+            (status, data) = await post(body, key: key)
+        }
+        let reply = CloudRequests.chatText(data) ?? ""
+        let actions = DecisionParser.parse(reply, said: c.say, now: now, timeZone: zone).actions
+        let got = Set(actions.flatMap(kinds))
+        let ok = c.expect.allSatisfy(got.contains) && !c.forbid.contains(where: got.contains)
+        if ok { passed += 1 }
+        print("\(ok ? "PASS" : "FAIL") #\(c.id) \(c.say.debugDescription) -> \(got.sorted())")
+        if !ok { print("      reply: \(String(reply.prefix(300)).debugDescription)") }
+        try await Task.sleep(nanoseconds: 3_000_000_000)
+    }
+    print("\n\(passed)/\(cases.count) decision cases passed")
+    exit(Double(passed) >= Double(cases.count) * 0.85 ? 0 : 1)
+}
+
 let path = CommandLine.arguments.dropFirst().first ?? "ios/evals/dictation.jsonl"
 let cases = try String(contentsOfFile: path, encoding: .utf8)
     .split(separator: "\n")

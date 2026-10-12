@@ -98,9 +98,9 @@ public enum Schedule {
                 guard let i = index(id) else { continue }
                 s.items[i].focus = on
                 changes.append(.focused(id: id, on: on))
-            case .note(let text):
+            case let .note(text, title, remind):
                 let id = s.makeID("n")
-                s.notes.insert(Note(id: id, text: text, created: now), at: 0)
+                s.notes.insert(Note(id: id, title: title, text: text, reminder: remind, created: now), at: 0)
                 changes.append(.noted(id: id))
             default:
                 other.append(action)

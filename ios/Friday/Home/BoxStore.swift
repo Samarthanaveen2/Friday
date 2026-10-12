@@ -15,6 +15,8 @@ final class BoxStore {
     var canUndo: Bool { undoPoint != nil }
 
     private var undoPoint: Store?
+    /// Extra work to undo with the store (calendar changes).
+    private var undoExtra: (() -> Void)?
     private var pillTask: Task<Void, Never>?
     private static let file = "store.json"
 
@@ -23,13 +25,16 @@ final class BoxStore {
     }
 
     /// Applies a change and saves it. With a `label`, shows the pill with Undo.
-    func change(_ label: String? = nil, _ edit: (inout Store) -> Void) {
+    /// `onUndo`: also run on Undo (e.g. put calendar changes back); then the pill shows even if
+    /// the store itself didn't change.
+    func change(_ label: String? = nil, onUndo: (() -> Void)? = nil, _ edit: (inout Store) -> Void) {
         let before = store
         edit(&store)
-        guard store != before else { return }
-        save(before: before)
+        guard store != before || onUndo != nil else { return }
+        if store != before { save(before: before) }
         if let label {
             undoPoint = before
+            undoExtra = onUndo
             show(label)
         }
     }
@@ -39,13 +44,16 @@ final class BoxStore {
         let before = store
         store = point
         undoPoint = nil
-        save(before: before)
+        undoExtra?()
+        undoExtra = nil
+        if store != before { save(before: before) }
         show(nil)
     }
 
     /// A pill without Undo ("Didn't catch that").
     func flash(_ text: String) {
         undoPoint = nil
+        undoExtra = nil
         show(text)
     }
 
@@ -58,6 +66,7 @@ final class BoxStore {
             guard !Task.isCancelled else { return }
             pill = nil
             undoPoint = nil
+            undoExtra = nil
         }
     }
 
@@ -70,5 +79,6 @@ final class BoxStore {
             UserDefaults.standard.set(today, forKey: "store.backupDay")
         }
         GroupStore.shared.writeData(data, to: BoxStore.file, atomic: true)
+        Notifier.sync(store)
     }
 }

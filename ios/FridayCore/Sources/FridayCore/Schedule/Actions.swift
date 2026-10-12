@@ -10,8 +10,13 @@ public enum DecisionAction: Equatable, Sendable {
     case move(id: String, date: Day, time: TimeOfDay?)
     case rename(id: String, title: String)
     case focus(id: String, on: Bool)
+    // Calendar (iPhone Calendar events, ids from EVENTS)
+    case addEvent(title: String, date: Day, time: TimeOfDay, minutes: Int?)
+    case moveEvent(id: String, date: Day, time: TimeOfDay?)
+    case cancelEvent(id: String)
     // Other
-    case note(text: String)
+    /// Becomes a box; `remind` sets its reminder.
+    case note(text: String, title: String? = nil, remind: Date? = nil)
     case message(app: String, to: String, text: String)
     case email(to: String, subject: String, body: String)
     case call(to: String)
@@ -31,6 +36,22 @@ public enum DecisionAction: Equatable, Sendable {
         default: false
         }
     }
+
+    public var isCalendarAction: Bool {
+        switch self {
+        case .addEvent, .moveEvent, .cancelEvent: true
+        default: false
+        }
+    }
+}
+
+/// "2026-10-13T20:00" in the user's time zone.
+func moment(_ text: String, timeZone: TimeZone) -> Date? {
+    let parts = text.split(separator: "T")
+    guard parts.count == 2, let day = Day(String(parts[0])), let time = TimeOfDay(String(parts[1].prefix(5))) else { return nil }
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    return calendar.date(from: DateComponents(year: day.year, month: day.month, day: day.day, hour: time.hour, minute: time.minute))
 }
 
 public enum DecisionProblem: Equatable, Sendable {
@@ -107,7 +128,20 @@ public enum DecisionParser {
             case "move": action = .move(id: try need("id"), date: try day("date", required: true)!, time: try time("time"))
             case "rename": action = .rename(id: try need("id"), title: try need("title"))
             case "focus": action = .focus(id: try need("id"), on: raw["on"] == nil ? true : bool("on"))
-            case "note": action = .note(text: try need("text"))
+            case "note":
+                var remind: Date?
+                if let text = str("remind") {
+                    guard let at = moment(text, timeZone: timeZone) else { throw Failure(value: .badDate(text)) }
+                    remind = at
+                }
+                action = .note(text: try need("text"), title: str("title"), remind: remind)
+            case "add_event":
+                guard let t = try time("time") else { throw Failure(value: .malformed("add_event: missing time")) }
+                let minutes = (raw["minutes"] as? Int) ?? (raw["minutes"] as? Double).map(Int.init) ?? str("minutes").flatMap(Int.init)
+                action = .addEvent(title: try need("title"), date: try day("date", required: true)!, time: t,
+                                   minutes: minutes.flatMap { $0 > 0 ? $0 : nil })
+            case "move_event": action = .moveEvent(id: try need("id"), date: try day("date", required: true)!, time: try time("time"))
+            case "cancel_event": action = .cancelEvent(id: try need("id"))
             case "message":
                 action = .message(app: str("app") ?? "whatsapp", to: try need("to"), text: try need("text"))
             case "email": action = .email(to: try need("to"), subject: str("subject") ?? "", body: try need("body"))

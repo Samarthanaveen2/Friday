@@ -4,7 +4,8 @@ on:
   push:
     branches: [claude/affectionate-fermat-scvp7y]
     # Only when the prompt or test cases change: each run spends part of Groq's free daily allowance.
-    paths: ["ios/evals/**", "ios/FridayCore/Sources/FridayCore/Dictation/Prompt.swift"]
+    paths: ["ios/evals/**", "ios/FridayCore/Sources/FridayCore/Dictation/Prompt.swift",
+            "ios/FridayCore/Sources/FridayCore/Schedule/DecisionPrompt.swift"]
   workflow_dispatch:
 
 concurrency:
@@ -20,4 +21,7 @@ jobs:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - run: swift run --package-path ios/FridayCore FridayEval ios/evals/dictation.jsonl
+      - name: Decision evals (talk on Home -> actions)
+        run: swift run --package-path ios/FridayCore FridayEval decide ios/evals/decision.jsonl
+      - name: Dictation evals
+        run: swift run --package-path ios/FridayCore FridayEval ios/evals/dictation.jsonl

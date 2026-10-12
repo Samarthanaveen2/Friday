@@ -15,6 +15,7 @@ public enum BoxEdit {
     public static let systemPrompt = """
     You edit a note for the user. Apply their spoken INSTRUCTION to the NOTE and reply with the whole updated note inside <out></out>, nothing else.
     - Keep every part the instruction doesn't touch exactly as it is, word for word.
+    - "Cancel/remove/delete X" removes the line or item about X; "mark X done" ticks it ("- [x]").
     - Checklist items are lines "- [ ] item" (done: "- [x] item"). "Make this a checklist" turns items into such lines; a lead-in line stays first.
     - If the instruction is a question about the note ("what's left?", "how much in total?"), keep the note and add one short answer line at the end.
     - Never invent items, names or numbers that aren't in the note or the instruction.

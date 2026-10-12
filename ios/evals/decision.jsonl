@@ -1,0 +1,7 @@
+{"id": 1, "say": "Meeting with Rahul tomorrow at 8 pm", "events": [], "expect": ["add_event"], "forbid": ["note", "cancel_event"]}
+{"id": 2, "say": "Friday cancel my meeting with my other friend tomorrow", "events": [{"id": "e1", "t": "Meeting with my friend", "d": "+1", "tm": "20:00"}, {"id": "e2", "t": "Meeting with my other friend", "d": "+1", "tm": "21:00"}], "expect": ["cancel_event:e2"], "forbid": ["cancel_event:e1", "note"]}
+{"id": 3, "say": "move the dentist to Thursday at 5 pm", "events": [{"id": "e1", "t": "Dentist", "d": "+2", "tm": "11:00"}], "expect": ["move_event:e1"], "forbid": ["add_event", "cancel_event"]}
+{"id": 4, "say": "buy milk and eggs", "events": [], "expect": ["add"], "forbid": ["add_event", "cancel_event"]}
+{"id": 5, "say": "idea for the fest poster, blue background with the club logo big in the middle", "events": [], "expect": ["note"], "forbid": ["add_event", "cancel_event"]}
+{"id": 6, "say": "remind me to call mom at 6", "events": [], "expect": ["add"], "forbid": ["cancel_event"]}
+{"id": 7, "say": "I have a DBMS class on Monday at 10 and also cancel tomorrow's gym session", "events": [{"id": "e1", "t": "Gym", "d": "+1", "tm": "17:00"}], "expect": ["add_event", "cancel_event:e1"], "forbid": []}

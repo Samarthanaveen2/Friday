@@ -65,8 +65,14 @@ final class Talk {
             }
             switch target {
             case .newBox:
+                // Home: Friday decides what you meant (to-do, calendar event, box) and does it.
+                let said = outcome.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !said.isEmpty else {
+                    BoxStore.shared.flash("Didn't catch that")
+                    return
+                }
+                await Manager.handle(said)
                 Haptics.success()
-                BoxStore.shared.change("New box") { $0.addNote(text: outcome.text, now: .now) }
             case .box(let id):
                 let note = BoxStore.shared.store.note(id)
                 let current = note?.text ?? ""
