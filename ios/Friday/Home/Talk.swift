@@ -28,18 +28,31 @@ final class Talk {
 
     var listening: Bool { target != nil }
 
+    /// True while the mic is being turned on, so a quick second press can't start it twice.
+    private var starting = false
+
     func start(_ target: Target) {
-        guard self.target == nil, !working else { return }
-        Task {
-            if !Session.shared.running { await Session.shared.start(source: .app) }
-            guard DictationPipeline.shared.begin() else {
-                BoxStore.shared.flash("Mic isn't ready")
-                return
-            }
-            Haptics.tap()
-            self.target = target
-            if target == .newBox { Session.shared.setActivity(phase: "listening") }
+        Task { await begin(target) }
+    }
+
+    /// Starts listening and returns once the mic is recording. The Action button waits for this:
+    /// iOS only keeps Friday running in the background if recording and the Live Activity
+    /// start before the button's action ends.
+    @discardableResult
+    func begin(_ target: Target, source: SessionSource = .app) async -> Bool {
+        guard self.target == nil, !working, !starting else { return false }
+        starting = true
+        defer { starting = false }
+        if !Session.shared.running { await Session.shared.start(source: source) }
+        guard DictationPipeline.shared.begin() else {
+            BoxStore.shared.flash("Mic isn't ready")
+            if target == .newBox { Session.shared.setActivity(phase: "done", message: "Mic isn't ready") }
+            return false
         }
+        Haptics.tap()
+        self.target = target
+        if target == .newBox { Session.shared.setActivity(phase: "listening") }
+        return true
     }
 
     func cancel() {
@@ -50,12 +63,17 @@ final class Talk {
     }
 
     func done() {
+        Task { await finish() }
+    }
+
+    /// Stops listening and does what was said; returns when it's done (the Action button waits).
+    func finish() async {
         guard let target else { return }
         self.target = nil
         working = true
         writingFor = target
         if target == .newBox { Session.shared.setActivity(phase: "thinking") }
-        Task {
+        do {
             let outcome = await DictationPipeline.shared.finish()
             defer {
                 working = false

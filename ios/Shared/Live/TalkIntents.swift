@@ -15,10 +15,11 @@ struct TalkToFridayIntent: AudioRecordingIntent {
     #if FRIDAY_APP
     @MainActor
     func perform() async throws -> some IntentResult {
+        // Waits for the mic (or the result): iOS stops Friday if the action ends first.
         if Talk.shared.listening {
-            Talk.shared.done()
+            await Talk.shared.finish()
         } else {
-            Talk.shared.start(.newBox)
+            await Talk.shared.begin(.newBox, source: .intent)
         }
         return .result()
     }
@@ -38,7 +39,7 @@ struct FinishTalkIntent: LiveActivityIntent {
     #if FRIDAY_APP
     @MainActor
     func perform() async throws -> some IntentResult {
-        Talk.shared.done()
+        await Talk.shared.finish()
         return .result()
     }
     #else
