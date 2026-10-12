@@ -31,6 +31,7 @@ struct HomeScreen: View {
     var onSettings: () -> Void = {}
     var onCloseCard: () -> Void = {}
     var onNew: () -> Void = {}
+    var onBoxAction: ((String, BoxAction) -> Void)?
     /// For the zoom from a box tile into the box (set by the app; nil in previews).
     var zoom: Namespace.ID?
 
@@ -45,7 +46,7 @@ struct HomeScreen: View {
                 if !model.boxes.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         SectionLabel(text: "Boxes")
-                        BoxGrid(boxes: model.boxes, zoom: zoom, onOpen: onOpenBox)
+                        BoxGrid(boxes: model.boxes, zoom: zoom, onOpen: onOpenBox, onAction: onBoxAction)
                     }
                 }
             }
@@ -71,9 +72,11 @@ struct HomeScreen: View {
                     .foregroundStyle(Palette.text)
             }
             Spacer()
-            HStack(spacing: 18) {
+            HStack(spacing: 4) {
                 Button(action: onNew) {
                     Image(systemName: "square.and.pencil")
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("New box")
                 Menu {
@@ -81,6 +84,8 @@ struct HomeScreen: View {
                     Button("Settings", systemImage: "gearshape", action: onSettings)
                 } label: {
                     Image(systemName: "ellipsis.circle")
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("More")
             }

@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var path: [String] = []
     @State private var showSettings = false
     @State private var showSearch = false
+    @State private var reminderFor: String?
     @Namespace private var zoom
 
     var body: some View {
@@ -26,6 +27,7 @@ struct HomeView: View {
                        onSearch: { showSearch = true },
                        onSettings: { showSettings = true },
                        onNew: newBox,
+                       onBoxAction: act,
                        zoom: zoom)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: String.self) { id in
@@ -40,6 +42,13 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showSettings, onDismiss: { probe.refresh() }) {
             NavigationStack { SettingsView(probe: probe) }
+        }
+        .sheet(item: Binding(get: { reminderFor.map(ReminderTarget.init) }, set: { reminderFor = $0?.id })) { target in
+            ReminderSheet(initial: boxes.store.note(target.id)?.reminder) { date in
+                reminderFor = nil
+                boxes.change(date == nil ? "Reminder removed" : "Reminder set") { $0.setReminder(target.id, date) }
+            }
+            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showSearch) {
             SearchSheet { id in
@@ -67,7 +76,8 @@ struct HomeView: View {
         }
         var cards = store.boxesInOrder.map { note in
             BoxModel(id: note.id, title: note.title, text: note.text,
-                     reminder: note.reminder.map { Labels.reminder($0) }, pinned: note.pinned)
+                     reminder: note.reminder.map { Labels.reminder($0) }, pinned: note.pinned,
+                     color: BoxColor(key: note.color))
         }
         if let setup = setupBox { cards.insert(setup, at: 0) }
         return HomeModel(dateLabel: Labels.header(.now), today: rows, next: next, boxes: cards,
@@ -102,6 +112,21 @@ struct HomeView: View {
         }
     }
 
+    /// Long-press menu on a box.
+    private func act(_ id: String, _ action: BoxAction) {
+        switch action {
+        case .pin:
+            let pinned = boxes.store.note(id)?.pinned == true
+            boxes.change(pinned ? "Unpinned" : "Pinned") { $0.togglePin(id) }
+        case .reminder:
+            reminderFor = id
+        case .color(let color):
+            boxes.change { $0.setColor(id, color.key) }
+        case .delete:
+            boxes.change("Box deleted") { $0.deleteNote(id) }
+        }
+    }
+
     private func newBox() {
         var id = ""
         boxes.change { id = $0.addNote(text: "", now: .now) }
@@ -117,17 +142,25 @@ struct BoxDetailHost: View {
     @State private var talk = Talk.shared
     @State private var session = Session.shared
     @State private var editingReminder = false
-    @State private var confirmDelete = false
 
     var body: some View {
         let note = boxes.store.note(id)
         BoxDetailScreen(title: binding(\.title), text: textBinding,
                         reminder: note?.reminder.map { Labels.reminder($0, long: true) },
                         pinned: note?.pinned ?? false,
+                        color: BoxColor(key: note?.color),
                         talk: talk.state(for: .box(id), levels: talk.target == .box(id) ? session.levels : []),
                         onBack: onBack,
                         onPin: { Haptics.tap(); boxes.change { $0.togglePin(id) } },
-                        onMenu: { confirmDelete = true },
+                        onAction: { action in
+                            switch action {
+                            case .color(let color): boxes.change { $0.setColor(id, color.key) }
+                            case .delete:
+                                onBack()
+                                boxes.change("Box deleted") { $0.deleteNote(id) }
+                            default: break
+                            }
+                        },
                         onReminder: { editingReminder = true },
                         onClearReminder: { boxes.change("Reminder removed") { $0.setReminder(id, nil) } },
                         onTalk: { talk.start(.box(id)) },
@@ -139,12 +172,6 @@ struct BoxDetailHost: View {
                     boxes.change(date == nil ? "Reminder removed" : "Reminder set") { $0.setReminder(id, date) }
                 }
                 .presentationDetents([.medium, .large])
-            }
-            .confirmationDialog("Delete this box?", isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("Delete box", role: .destructive) {
-                    onBack()
-                    boxes.change("Box deleted") { $0.deleteNote(id) }
-                }
             }
             .onDisappear {
                 if talk.target == .box(id) { talk.cancel() }
@@ -167,6 +194,11 @@ struct BoxDetailHost: View {
                     boxes.change { $0.editNote(id, title: title, text: value, now: .now) }
                 })
     }
+}
+
+/// Which box the reminder sheet on Home is for.
+struct ReminderTarget: Identifiable {
+    let id: String
 }
 
 /// Pick a reminder date and time, or remove it.

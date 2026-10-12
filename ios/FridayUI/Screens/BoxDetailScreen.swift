@@ -6,10 +6,12 @@ struct BoxDetailScreen: View {
     @Binding var text: String
     var reminder: String?
     var pinned = false
+    var color: BoxColor = .white
     var talk: TalkState = .idle
     var onBack: () -> Void = {}
     var onPin: () -> Void = {}
-    var onMenu: () -> Void = {}
+    /// Colour, delete and the rest of the ⋯ menu (reminder and pin go to their own callbacks).
+    var onAction: (BoxAction) -> Void = { _ in }
     var onReminder: () -> Void = {}
     var onClearReminder: () -> Void = {}
     var onTalk: () -> Void = {}
@@ -19,10 +21,11 @@ struct BoxDetailScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 22) {
+            HStack(spacing: 4) {
                 Button(action: onBack) {
                     Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
-                        .frame(width: 32, height: 44, alignment: .leading)
+                        .frame(width: 44, height: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Back")
                 Spacer()
@@ -31,16 +34,30 @@ struct BoxDetailScreen: View {
                     onPin()
                 } label: {
                     Image(systemName: pinned ? "pin.fill" : "pin")
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel(pinned ? "Unpin" : "Pin")
                 .sensoryFeedback(.selection, trigger: pins)
-                Button(action: onMenu) { Image(systemName: "ellipsis.circle") }
-                    .accessibilityLabel("More")
+                Menu {
+                    BoxMenuItems(pinned: pinned, color: color) { action in
+                        switch action {
+                        case .pin: onPin()
+                        case .reminder: onReminder()
+                        default: onAction(action)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("More")
             }
             .font(.system(size: 20, weight: .regular))
             .foregroundStyle(Palette.text)
             .buttonStyle(.plain)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 12)
             .frame(height: 48)
 
             ScrollView {
@@ -66,9 +83,9 @@ struct BoxDetailScreen: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
-                .background(Palette.background)
+                .background(color.fill)
         }
-        .background(Palette.background.ignoresSafeArea())
+        .background(color.fill.ignoresSafeArea())
     }
 
     @ViewBuilder private var reminderChip: some View {
@@ -88,7 +105,7 @@ struct BoxDetailScreen: View {
             }
             .padding(.horizontal, 12)
             .frame(height: 30)
-            .background(Palette.card, in: Capsule())
+            .background(Palette.text.opacity(0.06), in: Capsule())
         } else {
             Button(action: onReminder) {
                 Label("Add reminder", systemImage: "bell")
@@ -96,7 +113,7 @@ struct BoxDetailScreen: View {
                     .foregroundStyle(Palette.secondary)
                     .padding(.horizontal, 12)
                     .frame(height: 30)
-                    .background(Palette.card, in: Capsule())
+                    .background(Palette.text.opacity(0.06), in: Capsule())
             }
             .buttonStyle(.plain)
         }

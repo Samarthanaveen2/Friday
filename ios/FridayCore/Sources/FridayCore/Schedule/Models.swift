@@ -33,23 +33,26 @@ public struct Note: Codable, Equatable, Identifiable, Sendable {
     public var title: String?
     public var text: String
     public var pinned: Bool
+    /// Soft background colour key ("sand", "sage", "sky", "lavender", "rose"); nil = white.
+    public var color: String?
     /// When to remind (shown on the box; notifications come with the calendar step).
     public var reminder: Date?
     public var created: Date
     public var edited: Date?
 
-    public init(id: String, title: String? = nil, text: String, pinned: Bool = false, reminder: Date? = nil,
-                created: Date, edited: Date? = nil) {
+    public init(id: String, title: String? = nil, text: String, pinned: Bool = false, color: String? = nil,
+                reminder: Date? = nil, created: Date, edited: Date? = nil) {
         self.id = id
         self.title = title
         self.text = text
         self.pinned = pinned
+        self.color = color
         self.reminder = reminder
         self.created = created
         self.edited = edited
     }
 
-    private enum CodingKeys: String, CodingKey { case id, title, text, pinned, reminder, created, edited }
+    private enum CodingKeys: String, CodingKey { case id, title, text, pinned, color, reminder, created, edited }
 
     /// Fields added later decode as empty, so older saved data still loads.
     public init(from decoder: Decoder) throws {
@@ -58,6 +61,7 @@ public struct Note: Codable, Equatable, Identifiable, Sendable {
         title = try c.decodeIfPresent(String.self, forKey: .title)
         text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
         pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
+        color = try c.decodeIfPresent(String.self, forKey: .color)
         reminder = try c.decodeIfPresent(Date.self, forKey: .reminder)
         created = try c.decode(Date.self, forKey: .created)
         edited = try c.decodeIfPresent(Date.self, forKey: .edited)

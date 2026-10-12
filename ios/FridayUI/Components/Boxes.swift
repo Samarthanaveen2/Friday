@@ -21,6 +21,7 @@ struct BoxModel: Identifiable, Equatable {
     var kind: Kind = .note
     var reminder: String?
     var pinned = false
+    var color: BoxColor = .white
     var highlighted = false
     /// Change note after Done ("New", "Edited").
     var note: String?
@@ -33,6 +34,59 @@ struct BoxModel: Identifiable, Equatable {
             let lines = min(8, text.count / 18 + 1 + text.filter { $0 == "\n" }.count)
             return (title == nil ? 1 : 3) + lines + (reminder == nil ? 0 : 2)
         }
+    }
+}
+
+/// The soft colours a box can have (long-press → Colour). Keys are what's saved.
+enum BoxColor: String, CaseIterable, Identifiable {
+    case white, sand, sage, sky, lavender, rose
+
+    var id: String { rawValue }
+    var name: String { rawValue.capitalized }
+    var fill: Color {
+        switch self {
+        case .white: Palette.background
+        case .sand: Color(.sRGB, red: 1.0, green: 0.957, blue: 0.863)
+        case .sage: Color(.sRGB, red: 0.910, green: 0.953, blue: 0.902)
+        case .sky: Color(.sRGB, red: 0.890, green: 0.937, blue: 0.988)
+        case .lavender: Color(.sRGB, red: 0.933, green: 0.910, blue: 0.984)
+        case .rose: Color(.sRGB, red: 0.984, green: 0.906, blue: 0.925)
+        }
+    }
+
+    init(key: String?) { self = key.flatMap(BoxColor.init(rawValue:)) ?? .white }
+    /// What to save: nil for white.
+    var key: String? { self == .white ? nil : rawValue }
+}
+
+/// What long-press (or a box's ⋯ menu) can do.
+enum BoxAction: Equatable {
+    case pin, reminder, delete
+    case color(BoxColor)
+}
+
+/// The shared menu: Pin, Reminder, Colour, Delete.
+struct BoxMenuItems: View {
+    let pinned: Bool
+    let color: BoxColor
+    var onAction: (BoxAction) -> Void
+
+    var body: some View {
+        Button(pinned ? "Unpin" : "Pin to top", systemImage: pinned ? "pin.slash" : "pin") { onAction(.pin) }
+        Button("Reminder", systemImage: "bell") { onAction(.reminder) }
+        Menu {
+            ForEach(BoxColor.allCases) { option in
+                Button {
+                    onAction(.color(option))
+                } label: {
+                    if option == color { Label(option.name, systemImage: "checkmark") } else { Text(option.name) }
+                }
+            }
+        } label: {
+            Label("Colour", systemImage: "paintpalette")
+        }
+        Divider()
+        Button("Delete", systemImage: "trash", role: .destructive) { onAction(.delete) }
     }
 }
 
@@ -98,8 +152,11 @@ struct BoxCard: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(box.highlighted ? Palette.changeTint : Palette.card,
+            .background(box.highlighted ? Palette.changeTint : box.color.fill,
                         in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)
+                .strokeBorder(Palette.separator, lineWidth: 1))
+            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
         }
         .buttonStyle(PressScale())
     }
@@ -118,6 +175,8 @@ struct BoxGrid: View {
     let boxes: [BoxModel]
     var zoom: Namespace.ID?
     var onOpen: (String) -> Void = { _ in }
+    /// Long-press actions; nil (previews, the setup box) shows no menu.
+    var onAction: ((String, BoxAction) -> Void)?
 
     var body: some View {
         let columns = BoxGrid.split(boxes)
@@ -127,6 +186,7 @@ struct BoxGrid: View {
                     ForEach(columns[column]) { box in
                         BoxCard(box: box) { onOpen(box.id) }
                             .zoomSource(id: box.id, in: zoom)
+                            .boxMenu(box, onAction)
                             .transition(.opacity)
                     }
                 }
@@ -152,6 +212,19 @@ extension View {
     @ViewBuilder func zoomSource(id: String, in namespace: Namespace.ID?) -> some View {
         if let namespace {
             matchedTransitionSource(id: id, in: namespace) { $0.clipShape(RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)) }
+        } else {
+            self
+        }
+    }
+}
+
+extension View {
+    /// Long-press menu on a box (not on the setup box or the Money box).
+    @ViewBuilder func boxMenu(_ box: BoxModel, _ onAction: ((String, BoxAction) -> Void)?) -> some View {
+        if let onAction, box.id != "setup", box.kind == .note {
+            contextMenu {
+                BoxMenuItems(pinned: box.pinned, color: box.color) { onAction(box.id, $0) }
+            }
         } else {
             self
         }

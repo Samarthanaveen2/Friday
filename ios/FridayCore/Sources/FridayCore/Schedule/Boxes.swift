@@ -38,6 +38,11 @@ extension Store {
         notes[i].pinned.toggle()
     }
 
+    public mutating func setColor(_ id: String, _ color: String?) {
+        guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[i].color = color
+    }
+
     public mutating func setReminder(_ id: String, _ date: Date?) {
         guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
         notes[i].reminder = date

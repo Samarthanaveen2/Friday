@@ -40,6 +40,7 @@ final class BoxesTests: XCTestCase {
         let id = s.addNote(title: "T", text: "body", now: t0)
         s.setReminder(id, t0)
         s.togglePin(id)
+        s.setColor(id, "sage")
         let data = try XCTUnwrap(StoreCodec.encode(s))
         XCTAssertEqual(StoreCodec.decode(data), s)
         // A file saved before titles, pins and reminders existed.
@@ -47,6 +48,7 @@ final class BoxesTests: XCTestCase {
         let loaded = try XCTUnwrap(StoreCodec.decode(Data(old.utf8)))
         XCTAssertEqual(loaded.notes.first?.text, "hi")
         XCTAssertEqual(loaded.notes.first?.pinned, false)
+        XCTAssertNil(loaded.notes.first?.color)
         XCTAssertNil(StoreCodec.decode(Data("not json".utf8)))
         XCTAssertTrue(StoreCodec.backupName(for: t0, in: ist).hasPrefix("store-backup-"))
     }
