@@ -19,13 +19,13 @@ struct SettingsView: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label("Talk from anywhere", systemImage: "mic.fill").font(.headline)
-                    Text("1. iPhone Settings → Action Button → Shortcut\n2. Pick Friday → Talk to Friday\n3. Press once, talk, press again. The Dynamic Island shows what Friday did.")
+                    Label("Talk from the Lock Screen", systemImage: "mic.fill").font(.headline)
+                    Text("1. Press and hold the Lock Screen → Customize → Lock Screen\n2. Tap − on the camera button, then +\n3. Pick Friday → Talk to Friday\n4. Press and hold it: Friday opens, already listening.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 4)
             } footer: {
-                Text("Also works with “Hey Siri, talk to Friday” and the Talk to Friday button in Control Center.")
+                Text("You can add the same button to Control Center.")
             }
 
             Section {

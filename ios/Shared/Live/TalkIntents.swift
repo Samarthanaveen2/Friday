@@ -80,3 +80,23 @@ struct CancelTalkIntent: LiveActivityIntent {
     func perform() async throws -> some IntentResult { .result() }
     #endif
 }
+
+/// The Lock Screen / Control Center mic button: opens Friday and starts listening on Home.
+struct OpenTalkIntent: AppIntent {
+    static let title: LocalizedStringResource = "Open Friday and talk"
+    static let openAppWhenRun = true
+    init() {}
+
+    #if FRIDAY_APP
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        Talk.shared.start(.newBox)
+        return .result()
+    }
+    #else
+    @MainActor
+    func perform() async throws -> some IntentResult & OpensIntent {
+        .result(opensIntent: OpenURLIntent(URL(string: "friday://talk")!))
+    }
+    #endif
+}

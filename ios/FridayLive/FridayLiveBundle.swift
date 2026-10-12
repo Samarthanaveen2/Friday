@@ -140,15 +140,15 @@ struct StartFridayControl: ControlWidget {
     }
 }
 
-/// Control Center / Lock Screen: talk to Friday (opens Friday briefly to listen).
+/// Lock Screen (in place of the camera) / Control Center: opens Friday, already listening.
 struct TalkToFridayControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "com.samarth.friday.talk") {
-            ControlWidgetButton(action: TalkToFridayIntent()) {
+            ControlWidgetButton(action: OpenTalkIntent()) {
                 Label("Talk to Friday", systemImage: "mic.fill")
             }
         }
         .displayName("Talk to Friday")
-        .description("Tell Friday what to add, cancel or remember.")
+        .description("Opens Friday, already listening.")
     }
 }
