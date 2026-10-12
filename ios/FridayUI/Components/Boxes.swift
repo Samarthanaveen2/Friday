@@ -1,3 +1,4 @@
+import FridayCore
 import SwiftUI
 
 /// One box on home: a note, idea, list, or the Money box.
@@ -114,6 +115,8 @@ struct BoxCard: View {
                     }
                 }
                 switch box.kind {
+                case .note where Checklist(box.text).hasItems:
+                    ChecklistPreview(text: box.text)
                 case .note:
                     Text(box.text)
                         .scaledFont(15)
@@ -227,6 +230,39 @@ extension View {
             }
         } else {
             self
+        }
+    }
+}
+
+/// A checklist box on Home: ○ / ✓ per item, done items greyed, at most 6 lines.
+struct ChecklistPreview: View {
+    let text: String
+
+    var body: some View {
+        let lines = Checklist(text).lines
+        VStack(alignment: .leading, spacing: 5) {
+            ForEach(Array(lines.prefix(6).enumerated()), id: \.offset) { _, line in
+                switch line {
+                case .check(let done, let item):
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 13))
+                            .foregroundStyle(done ? Palette.secondary : Palette.tertiary)
+                        Text(item)
+                            .scaledFont(15)
+                            .strikethrough(done, color: Palette.secondary)
+                            .foregroundStyle(done ? Palette.secondary : Palette.alsoText)
+                            .lineLimit(1)
+                    }
+                case .text(let plain):
+                    if !plain.isEmpty {
+                        Text(plain).scaledFont(15).foregroundStyle(Palette.alsoText).lineLimit(2)
+                    }
+                }
+            }
+            if lines.count > 6 {
+                Text("+\(lines.count - 6)").scaledFont(13, .semibold).foregroundStyle(Palette.secondary)
+            }
         }
     }
 }

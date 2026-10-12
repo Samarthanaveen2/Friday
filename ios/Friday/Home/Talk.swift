@@ -54,18 +54,37 @@ final class Talk {
         writingFor = target
         Task {
             let outcome = await DictationPipeline.shared.finish()
-            working = false
-            writingFor = nil
+            defer {
+                working = false
+                writingFor = nil
+            }
             guard let outcome, !outcome.nothing,
-                  !outcome.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                  !outcome.raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 BoxStore.shared.flash("Didn't catch that")
                 return
             }
-            Haptics.success()
             switch target {
             case .newBox:
+                Haptics.success()
                 BoxStore.shared.change("New box") { $0.addNote(text: outcome.text, now: .now) }
             case .box(let id):
+                let note = BoxStore.shared.store.note(id)
+                let current = note?.text ?? ""
+                // "Friday, make this a checklist": the instruction edits what's already in the box.
+                if BoxEdit.isEdit(outcome.raw), !current.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    guard let edited = await Cleaner.shared.edit(note: current, instruction: outcome.raw) else {
+                        BoxStore.shared.flash("Couldn't change the box")
+                        return
+                    }
+                    Haptics.success()
+                    BoxStore.shared.change("Box updated") { $0.editNote(id, title: note?.title, text: edited, now: .now) }
+                    return
+                }
+                guard !outcome.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    BoxStore.shared.flash("Didn't catch that")
+                    return
+                }
+                Haptics.success()
                 BoxStore.shared.change("Added to the box") { $0.appendToNote(id, text: outcome.text, now: .now) }
             }
         }

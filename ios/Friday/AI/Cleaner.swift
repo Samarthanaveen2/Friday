@@ -121,8 +121,52 @@ final class Cleaner {
         return done(nil, .rules)
     }
 
-    private func cloud(base: URL, key: String, body: Data, quota: String) async -> Attempt? {
-        await withTimeout(2.5) { () async -> Attempt? in
+    /// "Talk to this box" with a Friday instruction: the AI rewrites the whole box.
+    /// Same providers as cleanup; nil if none answered or the guard refused the answer.
+    func edit(note: String, instruction: String) async -> String? {
+        let message = BoxEdit.message(note: note, instruction: instruction)
+        let budget = min(3_000, (note.count + instruction.count) / 2 + 600)
+        func good(_ attempt: Attempt?) -> String? {
+            guard case .reply(let reply)? = attempt, let out = extractOut(reply),
+                  BoxEdit.accept(output: out, note: note, instruction: instruction) else { return nil }
+            return out
+        }
+        if let key = Keys.get(.groq) {
+            for step in Models.groqCleanupChain where QuotaBook.shared.available(step.quota) {
+                QuotaBook.shared.record(step.quota)
+                let body = CloudRequests.chatBody(model: step.model, system: BoxEdit.systemPrompt, user: message,
+                                                  maxTokens: step.model.hasPrefix("openai/gpt-oss") ? budget + 1_024 : budget,
+                                                  reasoningEffort: Models.reasoningEffort(for: step.model))
+                if let out = good(await cloud(base: Models.groqBase, key: key, body: body, quota: step.quota, timeout: 6)) {
+                    UsageBook.shared.lastCleanup = step.model
+                    return out
+                }
+            }
+        }
+        if let key = Keys.get(.gemini), QuotaBook.shared.available("gemini.chat") {
+            QuotaBook.shared.record("gemini.chat")
+            let body = CloudRequests.chatBody(model: Models.geminiCleanup, system: BoxEdit.systemPrompt, user: message,
+                                              maxTokens: budget, reasoningEffort: Models.reasoningEffort(for: Models.geminiCleanup))
+            if let out = good(await cloud(base: Models.geminiBase, key: key, body: body, quota: "gemini.chat", timeout: 6)) {
+                return out
+            }
+        }
+        if case .available = SystemLanguageModel.default.availability {
+            let reply = await withTimeout(8.0) { () async -> Attempt? in
+                let session = LanguageModelSession(instructions: BoxEdit.systemPrompt)
+                do {
+                    return .reply(try await session.respond(to: message).content)
+                } catch {
+                    return .error("failed")
+                }
+            }
+            if let out = good(reply) { return out }
+        }
+        return nil
+    }
+
+    private func cloud(base: URL, key: String, body: Data, quota: String, timeout: Double = 2.5) async -> Attempt? {
+        await withTimeout(timeout) { () async -> Attempt? in
             do {
                 return .reply(try await CloudClient.shared.chat(base: base, key: key, body: body))
             } catch {

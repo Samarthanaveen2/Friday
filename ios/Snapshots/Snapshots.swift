@@ -71,7 +71,7 @@ final class Snapshots: XCTestCase {
                 ]), pinned: true),
                 BoxModel(id: "b1", title: "Club fest poster", text: "Blue background, club logo big in the middle. Ask Arjun for the font. Print 40 copies by Thursday.",
                          reminder: updated ? "Thu 18:00" : nil, highlighted: updated, note: updated ? "New" : nil),
-                BoxModel(id: "b2", title: nil, text: "Books to read: Zero to One, The Mom Test, Shoe Dog"),
+                BoxModel(id: "b2", title: "Groceries", text: "- [ ] Chicken\n- [x] Eggs\n- [ ] Vegetables\n- [ ] Paneer 500 g"),
                 BoxModel(id: "b3", title: "Hostel wifi", text: "KGP-Hall-5 / password on the notice board near the mess", reminder: nil, color: .sky),
                 BoxModel(id: "b4", title: "Startup idea", text: "Mess menu app that lets students vote on tomorrow's dinner. Start with our hall, 20 regulars first.", reminder: "Sun 10:00"),
                 BoxModel(id: "b5", title: nil, text: "Gift for mom's birthday — the brass lamp from the market", color: .sand),
@@ -163,6 +163,10 @@ final class Snapshots: XCTestCase {
                                 text: .constant("Blue background, club logo big in the middle. Ask Arjun for the font.\n\nPrint 40 copies by Thursday."),
                                 reminder: "Thu 16 Oct, 18:00", pinned: true)
             }
+        }
+        try snap("box-checklist-light", size: phone) {
+            BoxDetailScreen(title: .constant("Groceries"),
+                            text: .constant("- [ ] Chicken\n- [x] Eggs\n- [ ] Vegetables\n- [ ] Paneer 500 g"))
         }
         try snap("box-new-listening-light", size: phone) {
             BoxDetailScreen(title: .constant(""), text: .constant(""))

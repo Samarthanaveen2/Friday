@@ -117,3 +117,6 @@
 {"id": 117, "context": "", "say": "Pizza was 1200, drinks were 300 and dessert 450, and we are 3 people. Friday, how much is each person's share?", "expect": [""], "must": ["\u20b9650", "1,200"], "mustNot": ["Friday,"]}
 {"id": 118, "context": "", "say": "Arjun paid 600 for the cab and I paid 400 for food. Friday, who owes whom and how much?", "expect": [""], "must": ["Arjun", "\u20b9100"], "mustNot": ["Friday,"]}
 {"id": 119, "context": "", "say": "Are you coming on Friday, what time should I book the table?", "expect": [""], "must": ["Friday", "what time should I book the table?"], "mustNot": []}
+{"id": 120, "context": "", "say": "I need to buy chicken, eggs and vegetables. Friday, make that a checklist.", "expect": [""], "must": ["- [ ] Chicken", "- [ ] Eggs", "- [ ] Vegetables"], "mustNot": ["I need to buy chicken, eggs", "Friday"]}
+{"id": 121, "context": "", "say": "Groceries: rice, dal, oil and onions. Friday, make that a list.", "expect": [""], "must": ["Groceries", "- Rice", "- Dal", "- Oil", "- Onions"], "mustNot": ["Friday", "[ ]"]}
+{"id": 122, "context": "", "say": "Things to pack: charger, towel, eggs and books. Friday, make that a checklist. Friday, scratch the eggs from that list.", "expect": [""], "must": ["- [ ] Charger", "- [ ] Towel", "- [ ] Books"], "mustNot": ["Eggs", "Friday", "scratch"]}

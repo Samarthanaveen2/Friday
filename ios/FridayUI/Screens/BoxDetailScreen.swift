@@ -1,3 +1,4 @@
+import FridayCore
 import SwiftUI
 
 /// A box opened full screen: a plain page to edit, an optional reminder, and the talk pill.
@@ -40,6 +41,13 @@ struct BoxDetailScreen: View {
                 .accessibilityLabel(pinned ? "Unpin" : "Pin")
                 .sensoryFeedback(.selection, trigger: pins)
                 Menu {
+                    if Checklist(text).hasItems {
+                        Button("Make plain text", systemImage: "text.alignleft") { text = Checklist.makePlain(text) }
+                    } else {
+                        Button("Make checklist", systemImage: "checklist") {
+                            text = Checklist.makeChecklist(text.isEmpty ? "- [ ]" : text)
+                        }
+                    }
                     BoxMenuItems(pinned: pinned, color: color) { action in
                         switch action {
                         case .pin: onPin()
@@ -66,10 +74,14 @@ struct BoxDetailScreen: View {
                         .scaledFont(28, .bold, relativeTo: .title)
                         .foregroundStyle(Palette.text)
                     reminderChip
-                    TextField("Write or talk…", text: $text, axis: .vertical)
-                        .scaledFont(17)
-                        .lineSpacing(4)
-                        .foregroundStyle(Palette.text)
+                    if Checklist(text).hasItems {
+                        ChecklistEditor(text: $text)
+                    } else {
+                        TextField("Write or talk…", text: $text, axis: .vertical)
+                            .scaledFont(17)
+                            .lineSpacing(4)
+                            .foregroundStyle(Palette.text)
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -116,6 +128,81 @@ struct BoxDetailScreen: View {
                     .background(Palette.text.opacity(0.06), in: Capsule())
             }
             .buttonStyle(.plain)
+        }
+    }
+}
+
+/// Checklist items on the box page: tap the circle to tick, edit the text in place,
+/// Return adds the next item (an empty item is removed).
+struct ChecklistEditor: View {
+    @Binding var text: String
+    @FocusState private var focused: Int?
+    @State private var ticks = 0
+
+    var body: some View {
+        let list = Checklist(text)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(list.lines.enumerated()), id: \.offset) { index, line in
+                switch line {
+                case .check(let done, let item):
+                    HStack(alignment: .center, spacing: 12) {
+                        Button {
+                            update { $0.toggle(at: index) }
+                            ticks += 1
+                        } label: {
+                            Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 22))
+                                .foregroundStyle(done ? Palette.secondary : Palette.tertiary)
+                                .contentTransition(.symbolEffect(.replace))
+                                .frame(width: 28, height: 40)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(done ? "Mark not done: \(item)" : "Mark done: \(item)")
+                        TextField("Item", text: Binding(get: { item }, set: { value in update { $0.setText(value, at: index) } }))
+                            .scaledFont(17)
+                            .strikethrough(done, color: Palette.secondary)
+                            .foregroundStyle(done ? Palette.secondary : Palette.text)
+                            .focused($focused, equals: index)
+                            .submitLabel(.next)
+                            .onSubmit { submit(index, empty: item.isEmpty) }
+                    }
+                case .text(let plain):
+                    TextField("", text: Binding(get: { plain }, set: { value in update { $0.setText(value, at: index) } }),
+                              axis: .vertical)
+                        .scaledFont(17)
+                        .foregroundStyle(Palette.text)
+                        .padding(.vertical, 6)
+                }
+            }
+            Button {
+                update { $0.add() }
+                focused = Checklist(text).lines.count - 1
+            } label: {
+                Label("Add item", systemImage: "plus")
+                    .scaledFont(16)
+                    .foregroundStyle(Palette.secondary)
+                    .frame(height: 40)
+            }
+            .buttonStyle(.plain)
+        }
+        .sensoryFeedback(.success, trigger: ticks)
+        .animation(Motion.spring, value: text)
+    }
+
+    private func update(_ change: (inout Checklist) -> Void) {
+        var list = Checklist(text)
+        change(&list)
+        text = list.text
+    }
+
+    /// Return: an empty item is removed, otherwise a new item opens below.
+    private func submit(_ index: Int, empty: Bool) {
+        if empty {
+            update { $0.remove(at: index) }
+            focused = nil
+        } else {
+            update { $0.lines.insert(.check(done: false, text: ""), at: index + 1) }
+            focused = index + 1
         }
     }
 }
