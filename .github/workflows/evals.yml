@@ -1,11 +1,8 @@
 name: Evals
 
 on:
-  push:
-    branches: [claude/affectionate-fermat-scvp7y]
-    # Only when the prompt or test cases change: each run spends part of Groq's free daily allowance.
-    paths: ["ios/evals/**", "ios/FridayCore/Sources/FridayCore/Dictation/Prompt.swift",
-            "ios/FridayCore/Sources/FridayCore/Schedule/DecisionPrompt.swift"]
+  # Manual only: it uses the same free Groq key as the phone, and an automatic run on every
+  # prompt change used up the phone's daily allowance (cleanup then fell back to weaker models).
   workflow_dispatch:
 
 concurrency:
