@@ -8,54 +8,122 @@ struct FridayLiveBundle: WidgetBundle {
     var body: some Widget {
         FridayLiveActivity()
         StartFridayControl()
+        TalkToFridayControl()
     }
 }
 
-/// "Friday on" in the Dynamic Island and on the Lock Screen while a session runs.
+/// "Friday on" in the Dynamic Island and on the Lock Screen while a session runs. While you talk
+/// to Friday it shows Listening (with ✕ / ✓), Thinking, then what it did.
 struct FridayLiveActivity: Widget {
-    private let accent = Color(red: 0.62, green: 0.64, blue: 1.0)
-
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FridayActivityAttributes.self) { context in
-            HStack(spacing: 12) {
-                Image(systemName: "waveform")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(accent)
-                Text("Friday on")
-                    .font(.headline)
-                Spacer()
-                Text(context.state.startedAt, style: .timer)
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 64)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .activityBackgroundTint(Color.black.opacity(0.85))
-            .activitySystemActionForegroundColor(.white)
+            LockScreenCard(state: context.state)
+                .activityBackgroundTint(Color.black)
+                .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
-            DynamicIsland {
+            let state = context.state
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: "waveform").foregroundStyle(accent).padding(.leading, 6)
+                    Image(systemName: icon(state)).font(.title3.weight(.semibold)).padding(.leading, 6)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text("Friday on").font(.headline)
+                    Text(title(state)).font(.headline).lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.state.startedAt, style: .timer)
-                        .font(.subheadline.monospacedDigit())
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 52)
+                    if state.phase == nil {
+                        Text(state.startedAt, style: .timer)
+                            .font(.subheadline.monospacedDigit())
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 52)
+                    }
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    BottomRow(state: state)
                 }
             } compactLeading: {
-                Image(systemName: "waveform").foregroundStyle(accent)
+                Image(systemName: icon(state))
             } compactTrailing: {
-                Text("On").font(.caption2.weight(.semibold))
+                Text(short(state)).font(.caption2.weight(.semibold))
             } minimal: {
-                Image(systemName: "waveform").foregroundStyle(accent)
+                Image(systemName: icon(state))
             }
         }
+    }
+}
+
+private func icon(_ state: FridayActivityAttributes.ContentState) -> String {
+    switch state.phase {
+    case "listening": "mic.fill"
+    case "thinking": "ellipsis"
+    case "done": "checkmark"
+    default: "waveform"
+    }
+}
+
+private func title(_ state: FridayActivityAttributes.ContentState) -> String {
+    switch state.phase {
+    case "listening": "Listening…"
+    case "thinking": "Thinking…"
+    case "done": "Done"
+    default: "Friday on"
+    }
+}
+
+private func short(_ state: FridayActivityAttributes.ContentState) -> String {
+    switch state.phase {
+    case "listening": "Listening"
+    case "thinking": "…"
+    case "done": "Done"
+    default: "On"
+    }
+}
+
+/// ✕ / ✓ while listening, or what Friday did.
+private struct BottomRow: View {
+    let state: FridayActivityAttributes.ContentState
+
+    var body: some View {
+        if state.phase == "listening" {
+            HStack(spacing: 14) {
+                Button(intent: CancelTalkIntent()) {
+                    Image(systemName: "xmark").font(.headline).frame(maxWidth: .infinity, minHeight: 40)
+                }
+                .tint(.white.opacity(0.18))
+                Button(intent: FinishTalkIntent()) {
+                    Image(systemName: "checkmark").font(.headline).foregroundStyle(.black).frame(maxWidth: .infinity, minHeight: 40)
+                }
+                .tint(.white)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+        } else if let message = state.message, state.phase == "done" {
+            Text(message).font(.subheadline).lineLimit(3).frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct LockScreenCard: View {
+    let state: FridayActivityAttributes.ContentState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Image(systemName: icon(state)).font(.title3.weight(.semibold))
+                Text(title(state)).font(.headline)
+                Spacer()
+                if state.phase == nil {
+                    Text(state.startedAt, style: .timer)
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 64)
+                }
+            }
+            BottomRow(state: state)
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
 }
 
@@ -69,5 +137,18 @@ struct StartFridayControl: ControlWidget {
         }
         .displayName("Start Friday")
         .description("Turns on Friday's mic.")
+    }
+}
+
+/// Control Center / Lock Screen: talk to Friday (opens Friday briefly to listen).
+struct TalkToFridayControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "com.samarth.friday.talk") {
+            ControlWidgetButton(action: TalkToFridayIntent()) {
+                Label("Talk to Friday", systemImage: "mic.fill")
+            }
+        }
+        .displayName("Talk to Friday")
+        .description("Tell Friday what to add, cancel or remember.")
     }
 }

@@ -6,7 +6,10 @@ import Foundation
 /// events, boxes. Anything it can't act on is kept as a box. One pill, one Undo for all of it.
 @MainActor
 enum Manager {
-    static func handle(_ said: String) async {
+    /// Returns what happened in a few words (the pill text, or Friday's answer), for the Dynamic Island.
+    @discardableResult
+    static func handle(_ said: String) async -> String {
+        BoxStore.shared.answer = nil
         _ = await CalendarService.shared.requestAccess()
         let calendar = CalendarService.shared.forPrompt()
         let store = BoxStore.shared.store
@@ -14,11 +17,11 @@ enum Manager {
         guard let actions = await Decider.shared.decide(said: said, store: store, events: calendar.events) else {
             // No AI answered (free limit used up or offline): keep the words, and say why.
             BoxStore.shared.change("AI is resting · saved as a box") { $0.addNote(text: said, now: .now) }
-            return
+            return "AI is resting · saved as a box"
         }
         guard !actions.isEmpty else {
             BoxStore.shared.change("Saved as a box") { $0.addNote(text: said, now: .now) }
-            return
+            return "Saved as a box"
         }
         for case .answer(let text) in actions {
             BoxStore.shared.answer = text
@@ -62,8 +65,8 @@ enum Manager {
             return !$0.isStoreAction && !$0.isCalendarAction
         }
         var finalStore = result.store
-        if labels.isEmpty && BoxStore.shared.answer != nil && unsupported.isEmpty {
-            return
+        if labels.isEmpty && unsupported.isEmpty, let answer = BoxStore.shared.answer {
+            return answer
         }
         if labels.isEmpty {
             // Only things Friday can't do yet (messages, calls, web): keep what was said as a box.
@@ -76,6 +79,7 @@ enum Manager {
         BoxStore.shared.change(summary, onUndo: calendarUndo.isEmpty ? nil : {
             CalendarService.shared.undo(calendarUndo)
         }) { $0 = finalStore }
+        return BoxStore.shared.answer.map { summary + " · " + $0 } ?? summary
     }
 
     private static func label(_ change: Change, in store: Store) -> String {

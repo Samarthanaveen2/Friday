@@ -57,6 +57,11 @@ final class ProbeModel {
             defaults.set(openedFromKeyboardAt, forKey: "probe.openedFromKeyboard")
             Haptics.success()
         }
+        if url.host == "talk" {
+            // From the Control Center "Talk to Friday" button (runs in the widget, so it opens Friday).
+            Talk.shared.start(.newBox)
+            return
+        }
         if url.host == "session" {
             Task {
                 await Session.shared.start(source: from == "intent" ? .app : .keyboard)

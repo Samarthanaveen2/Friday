@@ -38,12 +38,14 @@ final class Talk {
             }
             Haptics.tap()
             self.target = target
+            if target == .newBox { Session.shared.setActivity(phase: "listening") }
         }
     }
 
     func cancel() {
-        guard target != nil else { return }
-        target = nil
+        guard let target else { return }
+        if target == .newBox { Session.shared.setActivity(phase: "on") }
+        self.target = nil
         DictationPipeline.shared.cancel()
     }
 
@@ -52,6 +54,7 @@ final class Talk {
         self.target = nil
         working = true
         writingFor = target
+        if target == .newBox { Session.shared.setActivity(phase: "thinking") }
         Task {
             let outcome = await DictationPipeline.shared.finish()
             defer {
@@ -61,6 +64,7 @@ final class Talk {
             guard let outcome, !outcome.nothing,
                   !outcome.raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 BoxStore.shared.flash("Didn't catch that")
+                if target == .newBox { Session.shared.setActivity(phase: "done", message: "Didn't catch that") }
                 return
             }
             switch target {
@@ -69,9 +73,11 @@ final class Talk {
                 let said = outcome.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !said.isEmpty else {
                     BoxStore.shared.flash("Didn't catch that")
+                    Session.shared.setActivity(phase: "done", message: "Didn't catch that")
                     return
                 }
-                await Manager.handle(said)
+                let summary = await Manager.handle(said)
+                Session.shared.setActivity(phase: "done", message: summary)
                 Haptics.success()
             case .box(let id):
                 let note = BoxStore.shared.store.note(id)

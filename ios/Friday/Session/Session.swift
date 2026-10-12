@@ -265,6 +265,33 @@ final class Session {
         }
     }
 
+    private var phaseReset: Task<Void, Never>?
+
+    /// Shows what talking to Friday is doing in the Dynamic Island / Lock Screen card.
+    /// "done" falls back to plain "Friday on" after 5 s.
+    func setActivity(phase: String, message: String? = nil) {
+        if activity == nil { ensureActivity(source: .app) }
+        let started = activity?.content.state.startedAt ?? .now
+        let source = activity?.content.state.source ?? SessionSource.app.rawValue
+        let state = FridayActivityAttributes.ContentState(startedAt: started, source: source,
+                                                          phase: phase == "on" ? nil : phase, message: message)
+        Task { await Session.updateAllActivities(state) }
+        phaseReset?.cancel()
+        if phase == "done" {
+            phaseReset = Task {
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled else { return }
+                Session.shared.setActivity(phase: "on")
+            }
+        }
+    }
+
+    nonisolated private static func updateAllActivities(_ state: FridayActivityAttributes.ContentState) async {
+        for activity in Activity<FridayActivityAttributes>.activities {
+            await activity.update(ActivityContent(state: state, staleDate: nil))
+        }
+    }
+
     private func endActivity() {
         activity = nil
         activityRunning = false

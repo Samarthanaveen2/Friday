@@ -35,6 +35,10 @@ struct FridayApp: App {
 
 struct FridayShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(intent: TalkToFridayIntent(),
+                    phrases: ["Talk to \(.applicationName)", "Ask \(.applicationName)", "Tell \(.applicationName)"],
+                    shortTitle: "Talk to Friday",
+                    systemImageName: "mic.fill")
         AppShortcut(intent: StartFridayIntent(),
                     phrases: ["Start \(.applicationName)"],
                     shortTitle: "Start Friday",

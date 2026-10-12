@@ -18,6 +18,17 @@ struct SettingsView: View {
             CalendarSection()
 
             Section {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Talk from anywhere", systemImage: "mic.fill").font(.headline)
+                    Text("1. iPhone Settings → Action Button → Shortcut\n2. Pick Friday → Talk to Friday\n3. Press once, talk, press again. The Dynamic Island shows what Friday did.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+            } footer: {
+                Text("Also works with “Hey Siri, talk to Friday” and the Talk to Friday button in Control Center.")
+            }
+
+            Section {
                 SecureField("Groq key (gsk_…)", text: $groq)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
