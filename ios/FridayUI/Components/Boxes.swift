@@ -115,6 +115,7 @@ struct BoxCard: View {
 /// Two columns like Keep: each box goes to the shorter column, keeping the order top to bottom.
 struct BoxGrid: View {
     let boxes: [BoxModel]
+    var zoom: Namespace.ID?
     var onOpen: (String) -> Void = { _ in }
 
     var body: some View {
@@ -124,7 +125,15 @@ struct BoxGrid: View {
                 LazyVStack(spacing: 10) {
                     ForEach(columns[column]) { box in
                         BoxCard(box: box) { onOpen(box.id) }
+                            .zoomSource(id: box.id, in: zoom)
                             .transition(.scale(scale: 0.92).combined(with: .opacity))
+                            // Cards settle in as they scroll onto the screen.
+                            .scrollTransition(.interactive, axis: .vertical) { content, phase in
+                                content
+                                    .opacity(phase.isIdentity ? 1 : 0.4)
+                                    .scaleEffect(phase.isIdentity ? 1 : 0.94)
+                                    .offset(y: phase.value * 8)
+                            }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .top)
@@ -141,5 +150,16 @@ struct BoxGrid: View {
             heights[target] += box.weight + 2
         }
         return columns
+    }
+}
+
+extension View {
+    /// Marks a card as the start of the zoom into its box (when the app supplies a namespace).
+    @ViewBuilder func zoomSource(id: String, in namespace: Namespace.ID?) -> some View {
+        if let namespace {
+            matchedTransitionSource(id: id, in: namespace) { $0.clipShape(RoundedRectangle(cornerRadius: Theme.radius, style: .continuous)) }
+        } else {
+            self
+        }
     }
 }

@@ -1,23 +1,39 @@
 import SwiftUI
 
-/// The talk button at the bottom of Home: an ink pill, like Wispr's.
+/// The talk button at the bottom of Home: the living voice orb. It breathes while idle,
+/// squishes under your finger and taps back with a haptic.
 struct MicButton: View {
     var action: () -> Void = {}
+    @State private var taps = 0
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: "mic.fill").font(.system(size: 18, weight: .semibold))
-                Text("Talk to Friday").scaledFont(17, .semibold)
-            }
-            .foregroundStyle(Palette.onInverse)
-            .padding(.horizontal, 26)
-            .frame(height: 58)
-            .background(Palette.inverse, in: Capsule())
-            .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
+        Button {
+            taps += 1
+            action()
+        } label: {
+            VoiceOrb(size: 74)
+                .overlay {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                        .symbolEffect(.bounce, value: taps)
+                }
+                .frame(width: 110, height: 110)
+                .contentShape(Circle())
         }
-        .buttonStyle(PressScale())
+        .buttonStyle(OrbPress())
+        .sensoryFeedback(.impact(weight: .medium), trigger: taps)
         .accessibilityLabel("Talk to Friday")
+    }
+}
+
+/// A soft, springy squish for the orb.
+struct OrbPress: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.86 : 1)
+            .animation(.spring(response: 0.28, dampingFraction: 0.55), value: configuration.isPressed)
     }
 }
 
@@ -43,6 +59,7 @@ struct ChangePill: View {
         .padding(.trailing, undo == nil ? 18 : 8)
         .frame(height: 44)
         .background(Palette.pill, in: Capsule())
+        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
     }
 }
 
@@ -113,10 +130,11 @@ struct CapsuleButton: View {
                 Text(title)
             }
             .scaledFont(17, .semibold)
-            .foregroundStyle(style == .primary ? Color.white : Palette.text)
+            .foregroundStyle(style == .primary ? Palette.onInverse : Palette.text)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .background(style == .primary ? Palette.accent : Palette.raised, in: Capsule())
+            .frame(height: 54)
+            .background(style == .primary ? Palette.inverse : Color.clear, in: Capsule())
+            .glassEffect(style == .primary ? .identity : .regular.interactive(), in: Capsule())
         }
         .buttonStyle(PressScale())
     }

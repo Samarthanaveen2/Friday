@@ -25,6 +25,8 @@ struct CheckCircle: View {
             .symbolRenderingMode(.palette)
             .foregroundStyle(done ? Color.white : Palette.tertiary, Palette.accent)
             .contentTransition(.symbolEffect(.replace))
+            .symbolEffect(.bounce, value: done)
+            .sensoryFeedback(.success, trigger: done) { _, new in new }
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
     }

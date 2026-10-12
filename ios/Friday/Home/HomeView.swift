@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var path: [String] = []
     @State private var showSettings = false
     @State private var showSearch = false
+    @Namespace private var zoom
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -22,17 +23,19 @@ struct HomeView: View {
                        onUndo: { boxes.undo() },
                        onSearch: { showSearch = true },
                        onSettings: { showSettings = true },
-                       onNew: newBox)
+                       onNew: newBox,
+                       zoom: zoom)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: String.self) { id in
                     BoxDetailHost(id: id, onBack: { if !path.isEmpty { path.removeLast() } })
                         .toolbar(.hidden, for: .navigationBar)
+                        .navigationTransition(.zoom(sourceID: id, in: zoom))
                 }
         }
         .overlay(alignment: .bottom) {
             if talk.listening {
                 ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.25).ignoresSafeArea().onTapGesture { talk.cancel() }
+                    Rectangle().fill(.ultraThinMaterial).ignoresSafeArea().onTapGesture { talk.cancel() }
                     TalkingSheet(transcript: "Listening", levels: session.levels.suffix(28).map { CGFloat($0) },
                                  onCancel: { talk.cancel() }, onDone: { talk.done() })
                 }
@@ -77,7 +80,7 @@ struct HomeView: View {
                      reminder: note.reminder.map { Labels.reminder($0) }, pinned: note.pinned)
         }
         if let setup = setupBox { cards.insert(setup, at: 0) }
-        return HomeModel(dateLabel: Labels.header(.now), today: rows, next: next, boxes: cards,
+        return HomeModel(dateLabel: Labels.header(.now), greeting: Labels.greeting(.now), today: rows, next: next, boxes: cards,
                          pill: talk.working ? "Writing…" : boxes.pill, pillUndo: boxes.canUndo && !talk.working)
     }
 
@@ -236,6 +239,14 @@ struct SearchSheet: View {
 enum Labels {
     static func header(_ date: Date) -> String {
         date.formatted(.dateTime.weekday(.wide).day().month(.wide))
+    }
+
+    static func greeting(_ date: Date) -> String {
+        switch Calendar.current.component(.hour, from: date) {
+        case 4..<12: "Good morning,"
+        case 12..<17: "Good afternoon,"
+        default: "Good evening,"
+        }
     }
 
     static func time(_ date: Date) -> String {

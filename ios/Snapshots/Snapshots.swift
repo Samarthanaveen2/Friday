@@ -52,6 +52,7 @@ final class Snapshots: XCTestCase {
     private func home(updated: Bool = false, card: ResultCardModel? = nil, emptyToday: Bool = false) -> HomeModel {
         HomeModel(
             dateLabel: "Sunday, 11 October",
+            greeting: "Good evening,",
             today: emptyToday ? [
                 RowModel(id: "1", title: "Signals lecture", time: "9:00", done: true),
             ] : [
