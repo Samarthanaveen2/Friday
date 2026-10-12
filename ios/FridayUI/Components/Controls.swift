@@ -1,39 +1,106 @@
 import SwiftUI
 
-/// The talk button at the bottom of Home: the living voice orb. It breathes while idle,
-/// squishes under your finger and taps back with a haptic.
-struct MicButton: View {
-    var action: () -> Void = {}
-    @State private var taps = 0
-
-    var body: some View {
-        Button {
-            taps += 1
-            action()
-        } label: {
-            VoiceOrb(size: 74)
-                .overlay {
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
-                        .symbolEffect(.bounce, value: taps)
-                }
-                .frame(width: 110, height: 110)
-                .contentShape(Circle())
-        }
-        .buttonStyle(OrbPress())
-        .sensoryFeedback(.impact(weight: .medium), trigger: taps)
-        .accessibilityLabel("Talk to Friday")
-    }
+/// What the talk pill shows.
+enum TalkState: Equatable {
+    case idle
+    /// Live mic levels 0…1, oldest first.
+    case listening([CGFloat])
+    /// Speech is being turned into text.
+    case writing
 }
 
-/// A soft, springy squish for the orb.
-struct OrbPress: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.86 : 1)
-            .animation(.spring(response: 0.28, dampingFraction: 0.55), value: configuration.isPressed)
+/// The black talk pill, the same one as on the keyboard (Wispr style). Idle it says "Talk";
+/// listening it widens to ✕, live bars and ✓; while writing it shows three dots.
+struct TalkPill: View {
+    let state: TalkState
+    var title = "Talk"
+    var onTalk: () -> Void = {}
+    var onCancel: () -> Void = {}
+    var onDone: () -> Void = {}
+    @Namespace private var pill
+
+    var body: some View {
+        ZStack {
+            switch state {
+            case .idle:
+                Button(action: onTalk) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "mic.fill").font(.system(size: 16, weight: .semibold))
+                        Text(title).scaledFont(17, .semibold)
+                    }
+                    .foregroundStyle(Palette.onInverse)
+                    .padding(.horizontal, 26)
+                    .frame(height: 56)
+                    .background(Palette.inverse, in: Capsule())
+                    .matchedGeometryEffect(id: "pill", in: pill)
+                }
+                .buttonStyle(PressScale())
+                .accessibilityLabel(title)
+            case .listening(let levels):
+                HStack(spacing: 0) {
+                    round("xmark", label: "Cancel", action: onCancel)
+                    Bars(levels: levels).frame(maxWidth: .infinity)
+                    round("checkmark", label: "Done", action: onDone)
+                }
+                .padding(.horizontal, 6)
+                .frame(width: 280, height: 56)
+                .background(Palette.inverse, in: Capsule())
+                .matchedGeometryEffect(id: "pill", in: pill)
+            case .writing:
+                WorkingDots(color: Palette.onInverse)
+                    .frame(width: 120, height: 56)
+                    .background(Palette.inverse, in: Capsule())
+                    .matchedGeometryEffect(id: "pill", in: pill)
+            }
+        }
+        .animation(Motion.spring, value: kind)
+        .sensoryFeedback(trigger: kind) { old, new in
+            switch (old, new) {
+            case (0, 1): .impact(weight: .light)
+            case (1, 2): .success
+            default: nil
+            }
+        }
+    }
+
+    /// 0 idle, 1 listening, 2 writing: only changes of state animate, not every level update.
+    private var kind: Int {
+        switch state {
+        case .idle: 0
+        case .listening: 1
+        case .writing: 2
+        }
+    }
+
+    private func round(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Palette.inverse)
+                .frame(width: 44, height: 44)
+                .background(Palette.onInverse, in: Circle())
+        }
+        .buttonStyle(PressScale())
+        .accessibilityLabel(label)
+    }
+
+    /// 20 thin bars from the newest levels, centred.
+    private struct Bars: View {
+        let levels: [CGFloat]
+
+        var body: some View {
+            let shown = Array(levels.suffix(20))
+            HStack(spacing: 3) {
+                ForEach(0..<20, id: \.self) { i in
+                    let level = i < 20 - shown.count ? 0 : shown[i - (20 - shown.count)]
+                    Capsule()
+                        .fill(Palette.onInverse)
+                        .frame(width: 3, height: max(3, min(1, level) * 30))
+                }
+            }
+            .animation(.easeOut(duration: 0.08), value: levels)
+            .accessibilityHidden(true)
+        }
     }
 }
 
@@ -59,7 +126,6 @@ struct ChangePill: View {
         .padding(.trailing, undo == nil ? 18 : 8)
         .frame(height: 44)
         .background(Palette.pill, in: Capsule())
-        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
     }
 }
 
@@ -109,7 +175,7 @@ struct WorkingDots: View {
 struct PressScale: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
@@ -133,8 +199,7 @@ struct CapsuleButton: View {
             .foregroundStyle(style == .primary ? Palette.onInverse : Palette.text)
             .frame(maxWidth: .infinity)
             .frame(height: 54)
-            .background(style == .primary ? Palette.inverse : Color.clear, in: Capsule())
-            .glassEffect(style == .primary ? .identity : .regular.interactive(), in: Capsule())
+            .background(style == .primary ? Palette.inverse : Palette.raised, in: Capsule())
         }
         .buttonStyle(PressScale())
     }

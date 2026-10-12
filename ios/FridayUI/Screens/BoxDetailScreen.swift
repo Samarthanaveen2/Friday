@@ -1,35 +1,52 @@
 import SwiftUI
 
-/// A box opened full screen: edit the text, set a reminder, or talk to the box.
+/// A box opened full screen: a plain page to edit, an optional reminder, and the talk pill.
 struct BoxDetailScreen: View {
     @Binding var title: String
     @Binding var text: String
     var reminder: String?
     var pinned = false
-    var listening = false
+    var talk: TalkState = .idle
     var onBack: () -> Void = {}
     var onPin: () -> Void = {}
     var onMenu: () -> Void = {}
     var onReminder: () -> Void = {}
     var onClearReminder: () -> Void = {}
     var onTalk: () -> Void = {}
+    var onCancelTalk: () -> Void = {}
+    var onDoneTalk: () -> Void = {}
+    @State private var pins = 0
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                RoundIcon(systemName: "chevron.left", label: "Back", action: onBack)
+            HStack(spacing: 22) {
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
+                        .frame(width: 32, height: 44, alignment: .leading)
+                }
+                .accessibilityLabel("Back")
                 Spacer()
-                RoundIcon(systemName: pinned ? "pin.fill" : "pin", label: pinned ? "Unpin" : "Pin", action: onPin)
-                RoundIcon(systemName: "ellipsis", label: "More", action: onMenu)
+                Button {
+                    pins += 1
+                    onPin()
+                } label: {
+                    Image(systemName: pinned ? "pin.fill" : "pin")
+                }
+                .accessibilityLabel(pinned ? "Unpin" : "Pin")
+                .sensoryFeedback(.selection, trigger: pins)
+                Button(action: onMenu) { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel("More")
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 6)
-            .padding(.bottom, 10)
+            .font(.system(size: 20, weight: .regular))
+            .foregroundStyle(Palette.text)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .frame(height: 48)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 12) {
                     TextField("Title", text: $title, axis: .vertical)
-                        .scaledFont(32, .semibold, relativeTo: .title, serif: true)
+                        .scaledFont(28, .bold, relativeTo: .title)
                         .foregroundStyle(Palette.text)
                     reminderChip
                     TextField("Write or talk…", text: $text, axis: .vertical)
@@ -37,44 +54,30 @@ struct BoxDetailScreen: View {
                         .lineSpacing(4)
                         .foregroundStyle(Palette.text)
                 }
-                .padding(.horizontal, 22)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            HStack(spacing: 12) {
-                Button(action: onTalk) {
-                    HStack(spacing: 10) {
-                        Image(systemName: listening ? "waveform" : "mic.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .symbolEffect(.variableColor.iterative, isActive: listening)
-                        Text(listening ? "Listening… tap when done" : "Talk to this box")
-                            .scaledFont(16, .semibold)
-                    }
-                    .foregroundStyle(Palette.onInverse)
-                    .padding(.horizontal, 24)
-                    .frame(height: 56)
-                    .background(Palette.inverse, in: Capsule())
-                    .shadow(color: .black.opacity(0.16), radius: 16, y: 7)
-                }
-                .buttonStyle(PressScale())
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
-            .background(Palette.card.opacity(0.001))
+            TalkPill(state: talk, onTalk: onTalk, onCancel: onCancelTalk, onDone: onDoneTalk)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+                .background(Palette.background)
         }
         .background(Palette.background.ignoresSafeArea())
     }
 
     @ViewBuilder private var reminderChip: some View {
         if let reminder {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Button(action: onReminder) {
-                    Label(reminder, systemImage: "bell.fill")
-                        .scaledFont(14, .semibold, relativeTo: .subheadline)
-                        .foregroundStyle(Palette.accent)
+                    Label(reminder, systemImage: "bell")
+                        .scaledFont(14, .medium, relativeTo: .subheadline)
+                        .foregroundStyle(Palette.text)
                 }
                 .buttonStyle(.plain)
                 Button(action: onClearReminder) {
@@ -84,16 +87,16 @@ struct BoxDetailScreen: View {
                 .accessibilityLabel("Remove reminder")
             }
             .padding(.horizontal, 12)
-            .frame(height: 32)
-            .background(Palette.changeTint, in: Capsule())
+            .frame(height: 30)
+            .background(Palette.card, in: Capsule())
         } else {
             Button(action: onReminder) {
                 Label("Add reminder", systemImage: "bell")
                     .scaledFont(14, .medium, relativeTo: .subheadline)
                     .foregroundStyle(Palette.secondary)
                     .padding(.horizontal, 12)
-                    .frame(height: 32)
-                    .background(Palette.raised, in: Capsule())
+                    .frame(height: 30)
+                    .background(Palette.card, in: Capsule())
             }
             .buttonStyle(.plain)
         }

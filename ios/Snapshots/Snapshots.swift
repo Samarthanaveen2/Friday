@@ -52,7 +52,6 @@ final class Snapshots: XCTestCase {
     private func home(updated: Bool = false, card: ResultCardModel? = nil, emptyToday: Bool = false) -> HomeModel {
         HomeModel(
             dateLabel: "Sunday, 11 October",
-            greeting: "Good evening,",
             today: emptyToday ? [
                 RowModel(id: "1", title: "Signals lecture", time: "9:00", done: true),
             ] : [
@@ -166,7 +165,7 @@ final class Snapshots: XCTestCase {
             }
         }
         try snap("box-new-listening-light", size: phone) {
-            BoxDetailScreen(title: .constant(""), text: .constant(""), listening: true)
+            BoxDetailScreen(title: .constant(""), text: .constant(""))
         }
     }
 
@@ -183,16 +182,19 @@ final class Snapshots: XCTestCase {
         try snap("pill-missed-light", size: phone) { HomeScreen(model: missed) }
     }
 
-    func testTalkingSheet() throws {
-        let words = "Done with the lab report. Warden wants to see me at 3, push gym to five, laundry Sunday. Priority today: warden and the group reply"
+    func testTalkPill() throws {
         for dark in [false, true] {
-            try snap("talking-\(dark ? "dark" : "light")", size: phone, dark: dark) {
-                ZStack(alignment: .bottom) {
-                    HomeScreen(model: home()).opacity(0.35)
-                    TalkingSheet(transcript: words, levels: Array(wave.prefix(28)))
-                }
-                .ignoresSafeArea(edges: .bottom)
-            }
+            let mode = dark ? "dark" : "light"
+            var listening = home()
+            listening.talk = .listening(Array(wave.prefix(20)))
+            try snap("talk-listening-\(mode)", size: phone, dark: dark) { HomeScreen(model: listening) }
+        }
+        var writing = home()
+        writing.talk = .writing
+        try snap("talk-writing-light", size: phone) { HomeScreen(model: writing) }
+        try snap("box-listening-light", size: phone) {
+            BoxDetailScreen(title: .constant("Groceries"), text: .constant("Milk, eggs, paneer"),
+                            talk: .listening(Array(wave.prefix(20))))
         }
     }
 }

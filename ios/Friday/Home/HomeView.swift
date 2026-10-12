@@ -20,6 +20,8 @@ struct HomeView: View {
                        onToggle: toggle,
                        onOpenBox: open,
                        onTalk: { talk.start(.newBox) },
+                       onCancelTalk: { talk.cancel() },
+                       onDoneTalk: { talk.done() },
                        onUndo: { boxes.undo() },
                        onSearch: { showSearch = true },
                        onSettings: { showSettings = true },
@@ -32,18 +34,6 @@ struct HomeView: View {
                         .navigationTransition(.zoom(sourceID: id, in: zoom))
                 }
         }
-        .overlay(alignment: .bottom) {
-            if talk.listening {
-                ZStack(alignment: .bottom) {
-                    Rectangle().fill(.ultraThinMaterial).ignoresSafeArea().onTapGesture { talk.cancel() }
-                    TalkingSheet(transcript: "Listening", levels: session.levels.suffix(28).map { CGFloat($0) },
-                                 onCancel: { talk.cancel() }, onDone: { talk.done() })
-                }
-                .ignoresSafeArea(edges: .bottom)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .animation(Motion.spring, value: talk.listening)
         .task { probe.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             probe.refresh()
@@ -80,8 +70,11 @@ struct HomeView: View {
                      reminder: note.reminder.map { Labels.reminder($0) }, pinned: note.pinned)
         }
         if let setup = setupBox { cards.insert(setup, at: 0) }
-        return HomeModel(dateLabel: Labels.header(.now), greeting: Labels.greeting(.now), today: rows, next: next, boxes: cards,
-                         pill: talk.working ? "Writing…" : boxes.pill, pillUndo: boxes.canUndo && !talk.working)
+        return HomeModel(dateLabel: Labels.header(.now), today: rows, next: next, boxes: cards,
+                         pill: boxes.pill, pillUndo: boxes.canUndo,
+                         // Mic levels are only read while this place is listening: reading them always
+                         // would redraw Home 20 times a second whenever the session is on.
+                         talk: talk.state(for: .newBox, levels: talk.target == .newBox ? session.levels : []))
     }
 
     /// First run: what's still missing before Friday works fully. Tapping it opens Settings.
@@ -122,6 +115,7 @@ struct BoxDetailHost: View {
     var onBack: () -> Void
     @State private var boxes = BoxStore.shared
     @State private var talk = Talk.shared
+    @State private var session = Session.shared
     @State private var editingReminder = false
     @State private var confirmDelete = false
 
@@ -130,13 +124,15 @@ struct BoxDetailHost: View {
         BoxDetailScreen(title: binding(\.title), text: textBinding,
                         reminder: note?.reminder.map { Labels.reminder($0, long: true) },
                         pinned: note?.pinned ?? false,
-                        listening: talk.target == .box(id),
+                        talk: talk.state(for: .box(id), levels: talk.target == .box(id) ? session.levels : []),
                         onBack: onBack,
                         onPin: { Haptics.tap(); boxes.change { $0.togglePin(id) } },
                         onMenu: { confirmDelete = true },
                         onReminder: { editingReminder = true },
                         onClearReminder: { boxes.change("Reminder removed") { $0.setReminder(id, nil) } },
-                        onTalk: { talk.target == .box(id) ? talk.done() : talk.start(.box(id)) })
+                        onTalk: { talk.start(.box(id)) },
+                        onCancelTalk: { talk.cancel() },
+                        onDoneTalk: { talk.done() })
             .sheet(isPresented: $editingReminder) {
                 ReminderSheet(initial: note?.reminder) { date in
                     editingReminder = false
@@ -239,14 +235,6 @@ struct SearchSheet: View {
 enum Labels {
     static func header(_ date: Date) -> String {
         date.formatted(.dateTime.weekday(.wide).day().month(.wide))
-    }
-
-    static func greeting(_ date: Date) -> String {
-        switch Calendar.current.component(.hour, from: date) {
-        case 4..<12: "Good morning,"
-        case 12..<17: "Good afternoon,"
-        default: "Good evening,"
-        }
     }
 
     static func time(_ date: Date) -> String {

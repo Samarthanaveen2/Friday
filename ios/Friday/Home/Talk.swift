@@ -16,6 +16,15 @@ final class Talk {
 
     private(set) var target: Target?
     private(set) var working = false
+    /// Where the words of the dictation being written will go.
+    private var writingFor: Target?
+
+    /// The talk pill's state for one place (Home or a box): only that place shows listening.
+    func state(for place: Target, levels: [Float]) -> TalkState {
+        if target == place { return .listening(levels.suffix(20).map { CGFloat($0) }) }
+        if working && writingFor == place { return .writing }
+        return .idle
+    }
 
     var listening: Bool { target != nil }
 
@@ -42,9 +51,11 @@ final class Talk {
         guard let target else { return }
         self.target = nil
         working = true
+        writingFor = target
         Task {
             let outcome = await DictationPipeline.shared.finish()
             working = false
+            writingFor = nil
             guard let outcome, !outcome.nothing,
                   !outcome.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 BoxStore.shared.flash("Didn't catch that")

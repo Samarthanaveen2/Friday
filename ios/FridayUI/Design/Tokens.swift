@@ -2,27 +2,24 @@ import SwiftUI
 import UIKit
 
 /// Colours, each with a dark-mode partner. Every view uses these, never raw values.
-/// Light is Wispr-style: warm white paper, near-black ink, a soft lilac for highlights.
+/// "Quiet": white, black, greys. No colour except red for destructive actions.
 /// The app always runs light; dark values are for the keyboard in dark mode.
 enum Palette {
-    static let background = dynamic(0xFAF9F4, 0x000000)
-    static let card = dynamic(0xFFFFFF, 0x1C1C1E)
-    static let raised = dynamic(0xF3F1EA, 0x2C2C2E)
-    static let separator = dynamic(0xEEECE4, 0x38383A)
-    /// Hairline around cards and round buttons.
-    static let border = dynamic(0xE9E6DC, 0x2C2C2E)
-    static let text = dynamic(0x1A1A1A, 0xF5F5F7)
-    static let secondary = dynamic(0x6E6C64, 0x98989F)
-    static let tertiary = dynamic(0xAAA79D, 0x636366)
-    static let alsoText = dynamic(0x3C3B36, 0xD1D1D6)
-    /// Primary controls are ink, not colour.
-    static let accent = dynamic(0x1A1A1A, 0xF0D7FF)
-    static let lilac = dynamic(0xF0D7FF, 0x3A2D4F)
-    static let changeTint = dynamic(0xF7EEFF, 0x2A2238)
-    static let stop = dynamic(0xD92D20, 0xFF453A)
-    static let pass = dynamic(0x1F7A4D, 0x30D158)
-    static let pill = dynamic(0x1A1A1A, 0x2C2C2E)
-    static let grabber = dynamic(0xDCD9CF, 0x48484A)
+    static let background = dynamic(0xFFFFFF, 0x000000)
+    /// Box tiles and grouped fills: flat, no border, no shadow.
+    static let card = dynamic(0xF5F5F7, 0x1C1C1E)
+    static let raised = dynamic(0xF2F2F7, 0x2C2C2E)
+    static let separator = dynamic(0xE5E5EA, 0x38383A)
+    static let text = dynamic(0x000000, 0xF5F5F7)
+    static let secondary = dynamic(0x8E8E93, 0x98989F)
+    static let tertiary = dynamic(0xC7C7CC, 0x636366)
+    static let alsoText = dynamic(0x3A3A3C, 0xD1D1D6)
+    static let accent = dynamic(0x000000, 0xFFFFFF)
+    static let changeTint = dynamic(0xEBEBF0, 0x2C2C2E)
+    static let stop = dynamic(0xFF3B30, 0xFF453A)
+    static let pass = dynamic(0x34C759, 0x30D158)
+    static let pill = dynamic(0x000000, 0x2C2C2E)
+    static let grabber = dynamic(0xD1D1D6, 0x48484A)
 
     // Keyboard: keys look like Apple's in both modes; the Wispr-style pill is the only contrast.
     static let key = dynamic(0xFFFFFF, 0x6B6B6E, darkAlpha: 0.55)
@@ -44,13 +41,13 @@ enum Theme {
     static let accent = Palette.accent
     static let stop = Palette.stop
     static let pass = Palette.pass
-    static let radius: CGFloat = 20
+    static let radius: CGFloat = 14
     static let micSize: CGFloat = 76
 }
 
 enum Motion {
     /// The one spring used for every state change.
-    static let spring = Animation.spring(response: 0.32, dampingFraction: 0.86)
+    static let spring = Animation.spring(response: 0.3, dampingFraction: 0.9)
     static let fade = Animation.easeOut(duration: 0.2)
 }
 
@@ -82,16 +79,8 @@ struct ScaledFont: ViewModifier {
 }
 
 extension View {
-    /// `serif`: Apple's New York, for titles (the Wispr look); everything else stays SF.
     func scaledFont(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body,
-                    digits: Bool = false, serif: Bool = false) -> some View {
-        modifier(ScaledFont(size: size, weight: weight, relativeTo: style, monospacedDigits: digits,
-                            design: serif ? .serif : .default))
-    }
-
-    /// White card with a hairline edge, the one card style everywhere.
-    func card(radius: CGFloat = Theme.radius, fill: Color = Palette.card) -> some View {
-        background(fill, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Palette.border, lineWidth: 1))
+                    digits: Bool = false) -> some View {
+        modifier(ScaledFont(size: size, weight: weight, relativeTo: style, monospacedDigits: digits, design: .default))
     }
 }

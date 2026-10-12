@@ -46,7 +46,7 @@ struct BoxCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     if let title = box.title {
                         Text(title)
-                            .scaledFont(18, .semibold, serif: true)
+                            .scaledFont(16, .semibold)
                             .foregroundStyle(Palette.text)
                             .lineLimit(2)
                     }
@@ -98,7 +98,8 @@ struct BoxCard: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .card(fill: box.highlighted ? Palette.changeTint : Palette.card)
+            .background(box.highlighted ? Palette.changeTint : Palette.card,
+                        in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
         }
         .buttonStyle(PressScale())
     }
@@ -120,20 +121,13 @@ struct BoxGrid: View {
 
     var body: some View {
         let columns = BoxGrid.split(boxes)
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             ForEach(0..<2, id: \.self) { column in
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 12) {
                     ForEach(columns[column]) { box in
                         BoxCard(box: box) { onOpen(box.id) }
                             .zoomSource(id: box.id, in: zoom)
-                            .transition(.scale(scale: 0.92).combined(with: .opacity))
-                            // Cards settle in as they scroll onto the screen.
-                            .scrollTransition(.interactive, axis: .vertical) { content, phase in
-                                content
-                                    .opacity(phase.isIdentity ? 1 : 0.4)
-                                    .scaleEffect(phase.isIdentity ? 1 : 0.94)
-                                    .offset(y: phase.value * 8)
-                            }
+                            .transition(.opacity)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .top)

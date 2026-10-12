@@ -3,91 +3,95 @@ import SwiftUI
 /// Everything home shows. The app builds this from its store.
 struct HomeModel: Equatable {
     var dateLabel: String
-    /// Handwritten line above the title ("Good evening,").
-    var greeting = "Hello,"
     var today: [RowModel]
     var next: (title: String, when: String)?
     var boxes: [BoxModel]
     var pill: String?
     var pillUndo = true
     var card: ResultCardModel?
+    var talk: TalkState = .idle
 
     static func == (a: HomeModel, b: HomeModel) -> Bool {
-        a.dateLabel == b.dateLabel && a.greeting == b.greeting && a.today == b.today && a.boxes == b.boxes
+        a.dateLabel == b.dateLabel && a.today == b.today && a.boxes == b.boxes
             && a.next?.title == b.next?.title && a.next?.when == b.next?.when
-            && a.pill == b.pill && a.pillUndo == b.pillUndo && a.card == b.card
+            && a.pill == b.pill && a.pillUndo == b.pillUndo && a.card == b.card && a.talk == b.talk
     }
 }
 
-/// One place, like Keep: a thin Today strip, then everything you've said as boxes.
+/// One quiet page, like Notes: today's list, then your boxes, and the talk pill.
 struct HomeScreen: View {
     let model: HomeModel
     var onToggle: (String) -> Void = { _ in }
     var onOpenBox: (String) -> Void = { _ in }
     var onTalk: () -> Void = {}
+    var onCancelTalk: () -> Void = {}
+    var onDoneTalk: () -> Void = {}
     var onUndo: () -> Void = {}
     var onSearch: () -> Void = {}
     var onSettings: () -> Void = {}
     var onCloseCard: () -> Void = {}
     var onNew: () -> Void = {}
-    /// For the zoom from a box card into the box (set by the app; nil in previews).
+    /// For the zoom from a box tile into the box (set by the app; nil in previews).
     var zoom: Namespace.ID?
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 28) {
                 header
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     SectionLabel(text: "Today")
                     TodayStrip(rows: model.today, next: model.next, onToggle: onToggle)
                 }
-                BoxGrid(boxes: model.boxes, zoom: zoom, onOpen: onOpenBox)
+                if !model.boxes.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionLabel(text: "Boxes")
+                        BoxGrid(boxes: model.boxes, zoom: zoom, onOpen: onOpenBox)
+                    }
+                }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 8)
-            .padding(.bottom, 16)
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
-        .background(alignment: .top) {
-            ZStack(alignment: .top) {
-                Palette.background
-                AuroraWash()
-            }
-            .ignoresSafeArea()
-        }
-        .animation(Motion.spring, value: model)
+        .background(Palette.background.ignoresSafeArea())
+        .animation(Motion.spring, value: model.boxes)
+        .animation(Motion.spring, value: model.pill)
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(model.dateLabel.uppercased())
-                    .scaledFont(12, .semibold, relativeTo: .footnote)
-                    .tracking(0.8)
-                    .foregroundStyle(Palette.secondary)
-                    .padding(.bottom, 6)
-                Text(model.greeting)
-                    .cursive(26)
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.dateLabel)
+                    .scaledFont(13, .semibold, relativeTo: .footnote)
                     .foregroundStyle(Palette.secondary)
                 Text("Friday")
-                    .scaledFont(40, .semibold, relativeTo: .largeTitle, serif: true)
+                    .scaledFont(34, .bold, relativeTo: .largeTitle)
                     .foregroundStyle(Palette.text)
             }
             Spacer()
-            GlassEffectContainer(spacing: 10) {
-                HStack(spacing: 10) {
-                    RoundIcon(systemName: "plus", label: "New box", action: onNew)
-                    RoundIcon(systemName: "magnifyingglass", label: "Search", action: onSearch)
-                    RoundIcon(systemName: "gearshape", label: "Settings", action: onSettings)
+            HStack(spacing: 18) {
+                Button(action: onNew) {
+                    Image(systemName: "square.and.pencil")
                 }
+                .accessibilityLabel("New box")
+                Menu {
+                    Button("Search", systemImage: "magnifyingglass", action: onSearch)
+                    Button("Settings", systemImage: "gearshape", action: onSettings)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("More")
             }
-            .padding(.bottom, 4)
+            .font(.system(size: 21, weight: .regular))
+            .foregroundStyle(Palette.text)
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 4)
+        .padding(.top, 8)
     }
 
-    /// Result card, change pill and mic. Content scrolls under it and fades instead of colliding.
+    /// Result card, change pill and the talk pill. Content fades out under it (plain gradient).
     private var bottomBar: some View {
         VStack(spacing: 12) {
             if let card = model.card {
@@ -97,94 +101,17 @@ struct HomeScreen: View {
             }
             if let pill = model.pill {
                 ChangePill(text: pill, undo: model.pillUndo ? onUndo : nil)
-                    .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
-            MicButton(action: onTalk)
+            TalkPill(state: model.talk, onTalk: onTalk, onCancel: onCancelTalk, onDone: onDoneTalk)
         }
-        .padding(.top, 16)
-        .padding(.bottom, 0)
+        .padding(.top, 20)
+        .padding(.bottom, 8)
         .frame(maxWidth: .infinity)
         .background(alignment: .top) {
             LinearGradient(colors: [Palette.background.opacity(0), Palette.background],
-                           startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.25))
+                           startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.35))
                 .ignoresSafeArea(edges: .bottom)
         }
-    }
-}
-
-struct RoundIcon: View {
-    let systemName: String
-    let label: String
-    var action: () -> Void = {}
-    @State private var taps = 0
-
-    var body: some View {
-        Button {
-            taps += 1
-            action()
-        } label: {
-            Image(systemName: systemName)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Palette.text)
-                .frame(width: 42, height: 42)
-                .glassCircle()
-        }
-        .buttonStyle(.plain)
-        .sensoryFeedback(.selection, trigger: taps)
-        .accessibilityLabel(label)
-    }
-}
-
-/// While you talk to Friday: the aurora fills the sheet and moves with your voice, the orb
-/// swells as you speak, and the words appear in a calm serif.
-struct TalkingSheet: View {
-    let transcript: String
-    let levels: [CGFloat]
-    var onCancel: () -> Void = {}
-    var onDone: () -> Void = {}
-
-    private var level: Double {
-        let recent = levels.suffix(6)
-        return recent.isEmpty ? 0 : Double(recent.reduce(0, +)) / Double(recent.count)
-    }
-
-    var body: some View {
-        VStack(spacing: 22) {
-            Capsule().fill(Palette.grabber).frame(width: 36, height: 5)
-            Text("I'm listening…")
-                .cursive(30)
-                .foregroundStyle(Palette.text.opacity(0.75))
-            VoiceOrb(size: 112, level: level, listening: true)
-                .frame(height: 170)
-            LiveWave(levels: levels, color: Palette.text, height: 54)
-                .padding(.horizontal, 8)
-            if !transcript.isEmpty && transcript != "Listening" {
-                Text(transcript)
-                    .scaledFont(21, .regular, relativeTo: .title3, serif: true)
-                    .foregroundStyle(Palette.text)
-                    .lineSpacing(5)
-                    .lineLimit(4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .transition(.opacity)
-            }
-            Spacer(minLength: 0)
-            HStack(spacing: 12) {
-                CapsuleButton(title: "Cancel", style: .secondary, action: onCancel)
-                CapsuleButton(title: "Done", systemImage: "checkmark", action: onDone)
-            }
-        }
-        .padding(.top, 12)
-        .padding(.horizontal, 24)
-        .padding(.bottom, 14)
-        .frame(height: 520)
-        .frame(maxWidth: .infinity)
-        .background {
-            ZStack {
-                Palette.card
-                AuroraMesh(energy: min(1, level * 1.4), speed: 0.3).opacity(0.85)
-            }
-            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 34, topTrailingRadius: 34, style: .continuous))
-        }
-        .shadow(color: .black.opacity(0.14), radius: 30, y: -6)
     }
 }
