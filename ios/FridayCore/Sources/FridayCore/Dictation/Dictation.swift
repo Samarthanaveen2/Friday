@@ -44,8 +44,8 @@ public struct Dictation: Sendable {
         let chosen = CleanupGuard.choose(aiOutput: aiOutput, transcript: prepared, fallback: ruleBased,
                                          relaxed: tone != .asSaid || Dictation.hasCommand(prepared) || asks,
                                          allowNewNumbers: asks)
-        // Same final touches whichever text was chosen: rupee amounts, then misspelled names.
-        let polished = DictionaryFix(dictionary).apply(Spoken.phoneNumbers(Money.format(fixRules.apply(chosen))))
+        // Same final touches whichever text was chosen: leftover fillers, rupee amounts, misspelled names.
+        let polished = DictionaryFix(dictionary).apply(Spoken.phoneNumbers(Money.format(fixRules.apply(Cleanup.dropFillers(chosen)))))
         let keep = Set(dictionary.flatMap { [$0, $0.lowercased()] })
         return Continuation.apply(polished, after: context, keepCase: keep)
     }

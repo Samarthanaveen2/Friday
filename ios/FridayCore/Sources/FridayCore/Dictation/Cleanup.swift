@@ -27,6 +27,29 @@ public enum Cleanup {
         return Rx.replace(text, Rx.wordStart + fillers + Rx.wordEnd + "[,.]?", with: "")
     }
 
+    /// Last pass on the AI's text too: models sometimes leave "uh", ", you know," or a repeated
+    /// "I don't, I don't" in a long ramble. Only these sure fillers go; nothing else changes.
+    public static func dropFillers(_ text: String) -> String {
+        var t = text
+        // "um", "uh"… anywhere; ", you know," and ", like," between commas are never meaning.
+        t = Rx.replace(t, "[ \t]*,?[ \t]*" + Rx.wordStart + "(?:u+m+|u+h+|uhm|erm|h+m+)" + Rx.wordEnd + "[ \t]*,?", with: ",")
+        for _ in 0..<2 { t = Rx.replace(t, ",[ \t]*(?:you know|like)[ \t]*,", with: ",") }
+        // A phrase said twice across a comma: "I don't, I don't really care" -> "I don't really care".
+        t = Rx.replace(t, Rx.wordStart + "((?:[A-Za-z']+ ){1,3}?[A-Za-z']+), \\1" + Rx.wordEnd, with: "$1")
+        // Tidy what removing left behind: ", ," / " ," / a comma starting a sentence or the text.
+        t = Rx.replace(t, ",(?:[ \t]*,)+", with: ",")
+        t = Rx.replace(t, "[ \t]+,", with: ",")
+        t = Rx.replace(t, ",([.?!;:])", with: "$1")
+        t = Rx.replace(t, "(^|\n)[ \t]*,[ \t]*", with: "$1")
+        t = Rx.replace(t, "([.?!])[ \t]*,[ \t]*", with: "$1 ")
+        t = Rx.replace(t, ",(?=[A-Za-z])", with: ", ", caseInsensitive: false)
+        t = Rx.replace(t, "[ \t]{2,}", with: " ")
+        t = t.trimmingCharacters(in: .whitespaces)
+        // A sentence that started with the filler starts with a capital again.
+        t = Rx.replace(t, Rx.make("(^|[.?!][ \t]+|\n)([a-z])")) { $0.uppercased() }
+        return t
+    }
+
     // MARK: Thinking out loud ("how can... Wait, I'm forgetting it. Yeah, I got it.")
 
     /// Words that carry nothing on their own when the speaker trails off: "But...", "Wait...", "So...".

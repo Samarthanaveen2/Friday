@@ -135,3 +135,23 @@ final class SpokenTests: XCTestCase {
         XCTAssertEqual(Money.format("He spent 40 minutes there."), "He spent 40 minutes there.")
     }
 }
+
+final class FillerTests: XCTestCase {
+    func testDropsFillersTheAILeft() {
+        let ai = "Now, the thing is, I think, I'll add the widget. Okay, yeah, you tap on the, uh, you know, tap, what is that? Uh, I don't, I don't really care, right?"
+        XCTAssertEqual(Cleanup.dropFillers(ai),
+                       "Now, the thing is, I think, I'll add the widget. Okay, yeah, you tap on the, tap, what is that? I don't really care, right?")
+    }
+
+    func testFillerAtStartAndEnd() {
+        XCTAssertEqual(Cleanup.dropFillers("Um, so can you send it, uh."), "So can you send it.")
+        XCTAssertEqual(Cleanup.dropFillers("so, like, you know, we leave at 6"), "So, we leave at 6")
+    }
+
+    func testLeavesRealTextAlone() {
+        for text in ["I owe Sam ₹1,00,000 and 1,000 more.", "Do you know Rahul?", "It's like a dream.",
+                     "Very, very good.", "Humming a song in the summer.", "- [ ] Milk\n- [ ] Eggs", "Visit forms.gle/friday"] {
+            XCTAssertEqual(Cleanup.dropFillers(text), text)
+        }
+    }
+}
